@@ -27,7 +27,7 @@ class MainViewModel : ViewModel() {
      */
     init {
         viewModelScope.launch {
-            delay(5000)
+            delay(3000)
             initializationComplete = true
         }
     }

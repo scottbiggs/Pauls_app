@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Paul\'s App</string>
+
+    <!-- main screens -->
+    <string name="initializing">Initializing connection to IoT devices...</string>
 </resources>
