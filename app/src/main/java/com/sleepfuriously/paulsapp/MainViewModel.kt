@@ -17,10 +17,9 @@ import kotlinx.coroutines.launch
 class MainViewModel : ViewModel() {
 
 
-    /** Will be false during initialization of models and viewmodels */
-    var initializationComplete by mutableStateOf(false)
+    /** communicates state of bridge initialization to the ui */
+    var bridgeInit by mutableStateOf(PhilipsHueBridgeInit.INITIALIZING)
         private set
-
 
     /**
      * todo:  this is for testing the initialization graphic
@@ -28,8 +27,22 @@ class MainViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             delay(3000)
-            initializationComplete = true
+            bridgeInit = PhilipsHueBridgeInit.INITIALIZED
         }
     }
 
+}
+
+/**
+ * The states of the Philips Hue bridge.
+ */
+enum class PhilipsHueBridgeInit {
+    /** currently attempting to initialize the bridge */
+    INITIALIZING,
+    /** attempt to initialize the bridge has timed out */
+    INITIALIZATION_TIMEOUT,
+    /** successfully initialized */
+    INITIALIZED,
+    /** some error has occurred when dealing with the bridge */
+    ERROR
 }

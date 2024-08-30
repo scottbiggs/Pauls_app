@@ -1,6 +1,17 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Paul\'s App</string>
 
-    <!-- main screens -->
-    <string name="initializing">Initializing connection to IoT devices...</string>
+    <!-- startup -->
+    <string name="initializing" tools:ignore="TypographyEllipsis">Initializing connection to IoT devices...</string>
+    <string name="cannot_find_bridge">Unable to find the Philips Hue Bridge.</string>
+    <string name="do_you_want_to_search_for_bridge">Search for the Philips Hue bridge?</string>
+    <string name="enter_bridge_ip">Please enter the IP for the Philips Hue Bridge</string>
+    <string name="bridge_found">Philips Hue Bridge found</string>
+    <string name="ip_is">IP is %1$s</string>
+
+    <!-- basics -->
+    <string name="yes">yes</string>
+    <string name="no">no</string>
+    <string name="cancel" tools:ignore="ButtonCase">cancel</string>
+    <string name="ok" tools:ignore="ButtonCase">ok</string>
 </resources>
