@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
-import com.sleepfuriously.paulsapp.view.MainScreen
+import com.sleepfuriously.paulsapp.view.ShowMainScreen
 
 
 /**
@@ -35,11 +35,8 @@ class MainActivity : ComponentActivity() {
     //  additional properties
     //----------------------------
 
-    private val mainScreen = MainScreen()
-
     /** access to the view model */
     private val viewModel by viewModels<MainViewModel>()
-
 
     //----------------------------
     //  functions
@@ -52,7 +49,7 @@ class MainActivity : ComponentActivity() {
             PaulsAppTheme {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    mainScreen.ShowMainScreen(
+                    ShowMainScreen(
                         modifier = Modifier.padding(innerPadding),
                         viewModel
                     )

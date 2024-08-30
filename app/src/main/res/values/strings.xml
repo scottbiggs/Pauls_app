@@ -8,6 +8,7 @@
     <string name="enter_bridge_ip">Please enter the IP for the Philips Hue Bridge</string>
     <string name="bridge_found">Philips Hue Bridge found</string>
     <string name="ip_is">IP is %1$s</string>
+    <string name="error_init_bridge">An error occurred initializing bridge.</string>
 
     <!-- basics -->
     <string name="yes">yes</string>
