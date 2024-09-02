@@ -3,8 +3,11 @@ package com.sleepfuriously.paulsapp.view
 import android.content.Context
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.util.Log
+import android.widget.Space
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -43,32 +46,24 @@ fun ShowMainScreen(
     val screenWidth = config.screenWidthDp.dp
     val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
+
+    AnimatedVisibility(
+        visible = viewModel.bridgeInit == PhilipsHueBridgeInit.INITIALIZING,
+        enter = fadeIn(animationSpec = tween(2000)),
+
+        // exit by sliding left and fading
+        exit = slideOutHorizontally(
+            targetOffsetX = { fullWidth ->
+                -fullWidth
+            },
+            animationSpec = tween(1000)
+        ) + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
+    ) {
+        SplashScreen()
+    }
+
     when (viewModel.bridgeInit) {
         PhilipsHueBridgeInit.INITIALIZING -> {
-            AnimatedVisibility(
-                visible = viewModel.bridgeInit == PhilipsHueBridgeInit.INITIALIZING,
-                // use default entrance (fade in)
-                // exit by sliding left and fading
-                exit = slideOutHorizontally(targetOffsetX = { fullWidth ->
-                    -fullWidth
-                }) + fadeOut(targetAlpha = 0f)
-            ) {
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(80.dp)
-                        .background(color = Color(red = 0xb0, green = 0xc0, blue = 0xe0)),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.initializing)
-                    )
-                    CircularProgressIndicator()
-
-                }
-            }
         }
 
         PhilipsHueBridgeInit.INITIALIZED -> {
@@ -87,6 +82,27 @@ fun ShowMainScreen(
         }
     }
 
+}
+
+/**
+ * Displays the content of the splash screen.  Animations should be
+ * done at the caller level.
+ */
+@Composable
+private fun SplashScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(80.dp)
+            .background(color = Color(red = 0xb0, green = 0xc0, blue = 0xe0)),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(id = R.string.initializing)
+        )
+        CircularProgressIndicator()
+    }
 }
 
 
