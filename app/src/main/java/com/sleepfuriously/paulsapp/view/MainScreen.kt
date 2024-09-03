@@ -69,6 +69,13 @@ fun ShowMainScreen(
         PhilipsHueBridgeInit.INITIALIZED -> {
             // todo
             Toast.makeText(LocalContext.current, stringResource(R.string.bridge_found), Toast.LENGTH_LONG).show()
+            Column(modifier = Modifier.fillMaxSize(), Arrangement.Center) {
+                Text(
+                    "Hi scott!  it's looking good so far.",
+                    modifier = Modifier
+                        .align(alignment = Alignment.CenterHorizontally),
+                )
+            }
         }
 
         PhilipsHueBridgeInit.INITIALIZATION_TIMEOUT -> {

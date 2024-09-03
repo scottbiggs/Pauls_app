@@ -13,7 +13,15 @@ import androidx.compose.ui.platform.LocalContext
 private val DarkColorScheme = darkColorScheme(
     primary = yellowMain,
     secondary = lightBlueMain,
-    tertiary = darkBlueMain
+    tertiary = darkBlueMain,
+
+    background = almostBlack,
+    surface = almostBlackLighter,
+    onPrimary = almostBlack,
+    onSecondary = almostBlack,
+    onTertiary = veryLightCoolGray,
+    onBackground = veryLightCoolGray,
+    onSurface = veryLightCoolGray,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -50,6 +58,7 @@ fun PaulsAppTheme(
     }
 
     MaterialTheme(
+//        colorScheme = colorScheme,
         colorScheme = colorScheme,
         typography = Typography,
         content = content
