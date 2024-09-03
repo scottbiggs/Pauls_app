@@ -11,20 +11,24 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 */
 
-val yellowMain = Color(0xffdeff53)
-val yellowDark = Color(0xff93b01b)
-val yellowLight = Color(0xFFEEFFA9)
+val yellowMain = Color(0xffd7ff30)
+val yellowDark = Color(0xFF93AE26)
+val yellowLight = Color(0xFFE9FE92)
 
-val lightBlueMain = Color(0xff2c71ff)
-val lightBlueLight = Color(0xff6798ff)
-val lightBlueDark = Color(0xFF1D48A0)
+val lightBlueMain = Color(0xff08a2ff)
+val lightBlueLight = Color(0xFF5DC2FF)
+val lightBlueDark = Color(0xFF086399)
 
-val darkBlueMain = Color(0xff002f86)
-val darkBlueLight = Color(0xFF0c30d0)
-val darkBlueDark = Color(0xFF000D26)
+val darkBlueMain = Color(0xff00205c)
+val darkBlueLight = Color(0xFF274173)
+val darkBlueDark = Color(0xFF00102F)
 
 val lightCoolGray = Color(0xFF929DBF)
 val veryLightCoolGray = Color(0xFFD2DDFF)
 val coolGray = Color(0xFF5A637D)
 val darkCoolGray = Color(0xFF40485F)
 val veryDarkCoolGray = Color(0xFF2A3040)
+
+val almostBlack = Color(0xFF000817)
+val almostBlackLighter = Color(0xFF12151B)
+val almostBlackMuchLighter = Color(0xFF1A1E26)
