@@ -16,13 +16,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,6 +52,11 @@ fun ShowMainScreen(
     val screenWidth = config.screenWidthDp.dp
     val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
+    var splashScreenDone by remember { mutableStateOf(true) }
+
+    if (viewModel.bridgeInit == PhilipsHueBridgeInit.INITIALIZING) {
+        splashScreenDone = false
+    }
 
     AnimatedVisibility(
         visible = viewModel.bridgeInit == PhilipsHueBridgeInit.INITIALIZING,
@@ -57,7 +68,7 @@ fun ShowMainScreen(
                 -fullWidth
             },
             animationSpec = tween(1000)
-        ) + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
+        ) // + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
     ) {
         SplashScreen()
     }
@@ -69,6 +80,8 @@ fun ShowMainScreen(
         PhilipsHueBridgeInit.INITIALIZED -> {
             // todo
             Toast.makeText(LocalContext.current, stringResource(R.string.bridge_found), Toast.LENGTH_LONG).show()
+
+            if (splashScreenDone) {
             Column(modifier = Modifier.fillMaxSize(), Arrangement.Center) {
                 Text(
                     "Hi scott!  it's looking good so far.",
@@ -76,6 +89,7 @@ fun ShowMainScreen(
                         .align(alignment = Alignment.CenterHorizontally),
                 )
             }
+                }
         }
 
         PhilipsHueBridgeInit.INITIALIZATION_TIMEOUT -> {
@@ -101,12 +115,14 @@ private fun SplashScreen() {
         modifier = Modifier
             .fillMaxSize()
             .padding(80.dp)
-            .background(color = Color(red = 0xb0, green = 0xc0, blue = 0xe0)),
+//            .background(color = Color(red = 0xb0, green = 0xc0, blue = 0xe0)),
+            .background(color = MaterialTheme.colorScheme.primary),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = stringResource(id = R.string.initializing)
+            text = stringResource(id = R.string.initializing),
+            color = MaterialTheme.colorScheme.onPrimary
         )
         CircularProgressIndicator()
     }

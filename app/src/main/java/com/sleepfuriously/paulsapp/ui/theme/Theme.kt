@@ -47,20 +47,27 @@ fun PaulsAppTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    // This section of code is unused.  I keep it in case there's a reason
+    // change it back to a switching color scheme in the future.
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor && supportsDynamicColorTheme() -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
         darkTheme -> DarkColorScheme
+
         else -> LightColorScheme
     }
 
     MaterialTheme(
 //        colorScheme = colorScheme,
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,      // always do dark
         typography = Typography,
         content = content
     )
 }
+
+
+fun supportsDynamicColorTheme() : Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
