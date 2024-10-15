@@ -10,6 +10,12 @@
     <string name="ip_is">IP is %1$s</string>
     <string name="error_init_bridge">An error occurred initializing bridge.</string>
 
+    <!-- startup Philips Hue Bridge -->
+    <string name="start_ph_bridge_init_button">init bridge</string>
+    <string name="enter_ip">Bridge Ip</string>
+    <string name="enter_ip_hint">Enter the bridge ip from the Philips Hue app</string>
+
+
     <!-- basics -->
     <string name="yes">yes</string>
     <string name="no">no</string>
