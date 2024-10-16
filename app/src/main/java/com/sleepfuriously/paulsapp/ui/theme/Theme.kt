@@ -24,6 +24,7 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = veryLightCoolGray,
 )
 
+/** fixme: currently not used */
 private val LightColorScheme = lightColorScheme(
     primary = lightBlueMain,
     secondary = yellowMain,
@@ -47,8 +48,8 @@ fun PaulsAppTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    // This section of code is unused.  I keep it in case there's a reason
-    // change it back to a switching color scheme in the future.
+    // fixme: This section of code is unused.  I keep it in case there's a reason
+    //  change it back to a switching color scheme in the future.
     val colorScheme = when {
         dynamicColor && supportsDynamicColorTheme() -> {
             val context = LocalContext.current

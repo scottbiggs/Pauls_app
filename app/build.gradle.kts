@@ -68,5 +68,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    // for encrypted sharedprefs
     implementation(libs.androidx.security.crypto)
+
+    // for startup splash screen animation
+    implementation(libs.androidx.core.splashscreen)
 }

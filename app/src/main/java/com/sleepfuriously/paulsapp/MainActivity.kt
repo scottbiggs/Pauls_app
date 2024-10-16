@@ -1,12 +1,21 @@
 package com.sleepfuriously.paulsapp
 
+import android.animation.ObjectAnimator
 import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.os.Bundle
+import android.view.View
+import android.view.animation.OvershootInterpolator
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +41,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.animation.doOnEnd
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 
 
@@ -60,6 +72,9 @@ class MainActivity : ComponentActivity() {
     /** access to the view model */
     private lateinit var viewModel: MainViewModel
 
+    /** accessor for splash screen viewmodel */
+    private val splashViewModel by viewModels<SplashViewModel>()
+
 
     //----------------------------
     //  functions
@@ -69,16 +84,75 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        viewModel  = MainViewModel(applicationContext)
+        viewModel  = MainViewModel()
+        viewModel.initialize(this)
+
+        //--------------
+        // splash screen stuff
+        //--------------
+
+        // Needs to be called before setContent() or setContentView().
+        // apply{} is optional--use to do any additional work.
+        installSplashScreen().apply {
+            // example: this will check the value every frame and keep showing
+            //          the splash screen as long as the total value is true
+            //          (in our case, until isReady == false)
+            setKeepOnScreenCondition {
+                !splashViewModel.isReady.value
+            }
+
+            // my own experiments on exiting the screen
+            setOnExitAnimationListener { screen ->
+
+            }
+
+            // set the exit animation
+            setOnExitAnimationListener { screen ->
+                val zoomX = ObjectAnimator.ofFloat(
+                    screen.iconView,
+                    View.SCALE_X,
+                    0.7f,       // start will be the final value in logo_animator.xml
+                    8.0f                // what we'll finish with (expand to entire width of screen)
+                )
+                zoomX.interpolator = OvershootInterpolator(0f)    // provides a bump when animating (2f is default)
+                zoomX.duration = 750L      // duration of exit animation
+                zoomX.doOnEnd { screen.remove() }   // when done, remove this screen and go on to next
+
+                // same for y value
+                val zoomY = ObjectAnimator.ofFloat(
+                    screen.iconView,
+                    View.SCALE_Y,
+                    0.7f,
+                    0.0f                // go to nothing
+                )
+                zoomY.interpolator = OvershootInterpolator(0f)
+                zoomY.duration = 750L
+                zoomY.doOnEnd { screen.remove() }
+
+                // finally start the animations
+                zoomX.start()
+                zoomY.start()
+            }
+        }
+
+
+        // surest way to hide the action bar
+        actionBar?.hide()
 
         setContent {
             PaulsAppTheme {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ShowMainScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        viewModel
-                    )
+                    if (viewModel.displayStates == MainActivityDisplayStates.APP_STARTUP) {
+
+                        AnimateSplashScreen(viewModel, Modifier.padding(innerPadding))
+                    }
+                    else {
+                        ShowMainScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            viewModel
+                        )
+                    }
                 }
             }
         }
@@ -88,6 +162,44 @@ class MainActivity : ComponentActivity() {
     //----------------------------
     //  composables
     //----------------------------
+
+    /**
+     * Displays the splash screen with a bit of animation.
+     * When the timed out, will signal the view model and stop
+     * displaying the splash (with animation of course!).
+     *
+     * Note: animations are done here.  The actual splash screen
+     * are done in [SplashScreenContents].
+     */
+    @Composable
+    private fun AnimateSplashScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
+
+        val animVisibleState = remember {
+            MutableTransitionState(viewModel.displayStates
+                    == MainActivityDisplayStates.APP_STARTUP)
+        }
+
+        Column {
+            AnimatedVisibility(
+//            visible = viewModel.displayStates == MainActivityDisplayStates.APP_STARTUP,
+                visibleState = animVisibleState,
+                enter = fadeIn(animationSpec = tween(4000)),
+
+                // exit by sliding left and fading
+                exit = slideOutHorizontally(
+                    targetOffsetX = { fullWidth ->
+                        -fullWidth
+                    },
+                    animationSpec = tween(4000)
+                ) // + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
+            ) {
+                SplashScreenContents()
+            }
+        }
+
+
+//        SplashScreenContents(modifier)
+    }
 
     /**
      * The main screen that the user interacts with.  All the big
@@ -110,22 +222,6 @@ class MainActivity : ComponentActivity() {
             splashScreenDone = false
         }
 
-/*
-        AnimatedVisibility(
-            visible = viewModel.bridgeInit == PhilipsHueBridgeInit.INITIALIZING,
-            enter = fadeIn(animationSpec = tween(2000)),
-
-            // exit by sliding left and fading
-            exit = slideOutHorizontally(
-                targetOffsetX = { fullWidth ->
-                    -fullWidth
-                },
-                animationSpec = tween(1000)
-            ) // + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
-        ) {
-            SplashScreen()
-        }
-*/
         when (viewModel.bridgeInit) {
 
             PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED -> {
@@ -168,21 +264,23 @@ class MainActivity : ComponentActivity() {
      * done at the caller level.
      */
     @Composable
-    private fun SplashScreen() {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(80.dp)
-//            .background(color = Color(red = 0xb0, green = 0xc0, blue = 0xe0)),
-                .background(color = MaterialTheme.colorScheme.primary),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(id = R.string.initializing),
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-            CircularProgressIndicator()
+    private fun SplashScreenContents(modifier: Modifier = Modifier) {
+
+        Box(modifier = modifier) {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(50.dp)
+                    .background(color = MaterialTheme.colorScheme.tertiary),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(id = R.string.initializing),
+                    color = MaterialTheme.colorScheme.onTertiary
+                )
+                CircularProgressIndicator()
+            }
         }
     }
 
@@ -258,6 +356,11 @@ class MainActivity : ComponentActivity() {
         DisplayManualInitPart1()
     }
 
+    @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+    @Composable
+    private fun SplashScreenContentsPreview() {
+        SplashScreenContents()
+    }
 /*
     @Preview(
         name = "tablet",

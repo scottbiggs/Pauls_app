@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/house_icon2"
+    >
+
+<!--
+    The animation is the name of the animator that defines the animation.
+    android:name is the name of the group we want to animate in the drawable
+-->
+    <target
+        android:animation="@animator/logo_animator"
+        android:name="houseLogoAnimationGroup"
+        />
+
+</animated-vector>

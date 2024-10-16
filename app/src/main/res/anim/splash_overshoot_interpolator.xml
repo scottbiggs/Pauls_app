@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    Empty as the defaults are fine.  But this file is needed as a reference
+    to logo_animator.xml.
+-->
+<overshootInterpolator xmlns:android="http://schemas.android.com/apk/res/android">
+
+</overshootInterpolator>

@@ -10,8 +10,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Viewmodel for the main portion of the opening screen.
@@ -19,7 +21,7 @@ import kotlinx.coroutines.launch
  * main screen.  The parts of the screen should have their
  * own viewmodels.
  */
-class MainViewModel(ctx: Context) : ViewModel() {
+class MainViewModel : ViewModel() {
 
     /** Tells the UI which state to display */
     var displayStates by mutableStateOf(MainActivityDisplayStates.UNKNOWN)
@@ -33,21 +35,35 @@ class MainViewModel(ctx: Context) : ViewModel() {
     /**
      * todo:  this is for testing the initialization graphic
      */
-    init {
+    fun initialize(ctx: Context) {
         viewModelScope.launch {
+            withContext(Dispatchers.IO) {
 
-            val epref = getESharedPref(ctx) as EncryptedSharedPreferences
+                val epref = getESharedPref(ctx) as EncryptedSharedPreferences
 
-            val ph_name = epref.getString(PHILIPS_HUE_NAME_KEY, PH_NAME_NOT_FOUND)
-            if (ph_name.equals(PH_NAME_NOT_FOUND)) {
-                bridgeInit = PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED
-                Log.v(TAG, "Philips Hue Bridge not initialized")
-                return@launch
+                val ph_name = epref.getString(PHILIPS_HUE_NAME_KEY, PH_NAME_NOT_FOUND)
+                if (ph_name.equals(PH_NAME_NOT_FOUND)) {
+                    displayStates = MainActivityDisplayStates.APP_STARTUP
+                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED
+                    Log.d(TAG, "Philips Hue Bridge not initialized")
+
+                    // fixme:  for testing
+                    delay(8000)
+                    displayStates = MainActivityDisplayStates.RUNNING
+                    Log.d(TAG, "displayState = $displayStates")
+                }
+                else {
+                    displayStates = MainActivityDisplayStates.APP_STARTUP
+                    Log.d(TAG, "displayState = $displayStates")
+
+                    // fixme:  for testing
+                    delay(3000)
+                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_INITIALIZED
+
+                    displayStates = MainActivityDisplayStates.RUNNING
+                    Log.d(TAG, "displayState = $displayStates")
+                }
             }
-
-
-            delay(3000)
-            bridgeInit = PhilipsHueBridgeInit.BRIDGE_INITIALIZED
         }
     }
 
