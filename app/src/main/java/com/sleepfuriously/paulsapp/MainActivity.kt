@@ -91,50 +91,7 @@ class MainActivity : ComponentActivity() {
         // splash screen stuff
         //--------------
 
-        // Needs to be called before setContent() or setContentView().
-        // apply{} is optional--use to do any additional work.
-        installSplashScreen().apply {
-            // example: this will check the value every frame and keep showing
-            //          the splash screen as long as the total value is true
-            //          (in our case, until isReady == false)
-            setKeepOnScreenCondition {
-                !splashViewModel.isReady.value
-            }
-
-            // my own experiments on exiting the screen
-            setOnExitAnimationListener { screen ->
-
-            }
-
-            // set the exit animation
-            setOnExitAnimationListener { screen ->
-                val zoomX = ObjectAnimator.ofFloat(
-                    screen.iconView,
-                    View.SCALE_X,
-                    0.7f,       // start will be the final value in logo_animator.xml
-                    8.0f                // what we'll finish with (expand to entire width of screen)
-                )
-                zoomX.interpolator = OvershootInterpolator(0f)    // provides a bump when animating (2f is default)
-                zoomX.duration = 750L      // duration of exit animation
-                zoomX.doOnEnd { screen.remove() }   // when done, remove this screen and go on to next
-
-                // same for y value
-                val zoomY = ObjectAnimator.ofFloat(
-                    screen.iconView,
-                    View.SCALE_Y,
-                    0.7f,
-                    0.0f                // go to nothing
-                )
-                zoomY.interpolator = OvershootInterpolator(0f)
-                zoomY.duration = 750L
-                zoomY.doOnEnd { screen.remove() }
-
-                // finally start the animations
-                zoomX.start()
-                zoomY.start()
-            }
-        }
-
+        showSplashScreen()
 
         // surest way to hide the action bar
         actionBar?.hide()
@@ -375,6 +332,57 @@ class MainActivity : ComponentActivity() {
         }
     }
 */
+
+    /**
+     * Handles displaying the splash screen.  Needs to be
+     * called BEFORE setContent() in [onCreate].
+     */
+    private fun showSplashScreen() {
+        // Needs to be called before setContent() or setContentView().
+        // apply{} is optional--use to do any additional work.
+        installSplashScreen().apply {
+            // example: this will check the value every frame and keep showing
+            //          the splash screen as long as the total value is true
+            //          (in our case, until isReady == false)
+            setKeepOnScreenCondition {
+                !splashViewModel.isReady.value
+            }
+
+            // my own experiments on exiting the screen
+            setOnExitAnimationListener { screen ->
+
+            }
+
+            // set the exit animation
+            setOnExitAnimationListener { screen ->
+                val zoomX = ObjectAnimator.ofFloat(
+                    screen.iconView,
+                    View.SCALE_X,
+                    0.7f,       // start will be the final value in logo_animator.xml
+                    8.0f                // what we'll finish with (expand to entire width of screen)
+                )
+                zoomX.interpolator = OvershootInterpolator(0f)    // provides a bump when animating (2f is default)
+                zoomX.duration = 750L      // duration of exit animation
+                zoomX.doOnEnd { screen.remove() }   // when done, remove this screen and go on to next
+
+                // same for y value
+                val zoomY = ObjectAnimator.ofFloat(
+                    screen.iconView,
+                    View.SCALE_Y,
+                    0.7f,
+                    0.0f                // go to nothing
+                )
+                zoomY.interpolator = OvershootInterpolator(0f)
+                zoomY.duration = 750L
+                zoomY.doOnEnd { screen.remove() }
+
+                // finally start the animations
+                zoomX.start()
+                zoomY.start()
+            }
+        }
+
+    }
 }
 
 

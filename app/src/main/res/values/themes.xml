@@ -5,7 +5,7 @@
     <style name="Theme.PaulsApp" parent="android:Theme.Material.Light.NoActionBar" />
 
     <!-- style for the splash screen -->
-    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+    <style name="Theme.App.StartSplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/almostBlack</item>
         <item name="postSplashScreenTheme">@style/Theme.PaulsApp</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/animated_logo</item>
