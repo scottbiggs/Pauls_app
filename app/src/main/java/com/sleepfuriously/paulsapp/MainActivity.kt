@@ -87,14 +87,15 @@ class MainActivity : ComponentActivity() {
         viewModel  = MainViewModel()
         viewModel.initialize(this)
 
+        // surest way to hide the action bar
+        actionBar?.hide()
+
         //--------------
         // splash screen stuff
         //--------------
 
         showSplashScreen()
 
-        // surest way to hide the action bar
-        actionBar?.hide()
 
         setContent {
             PaulsAppTheme {
