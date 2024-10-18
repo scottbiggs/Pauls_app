@@ -90,74 +90,26 @@ class MainActivity : ComponentActivity() {
         // surest way to hide the action bar
         actionBar?.hide()
 
-        //--------------
-        // splash screen stuff
-        //--------------
-
         showSplashScreen()
-
 
         setContent {
             PaulsAppTheme {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    if (viewModel.displayStates == MainActivityDisplayStates.APP_STARTUP) {
-
-                        AnimateSplashScreen(viewModel, Modifier.padding(innerPadding))
-                    }
-                    else {
-                        ShowMainScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            viewModel
-                        )
-                    }
+                    ShowMainScreen(
+                        modifier = Modifier.padding(innerPadding),
+                        viewModel
+                    )
                 }
             }
         }
-    }
+
+    } // onCreate()
 
 
     //----------------------------
     //  composables
     //----------------------------
-
-    /**
-     * Displays the splash screen with a bit of animation.
-     * When the timed out, will signal the view model and stop
-     * displaying the splash (with animation of course!).
-     *
-     * Note: animations are done here.  The actual splash screen
-     * are done in [SplashScreenContents].
-     */
-    @Composable
-    private fun AnimateSplashScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-
-        val animVisibleState = remember {
-            MutableTransitionState(viewModel.displayStates
-                    == MainActivityDisplayStates.APP_STARTUP)
-        }
-
-        Column {
-            AnimatedVisibility(
-//            visible = viewModel.displayStates == MainActivityDisplayStates.APP_STARTUP,
-                visibleState = animVisibleState,
-                enter = fadeIn(animationSpec = tween(4000)),
-
-                // exit by sliding left and fading
-                exit = slideOutHorizontally(
-                    targetOffsetX = { fullWidth ->
-                        -fullWidth
-                    },
-                    animationSpec = tween(4000)
-                ) // + fadeOut(targetAlpha = 0f, animationSpec = tween(1000))
-            ) {
-                SplashScreenContents()
-            }
-        }
-
-
-//        SplashScreenContents(modifier)
-    }
 
     /**
      * The main screen that the user interacts with.  All the big
@@ -347,11 +299,6 @@ class MainActivity : ComponentActivity() {
             //          (in our case, until isReady == false)
             setKeepOnScreenCondition {
                 !splashViewModel.isReady.value
-            }
-
-            // my own experiments on exiting the screen
-            setOnExitAnimationListener { screen ->
-
             }
 
             // set the exit animation
