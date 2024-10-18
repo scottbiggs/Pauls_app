@@ -11,11 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +39,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 
 
@@ -73,7 +68,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
 
     /** accessor for splash screen viewmodel */
-    private val splashViewModel by viewModels<SplashViewModel>()
+    private val splashViewmodel by viewModels<SplashViewModel>()
 
 
     //----------------------------
@@ -92,6 +87,7 @@ class MainActivity : ComponentActivity() {
 
         showSplashScreen()
 
+
         setContent {
             PaulsAppTheme {
 
@@ -100,6 +96,29 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         viewModel
                     )
+
+                    val ctx = LocalContext.current
+
+//                    // for testing
+//                    val wifiState = splashViewmodel.wifiWorking.collectAsState()
+//                    val txt = when (wifiState.value) {
+//                        null -> "not tested yet"
+//                        true -> "yes"
+//                        false -> "no"
+//                    }
+//
+//                    Column(modifier = Modifier.padding(innerPadding)) {
+//
+//                        Text(txt)
+//
+//                        Button(onClick = {
+//                            splashViewmodel.isWifiWorking(ctx)
+//                        }) {
+//                            Text("is wifi working?")
+//                        }
+//
+//                    }
+                    // end testing
                 }
             }
         }
@@ -146,7 +165,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(LocalContext.current, stringResource(R.string.bridge_found), Toast.LENGTH_LONG).show()
 
                 if (splashScreenDone) {
-                    Column(modifier = Modifier.fillMaxSize(), Arrangement.Center) {
+                    Column(modifier = modifier.fillMaxSize(), Arrangement.Center) {
                         Text(
                             "Hi scott!  it's looking good so far.",
                             modifier = Modifier
@@ -289,6 +308,9 @@ class MainActivity : ComponentActivity() {
     /**
      * Handles displaying the splash screen.  Needs to be
      * called BEFORE setContent() in [onCreate].
+     *
+     * preconditions:
+     *      splashScreenViewmodel       ready to use
      */
     private fun showSplashScreen() {
         // Needs to be called before setContent() or setContentView().
@@ -298,7 +320,7 @@ class MainActivity : ComponentActivity() {
             //          the splash screen as long as the total value is true
             //          (in our case, until isReady == false)
             setKeepOnScreenCondition {
-                !splashViewModel.isReady.value
+                !splashViewmodel.isReady.value
             }
 
             // set the exit animation
