@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
 
                     val ctx = LocalContext.current
 
-//                    // for testing
+                    // for testing
 //                    val wifiState = splashViewmodel.wifiWorking.collectAsState()
 //                    val txt = when (wifiState.value) {
 //                        null -> "not tested yet"

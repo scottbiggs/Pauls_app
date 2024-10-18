@@ -1,12 +1,10 @@
 package com.sleepfuriously.paulsapp
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.net.NetworkInfo
-import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +31,7 @@ class SplashViewModel : ViewModel() {
     // todo: refactor this (put it within the regular viewmodel)!
     val isReady = _isReady.asStateFlow()
 
-    private val _bridgeState = MutableStateFlow<PhilipsHueBridgeInit>(PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED)
+    private val _bridgeState = MutableStateFlow(PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED)
     /** Holds the state of the Philips Hue Bridge   */
     var bridgeState = _bridgeState.asStateFlow()
 
@@ -53,20 +51,18 @@ class SplashViewModel : ViewModel() {
         }
     }
 
+
     /**
      * Checks to see if wifi is enabled and operating currently.
      * Tested - works!
      *
      * side effect
      *      [wifiWorking]   will be set to true or false accordingly.
-     *
-     * from
-     *      https://stackoverflow.com/a/69472532/624814
      */
     fun isWifiWorking(ctx: Context) {
-        val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val capabilities = cm.getNetworkCapabilities(cm.activeNetwork)
-        _wifiWorking.value = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        viewModelScope.launch(Dispatchers.IO) {
+            _wifiWorking.value = isConnectivityWifiWorking(ctx)
+        }
     }
 
     /**
