@@ -15,8 +15,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -99,7 +101,28 @@ class MainActivity : ComponentActivity() {
 
                     val ctx = LocalContext.current
 
-                    // for testing
+
+                    // for testing setBridgeToken
+//                    val token = splashViewmodel.bridgeToken.collectAsState()
+//
+//                    Column(modifier = Modifier.padding(innerPadding)) {
+//                        Text("token = ${token.value}")
+//                        Button(onClick = {
+//                            splashViewmodel.getBridgeTokenTest(ctx)
+//                        }) {
+//                            Text("get token")
+//                        }
+//
+//                        Spacer(modifier = Modifier.height(30.dp))
+//
+//                        Button(onClick = {
+//                            splashViewmodel.setBridgeTokenTest(ctx, "foo forever!")
+//                        }) {
+//                            Text("set token")
+//                        }
+//                    }
+
+                    // for testing isWifiWorking()
 //                    val wifiState = splashViewmodel.wifiWorking.collectAsState()
 //                    val txt = when (wifiState.value) {
 //                        null -> "not tested yet"

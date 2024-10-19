@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
+import com.sleepfuriously.paulsapp.model.philipshue.getBridgeToken
+import com.sleepfuriously.paulsapp.model.philipshue.setBridgeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +42,11 @@ class SplashViewModel : ViewModel() {
     /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
     var wifiWorking = _wifiWorking.asStateFlow()
 
+    // for testing
+//    private val _bridgeToken = MutableStateFlow("no token yet")
+//    var bridgeToken = _bridgeToken.asStateFlow()
+    // end test
+
 
     /**
      * Just pauses a bit for the splash screen animation to look nice.
@@ -64,6 +71,17 @@ class SplashViewModel : ViewModel() {
             _wifiWorking.value = isConnectivityWifiWorking(ctx)
         }
     }
+
+//    // fixme: test
+//    fun getBridgeTokenTest(ctx: Context) {
+//        _bridgeToken.value = getBridgeToken(ctx) ?: "null"
+//    }
+
+//    // fixme: test
+//    fun setBridgeTokenTest(ctx: Context, newToken: String) {
+//        _bridgeToken.value = newToken
+//        setBridgeToken(ctx, newToken)
+//    }
 
     /**
      * Checks the status of the various Internet of Things devices.
