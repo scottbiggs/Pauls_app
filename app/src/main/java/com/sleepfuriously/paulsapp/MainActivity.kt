@@ -95,6 +95,8 @@ class MainActivity : ComponentActivity() {
 
                     // create composables of flows in the splashviewmodel
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                    val bridgeIpSet by splashViewmodel.philipsHueIpSet.collectAsStateWithLifecycle()
+                    val bridgeTokenSet by splashViewmodel.philipsHueTokenSet.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
                     val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
 
@@ -102,8 +104,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         viewModel,
                         wifiWorking ?: false,
-                        false,
-                        false,
+                        bridgeIpSet,
+                        bridgeTokenSet,
                         philipsHueTestStatus,
                         iotTestStatus,
                         (iotTestStatus == TestStatus.TEST_GOOD) ||

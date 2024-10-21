@@ -3,6 +3,14 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.content.Context
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.setPrefsString
+import kotlinx.coroutines.delay
+
+/***********************
+ * Suite of functions and variables that involve the Philips Hue
+ * Bridge.
+ *
+ * todo:  alter for multiple bridges (both active and inactive)
+ */
 
 //-----------------------------------
 //  private variables
@@ -51,15 +59,27 @@ private var philipsHueBridgeIp : String? = null
 
 
 /**
- * Checks to see if the philips hue bridge is currently responding.
- * If the token is bad, of course this will fail.
+ * Tests to see if the bridge is at the current ip.
+ * If the ip is not known, this returns false.
+ * Token is not used.
+ *
+ * WARNING:
+ *  This must be called off the main thread as it access
+ *  the network.
  */
-fun isBridgeConnected(ctx: Context) : Boolean {
+suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
 
-    // exit with false if getBridgeToken can't find anything
-    val token = getBridgeToken(ctx) ?: return false
+    // exit with false if no ip
+    if (philipsHueBridgeToken == null) {
+        return false
+    }
 
-    // todo: try to get some data from the bridge
+    // todo
+    //  This is where I try to contact the bridge!!!!
+    //
+
+    delay(2000)     // fixme: simulated long network access
+
     return false
 }
 
@@ -84,8 +104,6 @@ fun isBridgeConnected(ctx: Context) : Boolean {
  *          happen if connected to a different bridge or the
  *          bridge has forgotten this token somehow.
  *
- * todo:    Allow for multiple bridges
- *
  * @return      The token (String) needed to access the bridge.
  *              Null if no token has been assigned.
  */
@@ -108,22 +126,37 @@ fun setBridgeToken(ctx: Context, newToken: String) {
 }
 
 
-//-----------------------------------
-//  private functions
-//-----------------------------------
-
 /**
  * Retrieves a string version of the ip.  If it has not been
- * loaded yet, grabs it from the prefs.
+ * loaded yet, grabs it from the prefs.  If it STILL is not found,
+ * then null is returned.
  *
  * @return      The ip of the bridge in String form.  Null if not found.
  */
-private fun getBridgeIPStr(ctx: Context) : String? {
+fun getBridgeIPStr(ctx: Context) : String? {
     if (philipsHueBridgeIp == null) {
         philipsHueBridgeIp = getPrefsString(ctx, PHILIPS_HUE_BRIDGE_IP_KEY)
     }
     return philipsHueBridgeIp
 }
+
+/**
+ * Sets the ip of the bridge.  Overwrites any existing ip.
+ *
+ * @param   ctx     of course
+ *
+ * @param   newIp   String representation of the ip to access the bridge
+ *                  locally.
+ */
+fun setBridgeIpStr(ctx: Context, newIp: String) {
+    philipsHueBridgeIp = newIp
+    setPrefsString(ctx, PHILIPS_HUE_BRIDGE_IP_KEY, newIp)
+}
+
+//-----------------------------------
+//  private functions
+//-----------------------------------
+
 
 
 //-----------------------------------
