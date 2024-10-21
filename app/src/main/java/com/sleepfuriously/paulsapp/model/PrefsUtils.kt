@@ -7,6 +7,9 @@ import androidx.core.content.edit
 /*********************
  * Utility functions that deal with shared preferences.
  *
+ * This is the central calling point for any accesses to the
+ * preferences (which is where a lot of data is stored).
+ *
  * todo:  make encrypted
  *
  ********************/
@@ -19,41 +22,45 @@ import androidx.core.content.edit
 //  public functions
 //----------------------
 
+
 /**
- * Returns the token for the philips hue bridge.  If no token exists
- * then null is returned.
+ * Returns a String item from the prefs.
  *
- * WARNING:     This should be called from outside the main thread as
- *              with any file access, this could take a while.
+ * @param   ctx     ye old context
+ *
+ * @param   key     The key for this string.
+ *
+ * @return      The corresponding string.  Null if does not exist.
+ *
+ * WARNING:     While this is generally pretty fast, consider calling
+ *              from outside the main thread.  As with any file access,
+ *              this could take a while.
  */
-fun getPhilipsHueBridgeToken(ctx: Context) : String? {
+fun getPrefsString(ctx: Context, key: String) : String? {
     val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
-    return prefs.getString(PHILIPS_HUE_BRIDGE_TOKEN_KEY, null)
+    return prefs.getString(key, null)
 }
 
 
 /**
- * Sets the philips hue bridge token to the given string.
+ * Creates a new String entry in the preferences with the given key and value.
+ * If the key already exists, it will be overwritten.
  *
- * Note
- *      This uses asynchronous saving.  This means it's possible for
- *      race conditions to happen if this is called often.
- *
- * @param   synchronous     When false (default) this does asynchronous
- *                          writes.  If you're doing lots of these at the
- *                          same time, set synchronous to true, which will
- *                          prevent any possibility of writes clashing with
- *                          each other.  In those cases, I also recommend
- *                          calling this function outside of the Main thread
- *                          as it might take a little while to run.
+ * @param   synchronize     When true, the value will be written immediately.
+ *                          This takes a little bit of time, so I recommend
+ *                          using this param when calling outside the main thread.
+ *                          The only time to use it if there are lots of reads
+ *                          and writes at nearly the same time (perhaps in different
+ *                          threads).  Honestly it's generally not needed.
+ *                          Default is false, which is very fast and doesn't need
+ *                          any special treatment.
  */
-fun setPhilipsHueBridgeToken(ctx: Context, newToken: String, synchronous : Boolean = false) {
+fun setPrefsString(ctx: Context, key: String, value: String, synchronize : Boolean = false) {
     val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
-    prefs.edit(synchronous) {
-        putString(PHILIPS_HUE_BRIDGE_TOKEN_KEY, newToken)
+    prefs.edit(synchronize) {
+        putString(key, value)
     }
 }
-
 
 //----------------------
 //  private functions
@@ -69,6 +76,4 @@ private const val TAG = "PrefsUtil"
 private const val PREFS_FILENAME = "paulsapp_prefs"
 
 
-/** key to get the token for the philips hue bridge */
-private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY = "ph_bridge_key"
 

@@ -1,8 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.content.Context
-import com.sleepfuriously.paulsapp.model.getPhilipsHueBridgeToken
-import com.sleepfuriously.paulsapp.model.setPhilipsHueBridgeToken
+import com.sleepfuriously.paulsapp.model.getPrefsString
+import com.sleepfuriously.paulsapp.model.setPrefsString
 
 //-----------------------------------
 //  private variables
@@ -14,9 +14,19 @@ import com.sleepfuriously.paulsapp.model.setPhilipsHueBridgeToken
  * (or it will remain null if no token has been created yet).
  *
  * This is made purely for speed as the token can always be
- * retrieved from [getPhilipsHueBridgeToken] if necessary.
+ * retrieved from the prefs if necessary.
  */
-private var token : String? = null
+private var philipsHueBridgeToken : String? = null
+
+
+/**
+ * String representation of the local ip for the philips hue bridge.
+ * The first call the [getBridgeIPStr] will set this variable
+ * (assuming it is stored in the prefs).
+ *
+ * Null means that no ip has been found yet.
+ */
+private var philipsHueBridgeIp : String? = null
 
 
 //-----------------------------------
@@ -41,10 +51,15 @@ private var token : String? = null
 
 
 /**
- * Checks to see if the philips hue bridge is currently responding
+ * Checks to see if the philips hue bridge is currently responding.
+ * If the token is bad, of course this will fail.
  */
 fun isBridgeConnected(ctx: Context) : Boolean {
-    // todo
+
+    // exit with false if getBridgeToken can't find anything
+    val token = getBridgeToken(ctx) ?: return false
+
+    // todo: try to get some data from the bridge
     return false
 }
 
@@ -57,6 +72,10 @@ fun isBridgeConnected(ctx: Context) : Boolean {
  * If the bridge has not been initialized, then this name won't
  * exists (returns null).
  *
+ * The token (name) is stored in a shared pref (encrypted eventually).
+ * The first call to getBridgeToken() retrieves that token.
+ * Successive calls use that same token.
+ *
  * NOTE:    This does care if the bridge is currently active or
  *          not.  This simply returns any token that has been
  *          recorded for this app.
@@ -65,30 +84,76 @@ fun isBridgeConnected(ctx: Context) : Boolean {
  *          happen if connected to a different bridge or the
  *          bridge has forgotten this token somehow.
  *
+ * todo:    Allow for multiple bridges
+ *
  * @return      The token (String) needed to access the bridge.
  *              Null if no token has been assigned.
  */
 fun getBridgeToken(ctx: Context) : String? {
 
-    if (token == null) {
+    if (philipsHueBridgeToken == null) {
         // attempt to get the token from our saved data
-        token = getPhilipsHueBridgeToken(ctx)
+        philipsHueBridgeToken = getPrefsString(ctx, PHILIPS_HUE_BRIDGE_TOKEN_KEY)
     }
-
-    return token
+    return philipsHueBridgeToken
 }
 
 /**
  * Sets the given string to be the new philips hue bridge
- * token.
+ * token.  This also stores the token in long-term memory.
  */
 fun setBridgeToken(ctx: Context, newToken: String) {
-    token = newToken
-    setPhilipsHueBridgeToken(ctx, newToken)
+    philipsHueBridgeToken = newToken
+    setPrefsString(ctx, PHILIPS_HUE_BRIDGE_TOKEN_KEY, newToken)
 }
+
 
 //-----------------------------------
 //  private functions
 //-----------------------------------
 
+/**
+ * Retrieves a string version of the ip.  If it has not been
+ * loaded yet, grabs it from the prefs.
+ *
+ * @return      The ip of the bridge in String form.  Null if not found.
+ */
+private fun getBridgeIPStr(ctx: Context) : String? {
+    if (philipsHueBridgeIp == null) {
+        philipsHueBridgeIp = getPrefsString(ctx, PHILIPS_HUE_BRIDGE_IP_KEY)
+    }
+    return philipsHueBridgeIp
+}
 
+
+//-----------------------------------
+//  classes & enums
+//-----------------------------------
+
+/**
+ * The states of the Philips Hue bridge.
+ */
+enum class PhilipsHueBridgeStatus {
+
+    /** the bridge has not been initialized yet */
+    BRIDGE_UNINITIALIZED,
+    /** currently attempting to initialize the bridge */
+    BRIDGE_INITIALIZING,
+    /** attempt to initialize the bridge has timed out */
+    BRIDGE_INITIALIZATION_TIMEOUT,
+    /** successfully initialized */
+    BRIDGE_INITIALIZED,
+    /** some error has occurred when dealing with the bridge */
+    ERROR
+}
+
+
+//-----------------------------------
+//  constants
+//-----------------------------------
+
+/** key to get the token for the philips hue bridge from prefs */
+private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY = "ph_bridge_token_key"
+
+/** key to get ip from prefs */
+private const val PHILIPS_HUE_BRIDGE_IP_KEY = "ph_bridge_ip_key"

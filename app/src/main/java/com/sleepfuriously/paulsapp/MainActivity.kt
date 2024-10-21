@@ -6,7 +6,6 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.os.Bundle
 import android.view.View
 import android.view.animation.OvershootInterpolator
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,10 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +24,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 
 
@@ -82,21 +79,35 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         viewModel  = MainViewModel()
-        viewModel.initialize(this)
 
         // surest way to hide the action bar
         actionBar?.hide()
 
-        showSplashScreen()
+        // start initializations and splash screen
+        splashViewmodel.checkIoT(this)
+//        showSplashScreen()
 
 
         setContent {
             PaulsAppTheme {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
+                    // create composables of flows in the splashviewmodel
+                    val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                    val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
+                    val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
+
                     ShowMainScreen(
                         modifier = Modifier.padding(innerPadding),
-                        viewModel
+                        viewModel,
+                        wifiWorking ?: false,
+                        false,
+                        false,
+                        philipsHueTestStatus,
+                        iotTestStatus,
+                        (iotTestStatus == TestStatus.TEST_GOOD) ||
+                                (iotTestStatus == TestStatus.TEST_BAD)
                     )
 
                     val ctx = LocalContext.current
@@ -160,7 +171,13 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun ShowMainScreen(
         modifier : Modifier = Modifier,
-        viewModel: MainViewModel
+        viewModel: MainViewModel,
+        wifiWorking: Boolean,
+        ipWorking: Boolean,
+        tokenWorking: Boolean,
+        philipsHueTest: TestStatus,
+        iotTest: TestStatus,
+        splashScreenDone: Boolean
     ) {
         // useful to know!
         val config = LocalConfiguration.current
@@ -168,46 +185,51 @@ class MainActivity : ComponentActivity() {
         val screenWidth = config.screenWidthDp.dp
         val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
-        var splashScreenDone by remember { mutableStateOf(true) }
-
-        if (viewModel.bridgeInit == PhilipsHueBridgeInit.BRIDGE_INITIALIZING) {
-            splashScreenDone = false
+        // for testing states
+        Column(modifier = modifier.fillMaxSize()) {
+            Text("wifi = $wifiWorking")
+            Text("ip of bridge = $ipWorking")
+            Text("token of bridge = $tokenWorking")
+            Text("philips hue tests complete = $philipsHueTest")
+            Text("IoT test complete = $iotTest")
         }
 
-        when (viewModel.bridgeInit) {
+        /*
+                when (viewModel.bridgeInit) {
 
-            PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED -> {
-                DisplayInitPHBridgeButton(viewModel, modifier)
-            }
+                    PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED -> {
+                        DisplayInitPHBridgeButton(viewModel, modifier)
+                    }
 
-            PhilipsHueBridgeInit.BRIDGE_INITIALIZING -> {
-            }
+                    PhilipsHueBridgeInit.BRIDGE_INITIALIZING -> {
+                    }
 
-            PhilipsHueBridgeInit.BRIDGE_INITIALIZED -> {
-                // todo
-                Toast.makeText(LocalContext.current, stringResource(R.string.bridge_found), Toast.LENGTH_LONG).show()
+                    PhilipsHueBridgeInit.BRIDGE_INITIALIZED -> {
+                        // todo
+                        Toast.makeText(LocalContext.current, stringResource(R.string.bridge_found), Toast.LENGTH_LONG).show()
 
-                if (splashScreenDone) {
-                    Column(modifier = modifier.fillMaxSize(), Arrangement.Center) {
-                        Text(
-                            "Hi scott!  it's looking good so far.",
-                            modifier = Modifier
-                                .align(alignment = Alignment.CenterHorizontally),
-                        )
+                        if (splashScreenDone) {
+                            Column(modifier = modifier.fillMaxSize(), Arrangement.Center) {
+                                Text(
+                                    "Hi scott!  it's looking good so far.",
+                                    modifier = Modifier
+                                        .align(alignment = Alignment.CenterHorizontally),
+                                )
+                            }
+                        }
+                    }
+
+                    PhilipsHueBridgeInit.BRIDGE_INITIALIZATION_TIMEOUT -> {
+                        // todo
+                        Text(stringResource(R.string.cannot_find_bridge))
+                    }
+
+                    PhilipsHueBridgeInit.ERROR -> {
+                        // todo
+                        Text(stringResource(R.string.error_init_bridge))
                     }
                 }
-            }
-
-            PhilipsHueBridgeInit.BRIDGE_INITIALIZATION_TIMEOUT -> {
-                // todo
-                Text(stringResource(R.string.cannot_find_bridge))
-            }
-
-            PhilipsHueBridgeInit.ERROR -> {
-                // todo
-                Text(stringResource(R.string.error_init_bridge))
-            }
-        }
+        */
 
     }
 
@@ -343,7 +365,8 @@ class MainActivity : ComponentActivity() {
             //          the splash screen as long as the total value is true
             //          (in our case, until isReady == false)
             setKeepOnScreenCondition {
-                !splashViewmodel.isReady.value
+                (splashViewmodel.iotTestsStatus.value == TestStatus.NOT_TESTED) ||
+                        (splashViewmodel.iotTestsStatus.value == TestStatus.TESTING)
             }
 
             // set the exit animation

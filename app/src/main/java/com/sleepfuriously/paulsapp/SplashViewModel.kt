@@ -1,11 +1,11 @@
 package com.sleepfuriously.paulsapp
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
-import com.sleepfuriously.paulsapp.model.philipshue.getBridgeToken
-import com.sleepfuriously.paulsapp.model.philipshue.setBridgeToken
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,70 +28,154 @@ import kotlinx.coroutines.launch
  */
 class SplashViewModel : ViewModel() {
 
-    private val _isReady = MutableStateFlow(false)
-    /** will be true when everything is ready for the splash screen to go away */
-    // todo: refactor this (put it within the regular viewmodel)!
-    val isReady = _isReady.asStateFlow()
+    //-------------------------
+    //  class data
+    //-------------------------
 
-    private val _bridgeState = MutableStateFlow(PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED)
-    /** Holds the state of the Philips Hue Bridge   */
-    var bridgeState = _bridgeState.asStateFlow()
+//    private val _bridgeStatus = MutableStateFlow(PhilipsHueBridgeStatus.BRIDGE_UNINITIALIZED)
+//    /** Holds the state of the Philips Hue Bridge   */
+//    var bridgeStatus = _bridgeStatus.asStateFlow()
 
 
     private val _wifiWorking = MutableStateFlow<Boolean?>(null)
     /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
     var wifiWorking = _wifiWorking.asStateFlow()
 
-    // for testing
-//    private val _bridgeToken = MutableStateFlow("no token yet")
-//    var bridgeToken = _bridgeToken.asStateFlow()
-    // end test
+    private val _philipsHueIpSet = MutableStateFlow(false)
+    /** will be false if we do not have an ip for the philips hue bridge */
+    var philipsHueIpSet = _philipsHueIpSet.asStateFlow()
 
+    private val _philipsHueTokenSet = MutableStateFlow(false)
+    /** will be false if we need to get the token for the philips hue bridge */
+    var philipsHueTokenSet = _philipsHueTokenSet.asStateFlow()
+
+    private val _philipsHueTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
+    /** when true, all philips hue tests are complete */
+    var philipsHueTestStatus = _philipsHueTestsStatus.asStateFlow()
+
+
+    private val _iotTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
+    /**
+     * When true, all Internet of Things tests are complete.
+     * Results will be in the appropriate varables.
+     */
+    var iotTestsStatus = _iotTestsStatus.asStateFlow()
+
+
+    //-------------------------
+    //  public functions
+    //-------------------------
+
+    /**
+     * Runs all the initalization tests of the IoT devices.
+     *
+     * side effects
+     *   [iotTestsStatus]      set to true when this is done
+     */
+    fun checkIoT(ctx: Context) {
+
+        _iotTestsStatus.value = TestStatus.TESTING
+        var allTestsSuccessful = true       // start optimistically
+
+        // launch off the main thread, just in case things take a while
+        viewModelScope.launch(Dispatchers.IO) {
+
+            //------------
+            // 1.  check wifi
+            //
+            _wifiWorking.value = isConnectivityWifiWorking(ctx)
+            if (_wifiWorking.value == false) {
+                // abort testing--no point doing more tests without wifi
+                // Caution: this will skip the succeeding tests to never happen,
+                // causing them to never indicate that they completed.
+                allTestsSuccessful = false
+                return@launch
+            }
+
+            //------------
+            // 2.  check philips hue system
+            //
+            delay(1000)
+            checkPhilipsHue(ctx)
+            allTestsSuccessful =
+                philipsHueTestStatus.value == TestStatus.TEST_GOOD
+
+            //------------
+            // 3.  todo: test other IoT devices
+            //
+            delay(2000)
+
+        }.invokeOnCompletion {
+            // Note: this code will be called when the above coroutine exits,
+            // even if by a return statement.
+
+            // signal tests complete
+            Log.d(TAG, "completion: allTestsSuccessful = $allTestsSuccessful")
+            _iotTestsStatus.value =
+                if (allTestsSuccessful) TestStatus.TEST_GOOD
+                else TestStatus.TEST_BAD
+        }
+    }
+
+    //-------------------------
+    //  private functions
+    //-------------------------
 
     /**
      * Just pauses a bit for the splash screen animation to look nice.
      */
-    init {
-        viewModelScope.launch {
-            delay(2000L)
-            _isReady.value = true
-        }
-    }
+//    init {
+//        checkPhilipsHue(ctx)
+//    }
 
 
     /**
-     * Checks to see if wifi is enabled and operating currently.
-     * Tested - works!
+     * Checks the status of the Philips Hue bridge.  This consists of:
+     *  1. Do we have the philips hue IP? Yes -> [philipsHueIpSet] = true
+     *      - No -> [philipsHueIpState] = false.
+     *        IP needs to be retrieved from the user.
      *
-     * side effect
-     *      [wifiWorking]   will be set to true or false accordingly.
-     */
-    fun isWifiWorking(ctx: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _wifiWorking.value = isConnectivityWifiWorking(ctx)
-        }
-    }
-
-//    // fixme: test
-//    fun getBridgeTokenTest(ctx: Context) {
-//        _bridgeToken.value = getBridgeToken(ctx) ?: "null"
-//    }
-
-//    // fixme: test
-//    fun setBridgeTokenTest(ctx: Context, newToken: String) {
-//        _bridgeToken.value = newToken
-//        setBridgeToken(ctx, newToken)
-//    }
-
-    /**
-     * Checks the status of the various Internet of Things devices.
-     * Sets the states of the
+     *  2. Do we have the philips hue token? Yes -> [philipsHueTokenSet] = true
+     *      - No -> signal that a token request is needed.  This is
+     *        done by making sure that [philipsHueTokenState] is false.
+     *
+     * After all these checks are complete
      *
      * side effects
-     *
+     *      - as described above
      */
-    fun checkIoT() {
+    private suspend fun checkPhilipsHue(ctx: Context) {
 
+        _philipsHueTestsStatus.value = TestStatus.TESTING
+
+        delay(2000)
+
+        // todo: check ip
+
+
+        // todo: check token
+
+        // todo: check bridge is responding
+
+        _philipsHueTestsStatus.value = TestStatus.TEST_BAD
     }
 
+
 }
+
+//-------------------------
+//  classes & enums
+//-------------------------
+
+enum class TestStatus {
+    /** test hos not taken place yet, nor has it been started */
+    NOT_TESTED,
+    /** currently testing */
+    TESTING,
+    /** test complete and successful */
+    TEST_GOOD,
+    /** test complete, but failed */
+    TEST_BAD
+}
+
+private const val TAG = "SplashViewModel"

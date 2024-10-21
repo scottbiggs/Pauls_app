@@ -1,19 +1,9 @@
 package com.sleepfuriously.paulsapp
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Viewmodel for the main portion of the opening screen.
@@ -27,67 +17,63 @@ class MainViewModel : ViewModel() {
     var displayStates by mutableStateOf(MainActivityDisplayStates.UNKNOWN)
         private set
 
-    /** communicates state of bridge initialization to the ui */
-    var bridgeInit by mutableStateOf(PhilipsHueBridgeInit.BRIDGE_INITIALIZING)
-        private set
-
 
     /**
      * todo:  this is for testing the initialization graphic
      */
-    fun initialize(ctx: Context) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+//    fun initialize(ctx: Context) {
+//        viewModelScope.launch {
+//            withContext(Dispatchers.IO) {
+//
+//                val epref = getESharedPref(ctx) as EncryptedSharedPreferences
+//
+//                val ph_name = epref.getString(PHILIPS_HUE_NAME_KEY, PH_NAME_NOT_FOUND)
+//                if (ph_name.equals(PH_NAME_NOT_FOUND)) {
+//                    displayStates = MainActivityDisplayStates.APP_STARTUP
+//                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED
+//                    Log.d(TAG, "Philips Hue Bridge not initialized")
+//
+//                    // fixme:  for testing
+//                    delay(8000)
+//                    displayStates = MainActivityDisplayStates.RUNNING
+//                    Log.d(TAG, "displayState = $displayStates")
+//                }
+//                else {
+//                    displayStates = MainActivityDisplayStates.APP_STARTUP
+//                    Log.d(TAG, "displayState = $displayStates")
+//
+//                    // fixme:  for testing
+//                    delay(3000)
+//                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_INITIALIZED
+//
+//                    displayStates = MainActivityDisplayStates.RUNNING
+//                    Log.d(TAG, "displayState = $displayStates")
+//                }
+//            }
+//        }
+//    }
 
-                val epref = getESharedPref(ctx) as EncryptedSharedPreferences
 
-                val ph_name = epref.getString(PHILIPS_HUE_NAME_KEY, PH_NAME_NOT_FOUND)
-                if (ph_name.equals(PH_NAME_NOT_FOUND)) {
-                    displayStates = MainActivityDisplayStates.APP_STARTUP
-                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED
-                    Log.d(TAG, "Philips Hue Bridge not initialized")
-
-                    // fixme:  for testing
-                    delay(8000)
-                    displayStates = MainActivityDisplayStates.RUNNING
-                    Log.d(TAG, "displayState = $displayStates")
-                }
-                else {
-                    displayStates = MainActivityDisplayStates.APP_STARTUP
-                    Log.d(TAG, "displayState = $displayStates")
-
-                    // fixme:  for testing
-                    delay(3000)
-                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_INITIALIZED
-
-                    displayStates = MainActivityDisplayStates.RUNNING
-                    Log.d(TAG, "displayState = $displayStates")
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Gets a reference to an encrypted shared prefs file.  I presume that
-     * if it doesn't exist, a new one will be created.  Should otherwise
-     * work just like a regular prefs file.
-     *
-     * from:  https://stackoverflow.com/a/64115229/624814
-     */
-    private fun getESharedPref(ctx: Context) : SharedPreferences {
-        val masterKey = MasterKey.Builder(ctx)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-
-        return EncryptedSharedPreferences.create(
-            ctx,
-            SHARED_PREFS_FILENAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+//    /**
+//     * Gets a reference to an encrypted shared prefs file.  I presume that
+//     * if it doesn't exist, a new one will be created.  Should otherwise
+//     * work just like a regular prefs file.
+//     *
+//     * from:  https://stackoverflow.com/a/64115229/624814
+//     */
+//    private fun getESharedPref(ctx: Context) : SharedPreferences {
+//        val masterKey = MasterKey.Builder(ctx)
+//            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+//            .build()
+//
+//        return EncryptedSharedPreferences.create(
+//            ctx,
+//            SHARED_PREFS_FILENAME,
+//            masterKey,
+//            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+//            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+//        )
+//    }
 
 
     /**
@@ -118,36 +104,4 @@ enum class MainActivityDisplayStates {
     UNKNOWN
 }
 
-/**
- * The states of the Philips Hue bridge.
- */
-enum class PhilipsHueBridgeInit {
-
-    /** the bridge has not been initialized yet */
-    BRIDGE_UNINITIALIZED,
-    /** currently attempting to initialize the bridge */
-    BRIDGE_INITIALIZING,
-    /** attempt to initialize the bridge has timed out */
-    BRIDGE_INITIALIZATION_TIMEOUT,
-    /** successfully initialized */
-    BRIDGE_INITIALIZED,
-    /** some error has occurred when dealing with the bridge */
-    ERROR
-}
-
 private const val TAG = "MainViewModel"
-
-/** Name of the encrypted shared prefs file */
-private const val SHARED_PREFS_FILENAME = "prefs"
-
-/**
- * Key for preferences that holds the secret name to access the
- * philips hue bridge for this app.
- */
-private const val PHILIPS_HUE_NAME_KEY = "ph_name_key"
-
-/**
- * If the philips hue bridge access name is this, that means that the
- * name hasn't been created yet.  Time to initialize the PH bridge!
- */
-private const val PH_NAME_NOT_FOUND = "not_found"

@@ -73,4 +73,7 @@ dependencies {
 
     // for startup splash screen animation
     implementation(libs.androidx.core.splashscreen)
+
+    // to use composeWithLifeCycle() functions
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
 }
