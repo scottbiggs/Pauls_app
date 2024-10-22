@@ -9,6 +9,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeStatus
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.getBridgeIPStr
 import com.sleepfuriously.paulsapp.model.philipshue.getBridgeToken
+import com.sleepfuriously.paulsapp.model.philipshue.testBridgeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,16 +44,21 @@ class SplashViewModel : ViewModel() {
     /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
     var wifiWorking = _wifiWorking.asStateFlow()
 
-    private val _philipsHueIpSet = MutableStateFlow(false)
-    /** will be false if we do not have an ip for the philips hue bridge */
+    private val _philipsHueIpSet = MutableStateFlow<Boolean?>(null)
+    /** Set to true if we have an ip for the philips hue bridge. Null means not checked yet. */
     var philipsHueIpSet = _philipsHueIpSet.asStateFlow()
 
-    private val _philipsHueTokenSet = MutableStateFlow(false)
-    /** will be false if we need to get the token for the philips hue bridge */
+    private val _philipsHueTokenSet = MutableStateFlow<Boolean?>(null)
+    /** will be false if we need to get the token for the philips hue bridge. Null until tested. */
     var philipsHueTokenSet = _philipsHueTokenSet.asStateFlow()
 
-    private val _philipsHueBridgeResponding = MutableStateFlow<Boolean?>(null)
-    val philipsHueBridgeResponding = _philipsHueBridgeResponding.asStateFlow()
+    private val _philipsHueBridgeIpWorking = MutableStateFlow<Boolean?>(null)
+    /** Set to True if the bridge responds to queries, false otherwise.  Null means not tested yet. */
+    val philipsHueBridgeIpWorking = _philipsHueBridgeIpWorking.asStateFlow()
+
+    private val _philipsHueBridgeTokenWorks = MutableStateFlow<Boolean?>(null)
+    /** Will be set to TRUE after a successful test of the token on the bridge. Null before testing. */
+    val philipsHueBridgeTokenWorks = _philipsHueBridgeTokenWorks.asStateFlow()
 
     private val _philipsHueTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
     /** when true, all philips hue tests are complete */
@@ -85,6 +91,9 @@ class SplashViewModel : ViewModel() {
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {
 
+            // fixme
+            delay(2000)
+
             //------------
             // 1.  check wifi
             //
@@ -97,10 +106,12 @@ class SplashViewModel : ViewModel() {
                 return@launch
             }
 
+            // fixme
+            delay(2000)
+
             //------------
             // 2.  check philips hue system
             //
-            delay(1000)
             checkPhilipsHue(ctx)
             allTestsSuccessful =
                 philipsHueTestStatus.value == TestStatus.TEST_GOOD
@@ -125,14 +136,6 @@ class SplashViewModel : ViewModel() {
     //-------------------------
     //  private functions
     //-------------------------
-
-    /**
-     * Just pauses a bit for the splash screen animation to look nice.
-     */
-//    init {
-//        checkPhilipsHue(ctx)
-//    }
-
 
     /**
      * Checks the status of the Philips Hue bridge.  This consists of:
@@ -161,6 +164,22 @@ class SplashViewModel : ViewModel() {
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
             return
         }
+        _philipsHueIpSet.value = true
+
+        // fixme
+        delay(2000)
+
+        // check bridge is responding
+        if (doesBridgeRespondToIp(ctx) == false) {
+            // not responding to connection request
+            _philipsHueBridgeIpWorking.value = false
+            _philipsHueTestsStatus.value = TestStatus.TEST_BAD
+            return
+        }
+        _philipsHueBridgeIpWorking.value = true
+
+        // fixme
+        delay(2000)
 
         // check token
         val token = getBridgeToken(ctx)
@@ -170,14 +189,22 @@ class SplashViewModel : ViewModel() {
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
             return
         }
+        _philipsHueTokenSet.value = true
 
-        // check bridge is responding
-        if (doesBridgeRespondToIp(ctx) == false) {
-            // not responding to connection request
-            _philipsHueBridgeResponding.value = false
+        // fixme
+        delay(2000)
+
+        // check that token works
+        val tokenWorks = testBridgeToken(ctx)
+        if (tokenWorks == false) {
+            _philipsHueBridgeTokenWorks.value = false
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
             return
         }
+        _philipsHueBridgeTokenWorks.value = true
+
+        // fixme
+        delay(2000)
 
         // passed all tests--must be good to go!
         _philipsHueTestsStatus.value = TestStatus.TEST_GOOD

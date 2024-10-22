@@ -34,6 +34,10 @@ private var philipsHueBridgeToken : String? = null
  * The first call the [getBridgeIPStr] will set this variable
  * (assuming it is stored in the prefs).
  *
+ * This ip will include the prefix.  That means it will have the
+ * form:
+ *      http[s]://(num1).(num2).(num3).(num4)
+ *
  * Null means that no ip has been found yet.
  */
 private var philipsHueBridgeIp : String? = null
@@ -78,10 +82,9 @@ suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
     val response = OkHttpUtils.synchronousGetRequest("$ip$PHILIPS_HUE_BRIDGE_TEST_SUFFIX")
     Log.d(TAG, "doesBridgeRespondToIp -> $response")
 
-    // check this response.  It should have a code=200
+    // check this response.  It should have a code in the 200s
     val code = getCodeFromResponse(response)
     Log.d(TAG, "code = $code")
-
     if (response.isSuccessful) {
         return true
     }
@@ -131,6 +134,18 @@ fun setBridgeToken(ctx: Context, newToken: String) {
     setPrefsString(ctx, PHILIPS_HUE_BRIDGE_TOKEN_KEY, newToken)
 }
 
+/**
+ * Determines if the bridge understands the token (also called "name").
+ *
+ * This is a network call and should not be called on the main thread.
+ *
+ * @return      True if the bridge responds to the current token.
+ *              False for all other cases.
+ */
+suspend fun testBridgeToken(ctx: Context) : Boolean {
+    // fixme scott!
+    return false
+}
 
 /**
  * Retrieves a string version of the ip.  If it has not been
@@ -163,6 +178,30 @@ fun setBridgeIpStr(ctx: Context, newIp: String) {
 //  private functions
 //-----------------------------------
 
+/**
+ * Constructs the complete address from the constituent parts.
+ *
+ * @param   ip      The main part of the address.  This is generally thought
+ *                  to be the domain name + ".com" or whatever domain suffix
+ *                  is appropriate.  In our use, this also can contain the
+ *                  prefix, which is usually "http://" or "https://" as well.
+ *                  Also in our cases, the domain is rarely used--we use the
+ *                  translated ip number, like "196.192.86.1".  So the most
+ *                  common case is:  "http://196.192.86.1"
+ *
+ * @param   prefix  If the prefix is not contained in the ip, then this holds
+ *                  it.  Generally this will be "https://" or "http://".
+ *                  Defaults to "".
+ *
+ * @param   suffix  Anything that goes AFTER the ip.  This is the directory
+ *                  or parameters or whatever.  Remember that this should start
+ *                  with a backslash ('/').  Defaults to "".
+ */
+private fun createFullAddress(ip: String, prefix: String = "", suffix: String = "") : String {
+    val fullAddress = "${prefix}$ip${suffix}"
+    Log.d(TAG,"fullAddress created. -> $fullAddress")
+    return fullAddress
+}
 
 
 //-----------------------------------
