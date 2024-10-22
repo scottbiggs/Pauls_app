@@ -11,16 +11,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -108,6 +114,9 @@ class MainActivity : ComponentActivity() {
                     val bridgeTokenWorks by splashViewmodel.philipsHueBridgeTokenWorks.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
 
+                    val initializingBridgeState by splashViewmodel.initializingBridgeState.collectAsStateWithLifecycle()
+
+
                     when (iotTestStatus) {
                         TestStatus.TESTING,
                         TestStatus.NOT_TESTED -> {
@@ -132,15 +141,23 @@ class MainActivity : ComponentActivity() {
                         }
 
                         TestStatus.TEST_BAD -> {
-                            ManualInit(
-                                splashViewmodel = splashViewmodel,
-                                wifiWorking = wifiWorking ?: false,
-                                ipSet = bridgeIpSet ?: false,
-                                ipWorking = bridgeIpWorking ?: false,
-                                tokenSet = bridgeTokenSet ?: false,
-                                tokenWorking = bridgeTokenWorks ?: false,
-                                philipsHueTest = philipsHueTestStatus
-                            )
+                            if (initializingBridgeState == BridgeInitStates.NOT_INITIALIZING) {
+                                TestBad(
+                                    splashViewmodel = splashViewmodel,
+                                    wifiWorking = wifiWorking ?: false,
+                                    ipSet = bridgeIpSet ?: false,
+                                    ipWorking = bridgeIpWorking ?: false,
+                                    tokenSet = bridgeTokenSet ?: false,
+                                    tokenWorking = bridgeTokenWorks ?: false,
+                                    philipsHueTest = philipsHueTestStatus
+                                )
+                            }
+                            else {
+                                ManualBridgeSetup(
+                                    splashViewmodel,
+                                    initializingBridgeState
+                                )
+                            }
                         }
 
                     }
@@ -283,7 +300,7 @@ class MainActivity : ComponentActivity() {
      * Begins the process of manually initializing the IoT devices.
      */
     @Composable
-    private fun ManualInit(
+    private fun TestBad(
         modifier : Modifier = Modifier,
         splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean,
@@ -318,7 +335,7 @@ class MainActivity : ComponentActivity() {
             // with an exit button.
             SimpleBoxMessage(
                 modifier,
-                stringResource(id = R.string.improper_screen),
+                "error: unhandled case in TestBad()",
                 { finish() },
                 stringResource(id = R.string.exit)
             )
@@ -339,7 +356,7 @@ class MainActivity : ComponentActivity() {
         SimpleBoxMessage(
             modifier,
             stringResource(id = R.string.philips_hue_bridge_ip_not_set),
-            {splashViewModel.initializePhilipsHue(this)},
+            {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
     }
@@ -349,7 +366,7 @@ class MainActivity : ComponentActivity() {
         SimpleBoxMessage(
             modifier,
             stringResource(id = R.string.philips_hue_ip_not_working),
-            {splashViewModel.initializePhilipsHue(this)},
+            {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
     }
@@ -359,7 +376,7 @@ class MainActivity : ComponentActivity() {
         SimpleBoxMessage(
             modifier,
             stringResource(id = R.string.philips_hue_token_not_set),
-            {splashViewModel.initializePhilipsHue(this)},
+            {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
     }
@@ -369,7 +386,7 @@ class MainActivity : ComponentActivity() {
         SimpleBoxMessage(
             modifier,
             stringResource(id = R.string.philips_hue_token_not_working),
-            {splashViewModel.initializePhilipsHue(this)},
+            {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
     }
@@ -532,6 +549,108 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    }
+
+    /**
+     * Walks the user through the initialization process of the philips
+     * hue bridge
+     */
+    @Composable
+    private fun ManualBridgeSetup(
+        splashViewModel: SplashViewmodel,
+        initBridgeState: BridgeInitStates,
+        modifier: Modifier = Modifier,
+    ) {
+        val config = LocalConfiguration.current
+        val landscape = config.orientation == ORIENTATION_LANDSCAPE
+        val screenHeight = config.screenHeightDp
+        val screenWidth = config.screenWidthDp
+        val ctx = LocalContext.current
+
+        when (initBridgeState) {
+            BridgeInitStates.NOT_INITIALIZING -> {
+                // this should not happen.
+                SimpleBoxMessage(
+                    modifier,
+                    "error: should not be in ManualBridgeSetup() with this bridge init state.",
+                    { finish() },
+                    stringResource(id = R.string.exit)
+                )
+            }
+            BridgeInitStates.STAGE_1 -> {
+                var ipText by remember { mutableStateOf("") }
+
+                if (landscape) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            stringResource(id = R.string.stage_1)
+                        )
+                        Text(
+                            stringResource(id = R.string.find_the_bridge_ip)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                        ) {
+                            Image(
+                                modifier = Modifier
+//                                    .height((screenHeight - 120).dp)
+                                    .weight(1f),
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_1),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Image(
+                                modifier = Modifier
+//                                    .height((screenHeight - 120).dp)
+                                    .weight(1f),
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_2),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Image(
+                                modifier = Modifier
+//                                    .height((screenHeight - 120).dp)
+                                    .weight(1f),
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_3),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = ipText,
+                            label = { Text(stringResource(id = R.string.enter_ip)) },
+                            singleLine = true,
+                            onValueChange = { ipText = it }
+                        )
+                        Button(onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) } ) {
+                            Text(stringResource(id = R.string.ok))
+                        }
+
+                    }
+                }
+                else {
+                    LazyColumn(
+
+                    ) {
+
+                    }
+                }
+            }
+            BridgeInitStates.STAGE_2 -> {
+            }
+            BridgeInitStates.STAGE_3 -> {
+            }
+        }
     }
 }
 

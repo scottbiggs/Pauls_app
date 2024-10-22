@@ -14,7 +14,6 @@
     <string name="start_ph_bridge_init_button">init bridge</string>
     <string name="enter_ip">Bridge Ip</string>
     <string name="enter_ip_hint">Enter the bridge ip from the Philips Hue app</string>
-    <string name="improper_screen">error - ManualInit() screen should never display</string>
     <string name="wifi_not_working">Wifi not working.  Please check your connection settings.</string>
     <string name="philips_hue_bridge_ip_not_set">Cannot find the Philips Hue bridge.\n
         Tap the button to initialize your Philips Hue devices.</string>
@@ -26,6 +25,12 @@
         Tap the button to re-initialize your Philips Hue devices</string>
     <string name="initialize_philips_hue">Initialize Philips Hue</string>
 
+    <!-- initializing the Philips Hue Bridge -->
+    <string name="stage_1">Step 1</string>
+    <string name="find_the_bridge_ip">Find the IP of the Philips Hue bridge</string>
+    <string name="bridge_ip_step_1_desc">Where to find the settings on the philips hue app start screen.</string>
+    <string name="bridge_ip_step_2_desc">Where to find the bridge settings on the settings screen.</string>
+    <string name="bridge_ip_step_3_desc">Where to find the ip-address on the bridge settings screen.</string>
 
     <!-- basics -->
     <string name="yes">yes</string>

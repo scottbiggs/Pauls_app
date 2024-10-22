@@ -9,6 +9,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeStatus
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.getBridgeIPStr
 import com.sleepfuriously.paulsapp.model.philipshue.getBridgeToken
+import com.sleepfuriously.paulsapp.model.philipshue.setBridgeIpStr
 import com.sleepfuriously.paulsapp.model.philipshue.testBridgeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -73,6 +74,11 @@ class SplashViewmodel : ViewModel() {
     var iotTestsStatus = _iotTestsStatus.asStateFlow()
 
 
+    private val _initializingBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
+    /** Tells what steps are currently taking place when  we are initializing the bridge */
+    var initializingBridgeState = _initializingBridgeState.asStateFlow()
+
+
     //-------------------------
     //  public functions
     //-------------------------
@@ -135,9 +141,26 @@ class SplashViewmodel : ViewModel() {
 
     /**
      * Begins the logical part of initializing the philips hue bridge.
+     *
+     * side effects:
+     *      initializingBridgeState is set to STAGE_1
      */
-    fun initializePhilipsHue(ctx: Context) {
-        // todo
+    fun beginInitializePhilipsHue(ctx: Context) {
+        _initializingBridgeState.value = BridgeInitStates.STAGE_1
+    }
+
+    /**
+     * Call this when the new IP for the philips hue bridge is known.
+     * This completes stage one of the bridge initialization.
+     *
+     * side effects:
+     *      initializingBridgeState is set to STAGE_2
+     */
+    fun setPhilipsHueIp(ctx: Context, newIp: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            setBridgeIpStr(ctx, newIp)
+            _initializingBridgeState.value = BridgeInitStates.STAGE_2
+        }
     }
 
     //-------------------------
@@ -233,6 +256,14 @@ enum class TestStatus {
     TEST_GOOD,
     /** test complete, but failed */
     TEST_BAD
+}
+
+
+enum class BridgeInitStates {
+    NOT_INITIALIZING,
+    STAGE_1,
+    STAGE_2,
+    STAGE_3
 }
 
 private const val TAG = "SplashViewModel"

@@ -6,6 +6,7 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.getCodeFromResponse
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.setPrefsString
+import java.io.IOException
 
 /***********************
  * Suite of functions and variables that involve the Philips Hue
@@ -78,15 +79,28 @@ suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
 
     // exit with false if no ip
     val ip = philipsHueBridgeIp ?: return false
+    if (ip.isEmpty()) return false
 
-    val response = OkHttpUtils.synchronousGetRequest("$ip$PHILIPS_HUE_BRIDGE_TEST_SUFFIX")
-    Log.d(TAG, "doesBridgeRespondToIp -> $response")
+    try {
+        val response = OkHttpUtils.synchronousGetRequest("$ip$PHILIPS_HUE_BRIDGE_TEST_SUFFIX")
+        Log.d(TAG, "doesBridgeRespondToIp -> $response")
 
-    // check this response.  It should have a code in the 200s
-    val code = getCodeFromResponse(response)
-    Log.d(TAG, "code = $code")
-    if (response.isSuccessful) {
-        return true
+        // check this response.  It should have a code in the 200s
+        val code = getCodeFromResponse(response)
+        Log.d(TAG, "code = $code")
+        if (response.isSuccessful) {
+            return true
+        }
+    }
+    catch (e: IOException) {
+        Log.e(TAG, "error when testing the bridge.  The ip ($ip) is probably bad.")
+        e.printStackTrace()
+        return false
+    }
+    catch (e: IllegalArgumentException) {
+        Log.e(TAG, "error when testing the bridge.  The ip (\"$ip\") is probably bad.")
+        e.printStackTrace()
+        return false
     }
 
     return false
