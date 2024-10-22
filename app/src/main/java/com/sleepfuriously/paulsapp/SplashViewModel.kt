@@ -162,7 +162,6 @@ class SplashViewModel : ViewModel() {
             return
         }
 
-
         // check token
         val token = getBridgeToken(ctx)
         if (token == null) {

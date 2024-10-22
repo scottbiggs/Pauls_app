@@ -1,9 +1,11 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.content.Context
+import android.util.Log
+import com.sleepfuriously.paulsapp.model.OkHttpUtils
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.getCodeFromResponse
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.setPrefsString
-import kotlinx.coroutines.delay
 
 /***********************
  * Suite of functions and variables that involve the Philips Hue
@@ -67,18 +69,22 @@ private var philipsHueBridgeIp : String? = null
  *  This must be called off the main thread as it access
  *  the network.
  */
+@Suppress("RedundantIf")
 suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
 
     // exit with false if no ip
-    if (philipsHueBridgeToken == null) {
-        return false
+    val ip = philipsHueBridgeIp ?: return false
+
+    val response = OkHttpUtils.synchronousGetRequest("$ip$PHILIPS_HUE_BRIDGE_TEST_SUFFIX")
+    Log.d(TAG, "doesBridgeRespondToIp -> $response")
+
+    // check this response.  It should have a code=200
+    val code = getCodeFromResponse(response)
+    Log.d(TAG, "code = $code")
+
+    if (response.isSuccessful) {
+        return true
     }
-
-    // todo
-    //  This is where I try to contact the bridge!!!!
-    //
-
-    delay(2000)     // fixme: simulated long network access
 
     return false
 }
@@ -185,8 +191,13 @@ enum class PhilipsHueBridgeStatus {
 //  constants
 //-----------------------------------
 
+private const val TAG = "PhilipsHueBridgeUtils"
+
 /** key to get the token for the philips hue bridge from prefs */
 private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY = "ph_bridge_token_key"
 
 /** key to get ip from prefs */
 private const val PHILIPS_HUE_BRIDGE_IP_KEY = "ph_bridge_ip_key"
+
+/** append this to the bridge's ip to get the debug screen */
+private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"

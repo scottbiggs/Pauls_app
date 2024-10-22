@@ -76,4 +76,7 @@ dependencies {
 
     // to use composeWithLifeCycle() functions
     implementation(libs.androidx.lifecycle.runtime.compose.android)
+
+    // using basic networking lib
+    implementation(libs.okhttp)
 }
