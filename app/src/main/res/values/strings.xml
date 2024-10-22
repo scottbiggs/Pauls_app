@@ -28,8 +28,12 @@
     <!-- initializing the Philips Hue Bridge -->
     <string name="stage_1">Step 1</string>
     <string name="find_the_bridge_ip">Find the IP of the Philips Hue bridge</string>
+    <string name="bridge_ip_step_1">Open the Philips Hue app and tap on the settings icon at the bottom left of the screen.</string>
     <string name="bridge_ip_step_1_desc">Where to find the settings on the philips hue app start screen.</string>
+    <string name="bridge_ip_step_2">In the Settings screen, scroll down and select the Bridge Settings.</string>
     <string name="bridge_ip_step_2_desc">Where to find the bridge settings on the settings screen.</string>
+    <string name="bridge_ip_step_3">In the Bridge Settings, scroll down to the IP-address.
+        Type the number (including dots) and tap \'next\'.</string>
     <string name="bridge_ip_step_3_desc">Where to find the ip-address on the bridge settings screen.</string>
 
     <!-- basics -->
@@ -37,6 +41,8 @@
     <string name="no">no</string>
     <string name="cancel" tools:ignore="ButtonCase">cancel</string>
     <string name="ok" tools:ignore="ButtonCase">ok</string>
+    <string name="next">next</string>
+    <string name="done">done</string>
     <string name="exit">exit</string>
 
 </resources>

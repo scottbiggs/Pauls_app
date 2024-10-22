@@ -82,7 +82,14 @@ suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
     if (ip.isEmpty()) return false
 
     try {
-        val response = OkHttpUtils.synchronousGetRequest("$ip$PHILIPS_HUE_BRIDGE_TEST_SUFFIX")
+        val fullIp = createFullAddress(
+            prefix = PHILIPS_HUE_BRIDGE_IP_PREFIX,
+            ip = ip,
+            suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
+        )
+        Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
+
+        val response = OkHttpUtils.synchronousGetRequest(fullIp)
         Log.d(TAG, "doesBridgeRespondToIp -> $response")
 
         // check this response.  It should have a code in the 200s
@@ -93,12 +100,12 @@ suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
         }
     }
     catch (e: IOException) {
-        Log.e(TAG, "error when testing the bridge.  The ip ($ip) is probably bad.")
+        Log.e(TAG, "error when testing the bridge (IOException).  The ip ($ip) is probably bad.")
         e.printStackTrace()
         return false
     }
     catch (e: IllegalArgumentException) {
-        Log.e(TAG, "error when testing the bridge.  The ip (\"$ip\") is probably bad.")
+        Log.e(TAG, "error when testing the bridge (IllegalArgumentException).  The ip (\"$ip\") is probably bad.")
         e.printStackTrace()
         return false
     }
@@ -184,6 +191,10 @@ fun getBridgeIPStr(ctx: Context) : String? {
  *                  locally.
  */
 fun setBridgeIpStr(ctx: Context, newIp: String) {
+    // strip any prefix from this ip.
+    val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_IP_PREFIX)
+
+    // save this ip
     philipsHueBridgeIp = newIp
     setPrefsString(ctx, PHILIPS_HUE_BRIDGE_IP_KEY, newIp)
 }
@@ -211,7 +222,7 @@ fun setBridgeIpStr(ctx: Context, newIp: String) {
  *                  or parameters or whatever.  Remember that this should start
  *                  with a backslash ('/').  Defaults to "".
  */
-private fun createFullAddress(ip: String, prefix: String = "", suffix: String = "") : String {
+private fun createFullAddress(ip: String, prefix: String = PHILIPS_HUE_BRIDGE_IP_PREFIX, suffix: String = "") : String {
     val fullAddress = "${prefix}$ip${suffix}"
     Log.d(TAG,"fullAddress created. -> $fullAddress")
     return fullAddress
@@ -251,6 +262,9 @@ private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY = "ph_bridge_token_key"
 
 /** key to get ip from prefs */
 private const val PHILIPS_HUE_BRIDGE_IP_KEY = "ph_bridge_ip_key"
+
+/** this prefix should appear before the numbers of the bridge's ip address */
+private const val PHILIPS_HUE_BRIDGE_IP_PREFIX = "http://"
 
 /** append this to the bridge's ip to get the debug screen */
 private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +46,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -471,35 +478,6 @@ class MainActivity : ComponentActivity() {
 
     }
 
-    //----------------------------
-    //  previews
-    //----------------------------
-
-    @Preview(name = "init part 1", uiMode = Configuration.UI_MODE_NIGHT_YES)
-    @Composable
-    private fun DisplayManualInitPart1Preview() {
-        PhilipsHueBridgeIpManualInit()
-    }
-
-    @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
-    @Composable
-    private fun SplashScreenContentsPreview() {
-        SplashScreenContents()
-    }
-/*
-    @Preview(
-        name = "tablet",
-        device = "spec:shape=Normal,width=1240,height=640,unit=dp,dpi=480",
-        showSystemUi = true,
-        showBackground = true
-    )
-    @Composable
-    private fun ShowMainScreenPreview() {
-        PaulsAppTheme {
-            ShowMainScreen(viewModel = viewModel)
-        }
-    }
-*/
 
     /**
      * Handles displaying the splash screen.  Needs to be
@@ -588,53 +566,93 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            stringResource(id = R.string.stage_1)
-                        )
-                        Text(
-                            stringResource(id = R.string.find_the_bridge_ip)
+                            stringResource(id = R.string.find_the_bridge_ip),
+                            fontSize = 28.sp
                         )
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(8.dp)
                         ) {
-                            Image(
-                                modifier = Modifier
-//                                    .height((screenHeight - 120).dp)
-                                    .weight(1f),
-                                contentScale = ContentScale.Fit,
-                                painter = painterResource(id = R.drawable.bridge_ip_step_1),
-                                contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Image(
-                                modifier = Modifier
-//                                    .height((screenHeight - 120).dp)
-                                    .weight(1f),
-                                contentScale = ContentScale.Fit,
-                                painter = painterResource(id = R.drawable.bridge_ip_step_2),
-                                contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Image(
-                                modifier = Modifier
-//                                    .height((screenHeight - 120).dp)
-                                    .weight(1f),
-                                contentScale = ContentScale.Fit,
-                                painter = painterResource(id = R.drawable.bridge_ip_step_3),
-                                contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
-                            )
+                            Column(
+                                Modifier
+                                    .fillMaxHeight()
+                                    .weight(1f)
+                            ) {
+                                Image(
+                                    contentScale = ContentScale.Fit,
+                                    painter = painterResource(id = R.drawable.bridge_ip_step_1),
+                                    contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
+                                )
+                                Text(
+                                    modifier = Modifier
+                                        .padding(horizontal = 24.dp),
+                                    textAlign = TextAlign.Center,
+                                    text = stringResource(id = R.string.bridge_ip_step_1)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(18.dp))
+                            Column(
+                                Modifier
+                                    .fillMaxHeight()
+                                    .weight(1f)
+                            ) {
+                                Image(
+                                    contentScale = ContentScale.Fit,
+                                    painter = painterResource(id = R.drawable.bridge_ip_step_2),
+                                    contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
+                                )
+                                Text(
+                                    modifier = Modifier
+                                        .padding(horizontal = 24.dp),
+                                    textAlign = TextAlign.Center,
+                                    text = stringResource(id = R.string.bridge_ip_step_2)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(18.dp))
+                            Column(
+                                Modifier
+                                    .fillMaxHeight()
+                                    .weight(1f)
+                            ) {
+                                Image(
+                                    contentScale = ContentScale.Fit,
+                                    painter = painterResource(id = R.drawable.bridge_ip_step_3),
+                                    contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
+                                )
+                                Text(
+                                    modifier = Modifier
+                                        .padding(horizontal = 24.dp),
+                                    textAlign = TextAlign.Center,
+                                    text = stringResource(id = R.string.bridge_ip_step_3)
+                                )
+                                OutlinedTextField(
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .align(Alignment.CenterHorizontally),
+                                    value = ipText,
+                                    label = { Text(stringResource(id = R.string.enter_ip)) },
+                                    singleLine = true,
+                                    onValueChange = { ipText = it },
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Decimal
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { splashViewModel.setPhilipsHueIp(ctx, ipText) }
+                                    )
+                                )
+                                Button(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterHorizontally)
+                                        .padding(top = 8.dp)
+                                        .width(120.dp),
+                                    onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) } ) {
+                                    Text(stringResource(id = R.string.next))
+                                }
+                            }
                         }
 
-                        OutlinedTextField(
-                            value = ipText,
-                            label = { Text(stringResource(id = R.string.enter_ip)) },
-                            singleLine = true,
-                            onValueChange = { ipText = it }
-                        )
-                        Button(onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) } ) {
-                            Text(stringResource(id = R.string.ok))
-                        }
 
                     }
                 }
@@ -652,6 +670,50 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    //----------------------------
+    //  previews
+    //----------------------------
+
+    @Preview(
+        uiMode = Configuration.UI_MODE_NIGHT_YES,
+        device = Devices.PIXEL_TABLET
+        )
+    @Composable
+    private fun ManualBridgeSetupPreview() {
+        val tmpViewmodel = SplashViewmodel()
+        ManualBridgeSetup(
+            splashViewModel = tmpViewmodel,
+            initBridgeState = BridgeInitStates.STAGE_1)
+    }
+/*
+    @Preview(name = "init part 1", uiMode = Configuration.UI_MODE_NIGHT_YES)
+    @Composable
+    private fun DisplayManualInitPart1Preview() {
+        PhilipsHueBridgeIpManualInit()
+    }
+
+    @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+    @Composable
+    private fun SplashScreenContentsPreview() {
+        SplashScreenContents()
+    }
+*/
+    /*
+        @Preview(
+            name = "tablet",
+            device = "spec:shape=Normal,width=1240,height=640,unit=dp,dpi=480",
+            showSystemUi = true,
+            showBackground = true
+        )
+        @Composable
+        private fun ShowMainScreenPreview() {
+            PaulsAppTheme {
+                ShowMainScreen(viewModel = viewModel)
+            }
+        }
+    */
+
 }
 
 
