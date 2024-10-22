@@ -15,9 +15,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +73,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
 
     /** accessor for splash screen viewmodel */
-    private val splashViewmodel by viewModels<SplashViewModel>()
+    private val splashViewmodel by viewModels<SplashViewmodel>()
 
 
     //----------------------------
@@ -130,7 +133,7 @@ class MainActivity : ComponentActivity() {
 
                         TestStatus.TEST_BAD -> {
                             ManualInit(
-                                viewModel = splashViewmodel,
+                                splashViewmodel = splashViewmodel,
                                 wifiWorking = wifiWorking ?: false,
                                 ipSet = bridgeIpSet ?: false,
                                 ipWorking = bridgeIpWorking ?: false,
@@ -282,7 +285,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun ManualInit(
         modifier : Modifier = Modifier,
-        viewModel: SplashViewModel,
+        splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean,
         ipSet: Boolean,
         ipWorking: Boolean,
@@ -298,52 +301,114 @@ class MainActivity : ComponentActivity() {
         // Any problems with the philips hue stuff?
         else if (philipsHueTest != TestStatus.TEST_GOOD) {
             if (ipSet == false) {
-                PhilipsHueIpNotSet(modifier)
+                PhilipsHueIpNotSet(modifier, splashViewmodel)
             }
             else if (ipWorking == false) {
-                PhilipsHueIpNotWorking(modifier)
+                PhilipsHueIpNotWorking(modifier, splashViewmodel)
             }
             else if (tokenSet == false) {
-                PhilipsHueTokenNotSet(modifier)
+                PhilipsHueTokenNotSet(modifier, splashViewmodel)
             }
             else if (tokenWorking == false) {
-                PhilipsHueTokenNotWorking(modifier)
+                PhilipsHueTokenNotWorking(modifier, splashViewmodel)
             }
         }
         else {
-            SimpleBoxMessage(modifier, stringResource(id = R.string.improper_screen))
+            // This should not happen.  But if it does, a message will appear
+            // with an exit button.
+            SimpleBoxMessage(
+                modifier,
+                stringResource(id = R.string.improper_screen),
+                { finish() },
+                stringResource(id = R.string.exit)
+            )
         }
     }
 
     @Composable
     private fun WifiNotWorking(modifier: Modifier = Modifier) {
-        SimpleBoxMessage(modifier, stringResource(id = R.string.wifi_not_working))
+        SimpleBoxMessage(modifier,
+            stringResource(id = R.string.wifi_not_working),
+            { finish() },
+            stringResource(id = R.string.exit)
+        )
     }
 
     @Composable
-    private fun PhilipsHueIpNotSet(modifier: Modifier) {
-        SimpleBoxMessage(modifier, stringResource(id = R.string.philips_hue_bridge_ip_not_set))
+    private fun PhilipsHueIpNotSet(modifier: Modifier, splashViewModel: SplashViewmodel) {
+        SimpleBoxMessage(
+            modifier,
+            stringResource(id = R.string.philips_hue_bridge_ip_not_set),
+            {splashViewModel.initializePhilipsHue(this)},
+            stringResource(id = R.string.initialize_philips_hue)
+        )
     }
 
     @Composable
-    private fun PhilipsHueIpNotWorking(modifier: Modifier) {
-        SimpleBoxMessage(modifier, stringResource(id = R.string.philips_hue_ip_not_working))
+    private fun PhilipsHueIpNotWorking(modifier: Modifier, splashViewModel: SplashViewmodel) {
+        SimpleBoxMessage(
+            modifier,
+            stringResource(id = R.string.philips_hue_ip_not_working),
+            {splashViewModel.initializePhilipsHue(this)},
+            stringResource(id = R.string.initialize_philips_hue)
+        )
     }
 
     @Composable
-    private fun PhilipsHueTokenNotSet(modifier: Modifier) {
-        SimpleBoxMessage(modifier, stringResource(id = R.string.philips_hue_token_not_set))
+    private fun PhilipsHueTokenNotSet(modifier: Modifier, splashViewModel: SplashViewmodel) {
+        SimpleBoxMessage(
+            modifier,
+            stringResource(id = R.string.philips_hue_token_not_set),
+            {splashViewModel.initializePhilipsHue(this)},
+            stringResource(id = R.string.initialize_philips_hue)
+        )
     }
 
     @Composable
-    private fun PhilipsHueTokenNotWorking(modifier: Modifier) {
-        SimpleBoxMessage(modifier, stringResource(id = R.string.philips_hue_token_not_working))
+    private fun PhilipsHueTokenNotWorking(modifier: Modifier, splashViewModel: SplashViewmodel) {
+        SimpleBoxMessage(
+            modifier,
+            stringResource(id = R.string.philips_hue_token_not_working),
+            {splashViewModel.initializePhilipsHue(this)},
+            stringResource(id = R.string.initialize_philips_hue)
+        )
     }
 
+    /**
+     * @param   msgText        Message to display
+     * @param   onClick     Function to run when the button is clicked.
+     */
     @Composable
-    fun SimpleBoxMessage(modifier: Modifier = Modifier, text : String = "error") {
-        Box(modifier = modifier.fillMaxSize()) {
-            Text(textAlign = TextAlign.Center, text = text)
+    fun SimpleBoxMessage(
+        modifier: Modifier = Modifier,
+        msgText: String = "error",
+        onClick: () -> Unit,
+        buttonText: String
+        ) {
+        Box(modifier = modifier
+            .fillMaxSize()
+            .padding(80.dp)
+            .background(MaterialTheme.colorScheme.tertiary),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    textAlign = TextAlign.Center,
+                    text = msgText,
+                    color = MaterialTheme.colorScheme.onTertiary,
+                    modifier = modifier
+                        .wrapContentHeight()
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = onClick
+                ) {
+                    Text(buttonText)
+                }
+            }
         }
     }
 

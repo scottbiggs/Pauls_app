@@ -15,13 +15,16 @@
     <string name="enter_ip">Bridge Ip</string>
     <string name="enter_ip_hint">Enter the bridge ip from the Philips Hue app</string>
     <string name="improper_screen">error - ManualInit() screen should never display</string>
-    <string name="wifi_not_working">Wifi not working.  Please check your connection.</string>
-    <string name="philips_hue_bridge_ip_not_set">Cannot find the bridge ip in our saved settings</string>
-    <string name="philips_hue_ip_not_working">The Philips Hue bridge is not responding to the current address.</string>
-    <string name="philips_hue_token_not_set">Cannot find the name/token for the Philips Hue Bridge.
-        Please initialize this app to the Bridge.</string>
+    <string name="wifi_not_working">Wifi not working.  Please check your connection settings.</string>
+    <string name="philips_hue_bridge_ip_not_set">Cannot find the Philips Hue bridge.\n
+        Tap the button to initialize your Philips Hue devices.</string>
+    <string name="philips_hue_ip_not_working">The Philips Hue bridge is not responding to the current address.\n
+        Tap the button to re-initialize your Philips Hue devices</string>
+    <string name="philips_hue_token_not_set">Cannot find the name/token for the Philips Hue Bridge.\n
+        Tap the button to initialize your Philips Hue devices.</string>
     <string name="philips_hue_token_not_working">The current name/token is not recognized by the Philips Hue Bridge.
-        Please re-initialize this app to the bridge.</string>
+        Tap the button to re-initialize your Philips Hue devices</string>
+    <string name="initialize_philips_hue">Initialize Philips Hue</string>
 
 
     <!-- basics -->
@@ -29,4 +32,6 @@
     <string name="no">no</string>
     <string name="cancel" tools:ignore="ButtonCase">cancel</string>
     <string name="ok" tools:ignore="ButtonCase">ok</string>
+    <string name="exit">exit</string>
+
 </resources>

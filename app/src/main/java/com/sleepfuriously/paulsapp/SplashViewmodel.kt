@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
  *
  * 3. todo - all other IoT devices
  */
-class SplashViewModel : ViewModel() {
+class SplashViewmodel : ViewModel() {
 
     //-------------------------
     //  class data
@@ -131,6 +131,13 @@ class SplashViewModel : ViewModel() {
                 if (allTestsSuccessful) TestStatus.TEST_GOOD
                 else TestStatus.TEST_BAD
         }
+    }
+
+    /**
+     * Begins the logical part of initializing the philips hue bridge.
+     */
+    fun initializePhilipsHue(ctx: Context) {
+        // todo
     }
 
     //-------------------------
