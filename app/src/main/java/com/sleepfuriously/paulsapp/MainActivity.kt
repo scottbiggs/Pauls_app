@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.animation.OvershootInterpolator
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,7 +110,6 @@ class MainActivity : ComponentActivity() {
         splashViewmodel.checkIoT(this)
 //        showSplashScreen()
 
-
         setContent {
             PaulsAppTheme {
 
@@ -124,7 +125,13 @@ class MainActivity : ComponentActivity() {
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
 
                     val initializingBridgeState by splashViewmodel.initializingBridgeState.collectAsStateWithLifecycle()
+                    val lastValidIp by splashViewmodel.lastIpValid.collectAsStateWithLifecycle()
 
+                    // Send a message that their last attempt at typing in an IP didn't work.
+                    if (lastValidIp == false) {
+                        Toast.makeText(this, stringResource(id = R.string.invalid_ip), Toast.LENGTH_LONG).show()
+                        splashViewmodel.setLastValidIpNull()
+                    }
 
                     when (iotTestStatus) {
                         TestStatus.TESTING,
@@ -679,16 +686,25 @@ class MainActivity : ComponentActivity() {
     private fun ManualBridgeSetupStep1_Portrait(
         splashViewModel: SplashViewmodel
     ) {
+        val ctx = LocalContext.current
+        var ipText by remember { mutableStateOf("") }
 
         val config = LocalConfiguration.current
         val screenHeight = config.screenHeightDp
         val screenWidth = config.screenWidthDp
-        val aspect = screenHeight.toFloat() / screenWidth.toFloat()
-        val columnWidth = (screenHeight.toFloat() * 0.6 / aspect).dp
 
-        val ctx = LocalContext.current
-
-        var ipText by remember { mutableStateOf("") }
+        //----------------
+        // We want each column to be just small enough on the screen so that
+        // a bit of the next column peeks through.  This will let the user
+        // know that they can scroll right to see more.
+        //
+        // We also want everything to fit vertically.  That is the height
+        // of that column (including text and buttons) plus the title at
+        // the top is less than the height of the device.
+        //
+        // To do this, we simply calculate the needed width (easy)
+        //
+        val columnWidth = screenWidth.toFloat() * 0.85
 
 
         Column(
@@ -708,97 +724,117 @@ class MainActivity : ComponentActivity() {
                 state = rememberLazyListState(initialFirstVisibleItemIndex = 0) // alwasy start at the beginning
             ) {
                 item {
-                    Column(
+                    LazyColumn(
                         Modifier
                             .fillMaxHeight()
-                            .width(columnWidth)
+                            .width(columnWidth.dp)
                             .weight(1f)
                     ) {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_1),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_1)
-                        )
-                    }
-                }
-                item {
-                    Spacer(modifier = Modifier.width(24.dp))
-                }
-
-                item {
-                    Column(
-                        Modifier
-                            .fillMaxHeight()
-                            .width(columnWidth)
-                            .weight(1f)
-                    ) {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_2),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_2)
-                        )
-                    }
-                }
-                item {
-                    Spacer(modifier = Modifier.width(24.dp))
-                }
-
-                item {
-
-                    Column(
-                        Modifier
-                            .fillMaxHeight()
-                            .width(columnWidth)
-                            .weight(1f)
-                    ) {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_3),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_3)
-                        )
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .padding(top = 4.dp)
-                                .align(Alignment.CenterHorizontally),
-                            value = ipText,
-                            label = { Text(stringResource(id = R.string.enter_ip)) },
-                            singleLine = true,
-                            onValueChange = { ipText = it },
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Next,
-                                keyboardType = KeyboardType.Decimal
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { splashViewModel.setPhilipsHueIp(ctx, ipText) }
+                        item {
+                            Image(
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_1),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
                             )
-                        )
-                        Button(
-                            modifier = Modifier
-                                .align(Alignment.CenterHorizontally)
-                                .padding(top = 8.dp)
-                                .width(120.dp),
-                            onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) }) {
-                            Text(stringResource(id = R.string.next))
+                        }
+                        item {
+                            Text(
+                                modifier = Modifier
+                                    .padding(horizontal = 24.dp),
+                                textAlign = TextAlign.Center,
+                                text = stringResource(id = R.string.bridge_ip_step_1)
+                            )
                         }
                     }
+                }
+                item {
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
+
+                item {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxHeight()
+                            .width(columnWidth.dp)
+                            .weight(1f)
+                    ) {
+                        item {
+                            Image(
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_2),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
+                            )
+                        }
+                        item {
+                            Text(
+                                modifier = Modifier
+                                    .padding(horizontal = 24.dp),
+                                textAlign = TextAlign.Center,
+                                text = stringResource(id = R.string.bridge_ip_step_2)
+                            )
+                        }
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
+
+                item {
+
+                    LazyColumn(
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .width(columnWidth.dp)
+                            .weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        item {
+                            Image(
+                                contentScale = ContentScale.Fit,
+                                painter = painterResource(id = R.drawable.bridge_ip_step_3),
+                                contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
+                            )
+                        }
+                        item {
+                            Text(
+                                modifier = Modifier
+                                    .padding(horizontal = 24.dp),
+                                textAlign = TextAlign.Center,
+                                text = stringResource(id = R.string.bridge_ip_step_3)
+                            )
+                        }
+                        item {
+                            Row {
+                                OutlinedTextField(
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .align(Alignment.CenterVertically),
+                                    value = ipText,
+                                    label = { Text(stringResource(id = R.string.enter_ip)) },
+                                    singleLine = true,
+                                    onValueChange = { ipText = it },
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Decimal
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { splashViewModel.setPhilipsHueIp(ctx, ipText) }
+                                    )
+                                )
+
+                                Button(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterVertically)
+                                        .padding(top = 8.dp, start = 12.dp)
+                                        .width(120.dp),
+                                    onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) }) {
+                                    Text(stringResource(id = R.string.next))
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
 

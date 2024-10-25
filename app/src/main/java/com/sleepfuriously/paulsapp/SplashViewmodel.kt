@@ -16,6 +16,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.net.InetAddress
+import java.net.UnknownHostException
 
 /**
  * ViewModel for the startup splash screen.  While this is displaying,
@@ -77,6 +79,10 @@ class SplashViewmodel : ViewModel() {
     private val _initializingBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
     /** Tells what steps are currently taking place when  we are initializing the bridge */
     var initializingBridgeState = _initializingBridgeState.asStateFlow()
+
+    private val _lastIpValid = MutableStateFlow<Boolean?>(null)
+    /** Was the last entered ip a valid entry?  null means no entry yet */
+    var lastIpValid = _lastIpValid.asStateFlow()
 
 
     //-------------------------
@@ -157,10 +163,25 @@ class SplashViewmodel : ViewModel() {
      *      initializingBridgeState is set to STAGE_2
      */
     fun setPhilipsHueIp(ctx: Context, newIp: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            setBridgeIpStr(ctx, newIp)
-            _initializingBridgeState.value = BridgeInitStates.STAGE_2
+
+        if (newIp.isNotBlank() && newIp.isValidBasicIp()) {
+            _lastIpValid.value = true
+            viewModelScope.launch(Dispatchers.IO) {
+                setBridgeIpStr(ctx, newIp)
+                _initializingBridgeState.value = BridgeInitStates.STAGE_2
+            }
         }
+        else {
+            _lastIpValid.value = false
+        }
+    }
+
+    /**
+     * This resets the last valid ip to a null state (as if it had never
+     * been entered).
+     */
+    fun setLastValidIpNull() {
+        _lastIpValid.value = null
     }
 
     //-------------------------
@@ -240,6 +261,52 @@ class SplashViewmodel : ViewModel() {
         _philipsHueTestsStatus.value = TestStatus.TEST_GOOD
     }
 
+
+    /**
+     * Determines if the given string is a valid basic ip.
+     * In other words, does it have the basic format #.#.#.#
+     * and is not a domain name, nor does it have a prefix.
+     *
+     * Note that this is an extension function of String.  :)
+     */
+    private fun String.isValidBasicIp() : Boolean {
+        if (this.isBlank()) {
+            return false
+        }
+
+        // only allow numbers and dots
+        if (this.contains(Regex("[^0-9.]")) == true) {
+            return false
+        }
+
+        // there must be exactly 3 periods
+        if (this.count { ".".contains(it) } != 3) {
+            return false
+        }
+
+        // get list of numbers
+        val numList = this.split(".")
+
+        // there should be 4 items
+        if (numList.size != 4) {
+            return false
+        }
+
+        // Each item should exist (ie not be blank or null).
+        // Also, each should be a number:  0 <= n <= 255
+        numList.forEach { s ->
+            if (s.isEmpty()) {
+                return false
+            }
+            val n = s.toInt()
+            if ((n < 0) || (n > 255)) {
+                return false
+            }
+        }
+
+        // that's all I can think of!
+        return true
+    }
 
 }
 

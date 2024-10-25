@@ -35,6 +35,7 @@
     <string name="bridge_ip_step_3">In the Bridge Settings, scroll down to the IP-address.
         Type the number (including dots) and tap \'next\'.</string>
     <string name="bridge_ip_step_3_desc">Where to find the ip-address on the bridge settings screen.</string>
+    <string name="invalid_ip">The IP you entered is not valid. Please try again."</string>
 
     <!-- basics -->
     <string name="yes">yes</string>
