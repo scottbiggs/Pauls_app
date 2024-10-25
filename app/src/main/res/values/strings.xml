@@ -17,11 +17,11 @@
     <string name="wifi_not_working">Wifi not working.  Please check your connection settings.</string>
     <string name="philips_hue_bridge_ip_not_set">Cannot find the Philips Hue bridge.\n
         Tap the button to initialize your Philips Hue devices.</string>
-    <string name="philips_hue_ip_not_working">The Philips Hue bridge is not responding to the current address.\n
+    <string name="philips_hue_ip_not_working">The Philips Hue bridge is not responding to the current ip address of %1s.\n
         Tap the button to re-initialize your Philips Hue devices</string>
-    <string name="philips_hue_token_not_set">Cannot find the name/token for the Philips Hue Bridge.\n
+    <string name="philips_hue_token_not_set">Cannot find a name/token for the Philips Hue Bridge.\n
         Tap the button to initialize your Philips Hue devices.</string>
-    <string name="philips_hue_token_not_working">The current name/token is not recognized by the Philips Hue Bridge.
+    <string name="philips_hue_token_not_working">The current name/token of %1s is not recognized by the Philips Hue Bridge.
         Tap the button to re-initialize your Philips Hue devices</string>
     <string name="initialize_philips_hue">Initialize Philips Hue</string>
 

@@ -51,9 +51,17 @@ class SplashViewmodel : ViewModel() {
     /** Set to true if we have an ip for the philips hue bridge. Null means not checked yet. */
     var philipsHueIpSet = _philipsHueIpSet.asStateFlow()
 
+    private val _philipsHueIpStr = MutableStateFlow("")
+    /** If the ip is set (see [philipsHueIpSet]), then this will hold the ip string. */
+    var philipsHueIpStr = _philipsHueIpStr.asStateFlow()
+
     private val _philipsHueTokenSet = MutableStateFlow<Boolean?>(null)
     /** will be false if we need to get the token for the philips hue bridge. Null until tested. */
     var philipsHueTokenSet = _philipsHueTokenSet.asStateFlow()
+
+    private val _philipsHueTokenStr = MutableStateFlow("")
+    /** If the token is set (see [philipsHueTokenSet]) this will hold the token. */
+    var philipsHueTokenStr = _philipsHueTokenStr.asStateFlow()
 
     private val _philipsHueBridgeIpWorking = MutableStateFlow<Boolean?>(null)
     /** Set to True if the bridge responds to queries, false otherwise.  Null means not tested yet. */
@@ -215,6 +223,7 @@ class SplashViewmodel : ViewModel() {
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
             return
         }
+        _philipsHueIpStr.value = bridgeIp
         _philipsHueIpSet.value = true
 
         // fixme
@@ -240,6 +249,7 @@ class SplashViewmodel : ViewModel() {
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
             return
         }
+        _philipsHueTokenStr.value = token
         _philipsHueTokenSet.value = true
 
         // fixme

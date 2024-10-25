@@ -119,8 +119,10 @@ class MainActivity : ComponentActivity() {
                     val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
                     val bridgeIpSet by splashViewmodel.philipsHueIpSet.collectAsStateWithLifecycle()
+                    val bridgeIpStr by splashViewmodel.philipsHueIpStr.collectAsStateWithLifecycle()
                     val bridgeIpWorking by splashViewmodel.philipsHueBridgeIpWorking.collectAsStateWithLifecycle()
                     val bridgeTokenSet by splashViewmodel.philipsHueTokenSet.collectAsStateWithLifecycle()
+                    val bridgeTokenStr by splashViewmodel.philipsHueTokenStr.collectAsStateWithLifecycle()
                     val bridgeTokenWorks by splashViewmodel.philipsHueBridgeTokenWorks.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
 
@@ -142,8 +144,10 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 wifiWorking = wifiWorking ?: false,
                                 ipSet = bridgeIpSet,
+                                ipStr = bridgeIpStr,
                                 ipWorking = bridgeIpWorking,
                                 tokenSet = bridgeTokenSet,
+                                tokenStr = bridgeTokenStr,
                                 tokenWorking = bridgeTokenWorks,
                                 philipsHueTest = philipsHueTestStatus
                             )
@@ -162,8 +166,10 @@ class MainActivity : ComponentActivity() {
                                     splashViewmodel = splashViewmodel,
                                     wifiWorking = wifiWorking ?: false,
                                     ipSet = bridgeIpSet ?: false,
+                                    ipStr = bridgeIpStr,
                                     ipWorking = bridgeIpWorking ?: false,
                                     tokenSet = bridgeTokenSet ?: false,
+                                    tokenStr = bridgeTokenStr,
                                     tokenWorking = bridgeTokenWorks ?: false,
                                     philipsHueTest = philipsHueTestStatus
                                 )
@@ -293,8 +299,10 @@ class MainActivity : ComponentActivity() {
         viewModel: MainViewModel,
         wifiWorking: Boolean?,
         ipSet: Boolean?,
+        ipStr: String,
         ipWorking: Boolean?,
         tokenSet: Boolean?,
+        tokenStr: String,
         tokenWorking: Boolean?,
         philipsHueTest: TestStatus
     ) {
@@ -302,9 +310,9 @@ class MainActivity : ComponentActivity() {
 
         Column(modifier = modifier.fillMaxSize()) {
             Text("wifi = $wifiWorking")
-            Text("ip of bridge = $ipSet")
+            Text("ip of bridge status is $ipSet. Ip = $ipStr")
             Text("ip of bridge working = $ipWorking")
-            Text("token set = $tokenSet")
+            Text("token status is $tokenSet. Token = $tokenStr")
             Text("token working = $tokenWorking")
             Text("philips hue tests complete = $philipsHueTest")
         }
@@ -321,8 +329,10 @@ class MainActivity : ComponentActivity() {
         splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean,
         ipSet: Boolean,
+        ipStr: String,
         ipWorking: Boolean,
         tokenSet: Boolean,
+        tokenStr: String,
         tokenWorking: Boolean,
         philipsHueTest: TestStatus
     ) {
@@ -337,13 +347,13 @@ class MainActivity : ComponentActivity() {
                 PhilipsHueIpNotSet(modifier, splashViewmodel)
             }
             else if (ipWorking == false) {
-                PhilipsHueIpNotWorking(modifier, splashViewmodel)
+                PhilipsHueIpNotWorking(modifier, splashViewmodel, ipStr)
             }
             else if (tokenSet == false) {
                 PhilipsHueTokenNotSet(modifier, splashViewmodel)
             }
             else if (tokenWorking == false) {
-                PhilipsHueTokenNotWorking(modifier, splashViewmodel)
+                PhilipsHueTokenNotWorking(modifier, splashViewmodel, tokenStr)
             }
         }
         else {
@@ -378,10 +388,14 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun PhilipsHueIpNotWorking(modifier: Modifier, splashViewModel: SplashViewmodel) {
+    private fun PhilipsHueIpNotWorking(
+        modifier: Modifier,
+        splashViewModel: SplashViewmodel,
+        ipStr: String
+    ) {
         SimpleBoxMessage(
             modifier,
-            stringResource(id = R.string.philips_hue_ip_not_working),
+            stringResource(id = R.string.philips_hue_ip_not_working, ipStr),
             {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
@@ -398,10 +412,14 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun PhilipsHueTokenNotWorking(modifier: Modifier, splashViewModel: SplashViewmodel) {
+    private fun PhilipsHueTokenNotWorking(
+        modifier: Modifier,
+        splashViewModel: SplashViewmodel,
+        tokenStr: String
+    ) {
         SimpleBoxMessage(
             modifier,
-            stringResource(id = R.string.philips_hue_token_not_working),
+            stringResource(id = R.string.philips_hue_token_not_working, tokenStr),
             {splashViewModel.beginInitializePhilipsHue(this)},
             stringResource(id = R.string.initialize_philips_hue)
         )
