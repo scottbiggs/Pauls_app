@@ -35,9 +35,9 @@ private var philipsHueBridgeToken : String? = null
  * The first call the [getBridgeIPStr] will set this variable
  * (assuming it is stored in the prefs).
  *
- * This ip will include the prefix.  That means it will have the
+ * This ip will NOT include the prefix.  That means it will have the
  * form:
- *      http[s]://(num1).(num2).(num3).(num4)
+ *      (num1).(num2).(num3).(num4)
  *
  * Null means that no ip has been found yet.
  */
@@ -74,8 +74,7 @@ private var philipsHueBridgeIp : String? = null
  *  This must be called off the main thread as it access
  *  the network.
  */
-@Suppress("RedundantIf")
-suspend fun doesBridgeRespondToIp(ctx: Context) : Boolean {
+suspend fun doesBridgeRespondToIp() : Boolean {
 
     // exit with false if no ip
     val ip = philipsHueBridgeIp ?: return false
@@ -160,12 +159,37 @@ fun setBridgeToken(ctx: Context, newToken: String) {
  *
  * This is a network call and should not be called on the main thread.
  *
+ * @param       token       Token to test.  Philips Hue also calls this
+ *                          the "name."  It is specific to a mobile device
+ *                          (and probably the app).
+ *
  * @return      True if the bridge responds to the current token.
  *              False for all other cases.
  */
-suspend fun testBridgeToken(ctx: Context) : Boolean {
-    // fixme scott!
-    return false
+suspend fun testBridgeToken(ctx: Context, token: String) : Boolean {
+
+    val ip = getBridgeIPStr(ctx) ?: return false
+
+    try {
+        val fullIp = createFullAddress(
+            prefix = PHILIPS_HUE_BRIDGE_IP_PREFIX,
+            ip = ip,
+            suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
+        )
+        Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
+
+        //
+        // todo: actually access the bridge!!!
+        //
+
+    }
+    // fixme: catch the appropriate exceptions (instead of this catch-all)
+    catch(e: Exception) {
+        Log.d(TAG, "error when testing bridge token")
+        return false
+    }
+
+    return true
 }
 
 /**
@@ -222,7 +246,11 @@ fun setBridgeIpStr(ctx: Context, newIp: String) {
  *                  or parameters or whatever.  Remember that this should start
  *                  with a backslash ('/').  Defaults to "".
  */
-private fun createFullAddress(ip: String, prefix: String = PHILIPS_HUE_BRIDGE_IP_PREFIX, suffix: String = "") : String {
+private fun createFullAddress(
+    ip: String,
+    prefix: String = PHILIPS_HUE_BRIDGE_IP_PREFIX,
+    suffix: String = "",
+) : String {
     val fullAddress = "${prefix}$ip${suffix}"
     Log.d(TAG,"fullAddress created. -> $fullAddress")
     return fullAddress

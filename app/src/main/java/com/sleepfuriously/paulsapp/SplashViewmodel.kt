@@ -127,7 +127,7 @@ class SplashViewmodel : ViewModel() {
             }
 
             // fixme
-            delay(2000)
+            delay(1000)
 
             //------------
             // 2.  check philips hue system
@@ -227,10 +227,10 @@ class SplashViewmodel : ViewModel() {
         _philipsHueIpSet.value = true
 
         // fixme
-        delay(2000)
+        delay(1000)
 
         // check bridge is responding
-        if (doesBridgeRespondToIp(ctx) == false) {
+        if (doesBridgeRespondToIp() == false) {
             // not responding to connection request
             _philipsHueBridgeIpWorking.value = false
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
@@ -239,7 +239,7 @@ class SplashViewmodel : ViewModel() {
         _philipsHueBridgeIpWorking.value = true
 
         // fixme
-        delay(2000)
+        delay(1000)
 
         // check token
         val token = getBridgeToken(ctx)
@@ -253,10 +253,10 @@ class SplashViewmodel : ViewModel() {
         _philipsHueTokenSet.value = true
 
         // fixme
-        delay(2000)
+        delay(1000)
 
         // check that token works
-        val tokenWorks = testBridgeToken(ctx)
+        val tokenWorks = testBridgeToken(ctx, token)
         if (tokenWorks == false) {
             _philipsHueBridgeTokenWorks.value = false
             _philipsHueTestsStatus.value = TestStatus.TEST_BAD
@@ -265,7 +265,7 @@ class SplashViewmodel : ViewModel() {
         _philipsHueBridgeTokenWorks.value = true
 
         // fixme
-        delay(2000)
+        delay(1000)
 
         // passed all tests--must be good to go!
         _philipsHueTestsStatus.value = TestStatus.TEST_GOOD
