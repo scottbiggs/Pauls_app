@@ -37,6 +37,11 @@
     <string name="bridge_ip_step_3_desc">Where to find the ip-address on the bridge settings screen.</string>
     <string name="invalid_ip">The IP you entered is not valid. Please try again."</string>
 
+    <string name="new_bridge_stage_1_error_bad_ip_format">I don\'t understand what you typed.
+        Please an IP in this format: [number].[number].[number].[number]
+    </string>
+
+
     <!-- basics -->
     <string name="yes">yes</string>
     <string name="no">no</string>

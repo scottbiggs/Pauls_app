@@ -79,4 +79,7 @@ dependencies {
 
     // using basic networking lib
     implementation(libs.okhttp)
+
+    // for coroutines outside of Activities
+    implementation(libs.androidx.lifecycle.runtime.ktx.v241)
 }

@@ -5,19 +5,14 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeStatus
-import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
-import com.sleepfuriously.paulsapp.model.philipshue.getBridgeIPStr
-import com.sleepfuriously.paulsapp.model.philipshue.getBridgeToken
-import com.sleepfuriously.paulsapp.model.philipshue.setBridgeIpStr
-import com.sleepfuriously.paulsapp.model.philipshue.testBridgeToken
+import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.net.InetAddress
-import java.net.UnknownHostException
 
 /**
  * ViewModel for the startup splash screen.  While this is displaying,
@@ -33,65 +28,51 @@ import java.net.UnknownHostException
  *
  * 3. todo - all other IoT devices
  */
-class SplashViewmodel : ViewModel() {
+class SplashViewmodel(ctx: Context) : ViewModel() {
 
     //-------------------------
     //  class data
     //-------------------------
 
-    private val _bridgeStatus = MutableStateFlow(PhilipsHueBridgeStatus.BRIDGE_UNINITIALIZED)
-    /** Holds the state of the Philips Hue Bridge. This is the main variable here. */
-    var bridgeStatus = _bridgeStatus.asStateFlow()
-
     private val _wifiWorking = MutableStateFlow<Boolean?>(null)
     /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
     var wifiWorking = _wifiWorking.asStateFlow()
 
-    private val _philipsHueIpSet = MutableStateFlow<Boolean?>(null)
-    /** Set to true if we have an ip for the philips hue bridge. Null means not checked yet. */
-    var philipsHueIpSet = _philipsHueIpSet.asStateFlow()
-
-    private val _philipsHueIpStr = MutableStateFlow("")
-    /** If the ip is set (see [philipsHueIpSet]), then this will hold the ip string. */
-    var philipsHueIpStr = _philipsHueIpStr.asStateFlow()
-
-    private val _philipsHueTokenSet = MutableStateFlow<Boolean?>(null)
-    /** will be false if we need to get the token for the philips hue bridge. Null until tested. */
-    var philipsHueTokenSet = _philipsHueTokenSet.asStateFlow()
-
-    private val _philipsHueTokenStr = MutableStateFlow("")
-    /** If the token is set (see [philipsHueTokenSet]) this will hold the token. */
-    var philipsHueTokenStr = _philipsHueTokenStr.asStateFlow()
-
-    private val _philipsHueBridgeIpWorking = MutableStateFlow<Boolean?>(null)
-    /** Set to True if the bridge responds to queries, false otherwise.  Null means not tested yet. */
-    val philipsHueBridgeIpWorking = _philipsHueBridgeIpWorking.asStateFlow()
-
-    private val _philipsHueBridgeTokenWorks = MutableStateFlow<Boolean?>(null)
-    /** Will be set to TRUE after a successful test of the token on the bridge. Null before testing. */
-    val philipsHueBridgeTokenWorks = _philipsHueBridgeTokenWorks.asStateFlow()
 
     private val _philipsHueTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
     /** when true, all philips hue tests are complete */
     var philipsHueTestStatus = _philipsHueTestsStatus.asStateFlow()
 
 
-    private val _iotTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
-    /**
-     * When true, all Internet of Things tests are complete.
-     * Results will be in the appropriate varables.
-     */
-    var iotTestsStatus = _iotTestsStatus.asStateFlow()
+    private val _iotTesting = MutableStateFlow(false)
+    /** Will be true only while tests are running */
+    var iotTesting = _iotTesting.asStateFlow()
 
 
-    private val _initializingBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
-    /** Tells what steps are currently taking place when  we are initializing the bridge */
-    var initializingBridgeState = _initializingBridgeState.asStateFlow()
+//    private val _iotTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
+//    /**
+//     * When true, all Internet of Things tests are complete.
+//     * Results will be in the appropriate varables.
+//     */
+//    var iotTestsStatus = _iotTestsStatus.asStateFlow()
 
-    private val _lastIpValid = MutableStateFlow<Boolean?>(null)
-    /** Was the last entered ip a valid entry?  null means no entry yet */
-    var lastIpValid = _lastIpValid.asStateFlow()
 
+    private val _addNewBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
+    /** Tells what steps are currently taking place when we are adding a new bridge */
+    var addNewBridgeState = _addNewBridgeState.asStateFlow()
+
+
+    private val _philipsHueBridges = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf<PhilipsHueBridgeInfo>())
+    /** Holds the list of all bridges */
+    var philipsHueBridges = _philipsHueBridges.asStateFlow()
+
+
+    /** access to the philips hue bridge and all that stuff that goes with it */
+    private lateinit var bridgeUtils : PhilipsHueBridgeUtils
+
+    /** This variable holds a new bridge.  Once it's filled in, it'll be added to the list */
+    var newBridge: PhilipsHueBridgeInfo? = null
+        private set
 
     //-------------------------
     //  public functions
@@ -105,14 +86,16 @@ class SplashViewmodel : ViewModel() {
      */
     fun checkIoT(ctx: Context) {
 
-        _iotTestsStatus.value = TestStatus.TESTING
+        _iotTesting.value = true
+//        _iotTestsStatus.value = TestStatus.TESTING
+
         var allTestsSuccessful = true       // start optimistically
 
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {
 
             // fixme
-            delay(2000)
+            delay(1000)
 
             //------------
             // 1.  check wifi
@@ -147,175 +130,202 @@ class SplashViewmodel : ViewModel() {
 
             // signal tests complete
             Log.d(TAG, "completion: allTestsSuccessful = $allTestsSuccessful")
-            _iotTestsStatus.value =
-                if (allTestsSuccessful) TestStatus.TEST_GOOD
-                else TestStatus.TEST_BAD
+            _iotTesting.value = false
+//            _iotTestsStatus.value =
+//                if (allTestsSuccessful) TestStatus.TEST_GOOD
+//                else TestStatus.TEST_BAD
         }
     }
+
+    /**
+     * Call this to change the IP for an EXISTING philips hue bridge.
+     * If you want to set a new bridge, call [AddPhilipsHueBridgeIp]
+     *
+     * NOTE
+     *  No testing is done for the bridge in question (other than that
+     *  it exists in our list).  The new ip could work, or it might not--this
+     *  function doesn't care (because we might need to change an ip to a
+     *  bridge that isn't around, or isn't turned on, etc.).
+     *
+     * @param   bridgeId        Id of the bridge to set the ip for
+     *
+     * @param   newIp           A new IP string.  This function will check
+     *                          for proper formatting.
+     *
+     * @return      True if all went well.
+     *              False if the bridge could not be found.  Nothing is done.
+     *
+     * side effects:
+     *      The bridge will be permanently changed to hold the new id
+     */
+    fun setPhilipsHueIp(bridgeId: String, newIp: String) : Boolean {
+
+        if (isValidBasicIp(newIp)) {
+            bridgeUtils.saveBridgeIpStr(bridgeId, newIp)
+            return true
+        }
+        else {
+            Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
+            return false
+        }
+    }
+
+
+    //-------------------------
+    //  add bridge functions
+    //-------------------------
 
     /**
      * Begins the logical part of initializing the philips hue bridge.
      *
      * side effects:
-     *      initializingBridgeState is set to STAGE_1
+     *      - initializingBridgeState is set to STAGE_1
+     *      - newBridge is initialized with a unique id
      */
-    fun beginInitializePhilipsHue(ctx: Context) {
-        _initializingBridgeState.value = BridgeInitStates.STAGE_1
+    fun beginAddPhilipsHueBridge() {
+        _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
+        newBridge = PhilipsHueBridgeInfo(id = bridgeUtils.getNewId())
+        Log.d(TAG, "newBridge is created, id = ${newBridge?.id}")
     }
 
     /**
-     * Call this when the new IP for the philips hue bridge is known.
-     * This completes stage one of the bridge initialization.
+     * Call this to tell the viewmodel that the user has typed in an ip for
+     * their bridge.
      *
-     * side effects:
-     *      initializingBridgeState is set to STAGE_2
+     * @param   newIp       The string that the user typed in.  This function
+     *                      do error checking (correcting if possible).
+     *
+     * side effects
+     *      _addNewBridgeState      changed to reflect the addition of the
+     *                              ip or an error.
+     *
+     *      newBridge               may have a valid ip (if user typed it in right)
      */
-    fun setPhilipsHueIp(ctx: Context, newIp: String) {
+    fun AddPhilipsHueBridgeIp(newIp: String) {
 
-        if (newIp.isNotBlank() && newIp.isValidBasicIp()) {
-            _lastIpValid.value = true
-            viewModelScope.launch(Dispatchers.IO) {
-                setBridgeIpStr(ctx, newIp)
-                _initializingBridgeState.value = BridgeInitStates.STAGE_2
+        // this includes a test and may take a while
+        viewModelScope.launch(Dispatchers.IO) {
+
+            // check format
+            if (isValidBasicIp(newIp) == false) {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT
+                return@launch
+            }
+
+            // is there actually a bridge there?
+            if (bridgeUtils.doesBridgeRespondToIp(newIp) == false) {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP
+                return@launch
+            }
+
+            // The ip looks good.  Save it and signal to move on.
+            // (yes, I want to crash if newBridge is null)
+            newBridge!!.ip = newIp
+            _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+        }
+    }
+
+    /**
+     * Call this during the bridge initialization when an error message has been
+     * displayed.  This will signal that the viewmodel no longer has to maintain
+     * an error state.
+     *
+     * side effects
+     *      - initializingBridgeState will be set to the previous state (before
+     *      the error state.  If it is not in an error state, then an error is
+     *      logged and nothing is done.
+     */
+    fun bridgeAddErrorMsgIsDisplayed() {
+        when (_addNewBridgeState.value) {
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP,
+            BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
+            }
+
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+            }
+
+            else -> {
+                Log.e(TAG, "error in bridgeInitErrorMsgDisplayed()!  State = ${_addNewBridgeState.value} is not an error state!")
             }
         }
-        else {
-            _lastIpValid.value = false
-        }
     }
 
-    /**
-     * This resets the last valid ip to a null state (as if it had never
-     * been entered).
-     */
-    fun setLastValidIpNull() {
-        _lastIpValid.value = null
-    }
 
     //-------------------------
     //  private functions
     //-------------------------
 
     /**
-     * Checks the status of the Philips Hue bridge.  This consists of:
-     *  1. Do we have the philips hue IP? Yes -> [philipsHueIpSet] = true
-     *      - No -> [philipsHueIpState] = false.
-     *        IP needs to be retrieved from the user.
+     * Checks the status of the Philips Hue bridge.  For each bridge that
+     * is known (already saved):
+     *  1. Do we have the philips hue IP?
      *
-     *  2. Do we have the philips hue token? Yes -> [philipsHueTokenSet] = true
-     *      - No -> signal that a token request is needed.  This is
-     *        done by making sure that [philipsHueTokenState] is false.
+     *  2. Do we have the philips hue token?
      *
-     * After all these checks are complete
+     *  3. Is the bridge responding to the token?
+     *
+     * After all these checks are complete we're done checking the
+     * Philips Hue bridges.
      *
      * side effects
      *      - as described above
      */
     private suspend fun checkPhilipsHue(ctx: Context) {
 
+        // Get the bridge utils started.  This will go through
+        // its test routines during initialization.
         _philipsHueTestsStatus.value = TestStatus.TESTING
+        bridgeUtils = PhilipsHueBridgeUtils(ctx)
 
-        // check ip
-        val bridgeIp = getBridgeIPStr(ctx)
-        if (bridgeIp == null) {
-            // no bridge ip. save this info and exit
-            _philipsHueIpSet.value = false
-            _philipsHueTestsStatus.value = TestStatus.TEST_BAD
+        // Get all the bridges.  If there are none, signal
+        // this condition.
+        _philipsHueBridges.value = bridgeUtils.getAllActiveBridges()
+        if (philipsHueBridges.value.isEmpty()) {
+            // todo: the fact that the bridges list is empty should suffice
             return
         }
-        _philipsHueIpStr.value = bridgeIp
-        _philipsHueIpSet.value = true
 
-        // fixme
-        delay(1000)
 
-        // check bridge is responding
-        if (doesBridgeRespondToIp() == false) {
-            // not responding to connection request
-            _philipsHueBridgeIpWorking.value = false
-            _philipsHueTestsStatus.value = TestStatus.TEST_BAD
-            return
+        // check each bridge one by one to see if its info is current
+        // and active.
+        for (bridge in _philipsHueBridges.value) {
+
+            // does this bridge have an ip?
+            val ip = bridgeUtils.getBridgeIPStr(bridge.id)
+            if (ip.isNullOrBlank()) {
+                bridge.active = false
+                continue
+            }
+
+            // check bridge is responding
+            if (bridgeUtils.doesBridgeRespondToIp(bridge.id) == false) {
+                bridge.active = false
+                continue
+            }
+
+            // At this point, the bridge is definitely active.  We may or
+            // may not have a token that works though!
+            bridge.active = true
+
+            // Do we have a token?
+            val token = bridgeUtils.getBridgeToken(bridge.id)
+            if (token.isNullOrBlank()) {
+                continue
+            }
+
+            // check that token works
+            val tokenWorks = bridgeUtils.testBridgeToken(bridge.id, token)
+            if (tokenWorks == false) {
+                continue
+            }
         }
-        _philipsHueBridgeIpWorking.value = true
 
-        // fixme
-        delay(1000)
-
-        // check token
-        val token = getBridgeToken(ctx)
-        if (token == null) {
-            // no token
-            _philipsHueTokenSet.value = false
-            _philipsHueTestsStatus.value = TestStatus.TEST_BAD
-            return
-        }
-        _philipsHueTokenStr.value = token
-        _philipsHueTokenSet.value = true
-
-        // fixme
-        delay(1000)
-
-        // check that token works
-        val tokenWorks = testBridgeToken(ctx, token)
-        if (tokenWorks == false) {
-            _philipsHueBridgeTokenWorks.value = false
-            _philipsHueTestsStatus.value = TestStatus.TEST_BAD
-            return
-        }
-        _philipsHueBridgeTokenWorks.value = true
-
-        // fixme
-        delay(1000)
-
-        // passed all tests--must be good to go!
+        // All tests complete.  The results are stored within each
+        // bridge in the list.  We'll signal that the tests are complete
+        // by setting the status to TEST_GOOD.
         _philipsHueTestsStatus.value = TestStatus.TEST_GOOD
-    }
-
-
-    /**
-     * Determines if the given string is a valid basic ip.
-     * In other words, does it have the basic format #.#.#.#
-     * and is not a domain name, nor does it have a prefix.
-     *
-     * Note that this is an extension function of String.  :)
-     */
-    private fun String.isValidBasicIp() : Boolean {
-        if (this.isBlank()) {
-            return false
-        }
-
-        // only allow numbers and dots
-        if (this.contains(Regex("[^0-9.]")) == true) {
-            return false
-        }
-
-        // there must be exactly 3 periods
-        if (this.count { ".".contains(it) } != 3) {
-            return false
-        }
-
-        // get list of numbers
-        val numList = this.split(".")
-
-        // there should be 4 items
-        if (numList.size != 4) {
-            return false
-        }
-
-        // Each item should exist (ie not be blank or null).
-        // Also, each should be a number:  0 <= n <= 255
-        numList.forEach { s ->
-            if (s.isEmpty()) {
-                return false
-            }
-            val n = s.toInt()
-            if ((n < 0) || (n > 255)) {
-                return false
-            }
-        }
-
-        // that's all I can think of!
-        return true
     }
 
 }
@@ -336,11 +346,33 @@ enum class TestStatus {
 }
 
 
+/**
+ * These are the UI states for initializing a new bridge.
+ *
+ * The first stage is where the user types in the ip of the bridge.
+ * todo: get bridge ip via udp broadcast to eliminate this step
+ * If there's an error, the state reflects this.
+ *
+ * Second stage is for the user to tap on the bridge's button and then
+ * signal for this app to ping the bridge.  The bridge should then send
+ * us a token (name) that we'll use to get info from the bridge.  This is
+ * part of the security of the system.  If there's an error, it's probably
+ * because the user didn't tap the bridge or something timed out.
+ *
+ * The third stage is simply a happy message that we successfully added the
+ * bridge (we got the token and can communicate with it).  Once acknowledged,
+ * the state will go back to [NOT_INITIALIZING].
+ */
 enum class BridgeInitStates {
     NOT_INITIALIZING,
-    STAGE_1,
-    STAGE_2,
-    STAGE_3
+    STAGE_1_GET_IP,
+    STAGE_1_ERROR__BAD_IP_FORMAT,
+    STAGE_1_ERROR__NO_BRIDGE_AT_IP,
+
+    STAGE_2_PRESS_BRIDGE_BUTTON,
+    STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+
+    STAGE_3_ALL_GOOD_AND_DONE
 }
 
 private const val TAG = "SplashViewModel"

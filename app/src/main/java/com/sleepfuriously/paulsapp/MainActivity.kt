@@ -38,7 +38,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +49,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 
 
@@ -90,7 +89,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
 
     /** accessor for splash screen viewmodel */
-    private val splashViewmodel by viewModels<SplashViewmodel>()
+//    private val splashViewmodel by viewModels<SplashViewmodel>()
+    private lateinit var splashViewmodel: SplashViewmodel
 
 
     //----------------------------
@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         viewModel  = MainViewModel()
+        splashViewmodel = SplashViewmodel(this)
 
         // surest way to hide the action bar
         actionBar?.hide()
@@ -115,45 +116,55 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
+                    val ctx = LocalContext.current
+
                     // create composables of flows in the splashviewmodel
-                    val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                    val bridgeIpSet by splashViewmodel.philipsHueIpSet.collectAsStateWithLifecycle()
-                    val bridgeIpStr by splashViewmodel.philipsHueIpStr.collectAsStateWithLifecycle()
-                    val bridgeIpWorking by splashViewmodel.philipsHueBridgeIpWorking.collectAsStateWithLifecycle()
-                    val bridgeTokenSet by splashViewmodel.philipsHueTokenSet.collectAsStateWithLifecycle()
-                    val bridgeTokenStr by splashViewmodel.philipsHueTokenStr.collectAsStateWithLifecycle()
-                    val bridgeTokenWorks by splashViewmodel.philipsHueBridgeTokenWorks.collectAsStateWithLifecycle()
+                    val iotTesting by splashViewmodel.iotTesting.collectAsStateWithLifecycle()
+//                    val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
 
-                    val initializingBridgeState by splashViewmodel.initializingBridgeState.collectAsStateWithLifecycle()
-                    val lastValidIp by splashViewmodel.lastIpValid.collectAsStateWithLifecycle()
+                    /** used while initializing a specific bridge */
+                    val initializingBridgeState by splashViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
 
-                    // Send a message that their last attempt at typing in an IP didn't work.
-                    if (lastValidIp == false) {
-                        Toast.makeText(this, stringResource(id = R.string.invalid_ip), Toast.LENGTH_LONG).show()
-                        splashViewmodel.setLastValidIpNull()
+                    /** yup, this is pretty important--all the bridges */
+                    val philipsHueBridges by splashViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
+
+                    //--------------
+                    //  Philips Hue displays
+                    //
+
+                    if (iotTesting) {
+                        TestSetupScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            viewModel = viewModel,
+                            wifiWorking = wifiWorking ?: false,
+                            philipsHueTest = philipsHueTestStatus,
+                            philipsHueBridges = philipsHueBridges
+                        )
                     }
+                    else {
+                        ShowMainScreen(viewModel = viewModel)
+                    }
+
+
+/*  this is no longer needed
 
                     when (iotTestStatus) {
                         TestStatus.TESTING,
                         TestStatus.NOT_TESTED -> {
-
+                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
                             TestSetupScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 viewModel = viewModel,
                                 wifiWorking = wifiWorking ?: false,
-                                ipSet = bridgeIpSet,
-                                ipStr = bridgeIpStr,
-                                ipWorking = bridgeIpWorking,
-                                tokenSet = bridgeTokenSet,
-                                tokenStr = bridgeTokenStr,
-                                tokenWorking = bridgeTokenWorks,
-                                philipsHueTest = philipsHueTestStatus
+                                philipsHueTest = philipsHueTestStatus,
+                                philipsHueBridges = philipsHueBridges,
                             )
                         }
 
                         TestStatus.TEST_GOOD -> {
+                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
                             ShowMainScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 viewModel
@@ -161,17 +172,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         TestStatus.TEST_BAD -> {
+                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
                             if (initializingBridgeState == BridgeInitStates.NOT_INITIALIZING) {
                                 TestBad(
                                     splashViewmodel = splashViewmodel,
-                                    wifiWorking = wifiWorking ?: false,
-                                    ipSet = bridgeIpSet ?: false,
-                                    ipStr = bridgeIpStr,
-                                    ipWorking = bridgeIpWorking ?: false,
-                                    tokenSet = bridgeTokenSet ?: false,
-                                    tokenStr = bridgeTokenStr,
-                                    tokenWorking = bridgeTokenWorks ?: false,
-                                    philipsHueTest = philipsHueTestStatus
+                                    wifiWorking = wifiWorking ?: false
                                 )
                             }
                             else {
@@ -183,9 +188,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                     }
-
-
-                    val ctx = LocalContext.current
+*/
 
                     // for testing setBridgeToken
 //                    val token = splashViewmodel.bridgeToken.collectAsState()
@@ -298,22 +301,16 @@ class MainActivity : ComponentActivity() {
         modifier : Modifier = Modifier,
         viewModel: MainViewModel,
         wifiWorking: Boolean?,
-        ipSet: Boolean?,
-        ipStr: String,
-        ipWorking: Boolean?,
-        tokenSet: Boolean?,
-        tokenStr: String,
-        tokenWorking: Boolean?,
-        philipsHueTest: TestStatus
+        philipsHueTest: TestStatus,
+        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
     ) {
         Log.d(TAG, "TestSetupScreen()")
 
         Column(modifier = modifier.fillMaxSize()) {
             Text("wifi = $wifiWorking")
-            Text("ip of bridge status is $ipSet. Ip = $ipStr")
-            Text("ip of bridge working = $ipWorking")
-            Text("token status is $tokenSet. Token = $tokenStr")
-            Text("token working = $tokenWorking")
+            philipsHueBridges.forEach() { bridge ->
+                Text("   bridge ${bridge.id}: ip = ${bridge.ip}, token = ${bridge.token}, lastUsed = ${bridge.lastUsed}, active = ${bridge.active}")
+            }
             Text("philips hue tests complete = $philipsHueTest")
         }
 
@@ -328,34 +325,12 @@ class MainActivity : ComponentActivity() {
         modifier : Modifier = Modifier,
         splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean,
-        ipSet: Boolean,
-        ipStr: String,
-        ipWorking: Boolean,
-        tokenSet: Boolean,
-        tokenStr: String,
-        tokenWorking: Boolean,
-        philipsHueTest: TestStatus
     ) {
         // start with the wifi
         if (wifiWorking == false) {
             WifiNotWorking(modifier)
         }
 
-        // Any problems with the philips hue stuff?
-        else if (philipsHueTest != TestStatus.TEST_GOOD) {
-            if (ipSet == false) {
-                PhilipsHueIpNotSet(modifier, splashViewmodel)
-            }
-            else if (ipWorking == false) {
-                PhilipsHueIpNotWorking(modifier, splashViewmodel, ipStr)
-            }
-            else if (tokenSet == false) {
-                PhilipsHueTokenNotSet(modifier, splashViewmodel)
-            }
-            else if (tokenWorking == false) {
-                PhilipsHueTokenNotWorking(modifier, splashViewmodel, tokenStr)
-            }
-        }
         else {
             // This should not happen.  But if it does, a message will appear
             // with an exit button.
@@ -377,53 +352,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    @Composable
-    private fun PhilipsHueIpNotSet(modifier: Modifier, splashViewModel: SplashViewmodel) {
-        SimpleBoxMessage(
-            modifier,
-            stringResource(id = R.string.philips_hue_bridge_ip_not_set),
-            {splashViewModel.beginInitializePhilipsHue(this)},
-            stringResource(id = R.string.initialize_philips_hue)
-        )
-    }
-
-    @Composable
-    private fun PhilipsHueIpNotWorking(
-        modifier: Modifier,
-        splashViewModel: SplashViewmodel,
-        ipStr: String
-    ) {
-        SimpleBoxMessage(
-            modifier,
-            stringResource(id = R.string.philips_hue_ip_not_working, ipStr),
-            {splashViewModel.beginInitializePhilipsHue(this)},
-            stringResource(id = R.string.initialize_philips_hue)
-        )
-    }
-
-    @Composable
-    private fun PhilipsHueTokenNotSet(modifier: Modifier, splashViewModel: SplashViewmodel) {
-        SimpleBoxMessage(
-            modifier,
-            stringResource(id = R.string.philips_hue_token_not_set),
-            {splashViewModel.beginInitializePhilipsHue(this)},
-            stringResource(id = R.string.initialize_philips_hue)
-        )
-    }
-
-    @Composable
-    private fun PhilipsHueTokenNotWorking(
-        modifier: Modifier,
-        splashViewModel: SplashViewmodel,
-        tokenStr: String
-    ) {
-        SimpleBoxMessage(
-            modifier,
-            stringResource(id = R.string.philips_hue_token_not_working, tokenStr),
-            {splashViewModel.beginInitializePhilipsHue(this)},
-            stringResource(id = R.string.initialize_philips_hue)
-        )
-    }
 
     /**
      * @param   msgText        Message to display
@@ -519,10 +447,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen().apply {
             // example: this will check the value every frame and keep showing
             //          the splash screen as long as the total value is true
-            //          (in our case, until isReady == false)
             setKeepOnScreenCondition {
-                (splashViewmodel.iotTestsStatus.value == TestStatus.NOT_TESTED) ||
-                        (splashViewmodel.iotTestsStatus.value == TestStatus.TESTING)
+                splashViewmodel.iotTesting.value
             }
 
             // set the exit animation
@@ -562,7 +488,7 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun ManualBridgeSetup(
-        splashViewModel: SplashViewmodel,
+        viewmodel: SplashViewmodel,
         initBridgeState: BridgeInitStates,
         modifier: Modifier = Modifier,
     ) {
@@ -581,24 +507,31 @@ class MainActivity : ComponentActivity() {
                     stringResource(id = R.string.exit)
                 )
             }
-            BridgeInitStates.STAGE_1 -> {
+            BridgeInitStates.STAGE_1_GET_IP,
+            BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 if (landscape) {
-                    ManualBridgeSetupStep1_Landscape(splashViewmodel)
+                    ManualBridgeSetupStep1_Landscape(viewmodel, initBridgeState)
                 }
                 else {
-                    ManualBridgeSetupStep1_Portrait(splashViewModel)
+                    ManualBridgeSetupStep1_Portrait(viewmodel, initBridgeState)
                 }
-
             }
-            BridgeInitStates.STAGE_2 -> {
+            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> {
+                // todo
             }
-            BridgeInitStates.STAGE_3 -> {
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+                // todo
             }
         }
     }
 
     @Composable
-    private fun ManualBridgeSetupStep1_Landscape(splashViewModel: SplashViewmodel) {
+    private fun ManualBridgeSetupStep1_Landscape(
+        splashViewModel: SplashViewmodel,
+        state: BridgeInitStates
+    ) {
 
         val ctx = LocalContext.current
         var ipText by remember { mutableStateOf("") }
@@ -683,7 +616,7 @@ class MainActivity : ComponentActivity() {
                             keyboardType = KeyboardType.Decimal
                         ),
                         keyboardActions = KeyboardActions(
-                            onNext = { splashViewModel.setPhilipsHueIp(ctx, ipText) }
+                            onNext = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }
                         )
                     )
                     Button(
@@ -691,18 +624,30 @@ class MainActivity : ComponentActivity() {
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 8.dp)
                             .width(120.dp),
-                        onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) } ) {
+                        onClick = { splashViewModel.AddPhilipsHueBridgeIp(ipText) } ) {
                         Text(stringResource(id = R.string.next))
                     }
                 }
             }
 
         }
+
+        // display any error messages
+        if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
+            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
+            splashViewmodel.bridgeAddErrorMsgIsDisplayed()
+        }
+        if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
+            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
+            splashViewmodel.bridgeAddErrorMsgIsDisplayed()
+        }
+
     }
 
     @Composable
     private fun ManualBridgeSetupStep1_Portrait(
-        splashViewModel: SplashViewmodel
+        splashViewModel: SplashViewmodel,
+        state: BridgeInitStates
     ) {
         val ctx = LocalContext.current
         var ipText by remember { mutableStateOf("") }
@@ -837,7 +782,7 @@ class MainActivity : ComponentActivity() {
                                         keyboardType = KeyboardType.Decimal
                                     ),
                                     keyboardActions = KeyboardActions(
-                                        onNext = { splashViewModel.setPhilipsHueIp(ctx, ipText) }
+                                        onNext = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }
                                     )
                                 )
 
@@ -846,7 +791,7 @@ class MainActivity : ComponentActivity() {
                                         .align(Alignment.CenterVertically)
                                         .padding(top = 8.dp, start = 12.dp)
                                         .width(120.dp),
-                                    onClick = { splashViewModel.setPhilipsHueIp(ctx, ipText) }) {
+                                    onClick = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }) {
                                     Text(stringResource(id = R.string.next))
                                 }
                             }
@@ -856,6 +801,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+        }
+
+        // display any error messages
+        if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
+            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
+            splashViewmodel.bridgeAddErrorMsgIsDisplayed()
+        }
+        if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
+            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
+            splashViewmodel.bridgeAddErrorMsgIsDisplayed()
         }
 
     }
@@ -876,14 +831,18 @@ class MainActivity : ComponentActivity() {
     }
 */
     @Preview(
-        name = "ManualBridgeSetupStep1 Portrait (night)",
+        name = "ManualBridgeSetupStep1 Portrait Normal (night)",
         uiMode = Configuration.UI_MODE_NIGHT_YES,
         device = Devices.PIXEL_TABLET
     )
     @Composable
-    private fun ManualBridgeSetupStep1PortriatPreview() {
-        val tmpViewmodel = SplashViewmodel()
-        ManualBridgeSetupStep1_Portrait(splashViewModel = tmpViewmodel)
+    private fun ManualBridgeSetupStep1PortriatPreviewNormal() {
+        val ctx = LocalContext.current
+        val tmpViewmodel = SplashViewmodel(ctx)
+        ManualBridgeSetupStep1_Portrait(
+            splashViewModel = tmpViewmodel,
+            state = BridgeInitStates.STAGE_1_GET_IP
+        )
     }
 
 
