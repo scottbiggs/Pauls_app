@@ -58,6 +58,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -98,7 +100,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: MainViewModel
 
     /** accessor for splash screen viewmodel */
-//    private val splashViewmodel by viewModels<SplashViewmodel>()
     private lateinit var splashViewmodel: SplashViewmodel
 
 
@@ -295,7 +296,17 @@ class MainActivity : ComponentActivity() {
         viewModel: MainViewModel,
         activeBridges: Set<PhilipsHueBridgeInfo>,
     ) {
-        // todo: display title
+        Column(modifier = modifier.fillMaxSize().safeContentPadding()) {
+
+            // display title
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp),
+                fontSize = 32.sp,
+                text = stringResource(R.string.ph_main_title)
+            )
+        }
 
         // todo: show the bridges sections
 

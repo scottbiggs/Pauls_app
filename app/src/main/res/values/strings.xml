@@ -41,6 +41,7 @@
     </string>
 
     <!-- philips hue section -->
+    <string name="ph_main_title">Philips Hue Lights</string>
     <string name="ph_add_button">Add Bridge</string>
     <string name="add_button_content_desc">add bridge</string>
 
