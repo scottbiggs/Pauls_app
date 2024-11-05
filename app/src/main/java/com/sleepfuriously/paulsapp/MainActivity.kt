@@ -19,11 +19,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.safeGesturesPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,8 +34,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -109,7 +118,7 @@ class MainActivity : ComponentActivity() {
 
         // start initializations and splash screen
         splashViewmodel.checkIoT(this)
-//        showSplashScreen()
+        showSplashScreen()
 
         setContent {
             PaulsAppTheme {
@@ -144,7 +153,17 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     else {
-                        ShowMainScreen(viewModel = viewModel)
+//                        var myModifier = Modifier.padding(innerPadding)
+//                        if (navbarInTheWay()) {
+//                            myModifier = Modifier.padding(
+//                                start = innerPadding.calculateStartPadding()
+//                            )
+//                        }
+                        ShowMainScreen(
+                            viewModel = viewModel,
+                            splashViewmodel = splashViewmodel,
+                            bridges = philipsHueBridges
+                        )
                     }
 
 
@@ -248,9 +267,15 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun ShowMainScreen(
         modifier : Modifier = Modifier,
-        viewModel: MainViewModel
+        splashViewmodel: SplashViewmodel,
+        viewModel: MainViewModel,
+        bridges: Set<PhilipsHueBridgeInfo>
     ) {
         Log.d(TAG, "ShowMainScreen()")
+
+        // make sure that we don't draw under any inserts
+        // see https://developer.android.com/develop/ui/compose/layouts/insets#inset-fundamentals
+        modifier.safeContentPadding()
 
         // useful to know!
         val config = LocalConfiguration.current
@@ -258,12 +283,77 @@ class MainActivity : ComponentActivity() {
         val screenWidth = config.screenWidthDp.dp
         val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
-        Column(
-            modifier = modifier.fillMaxSize()
-        ) {
-            Text("todo", fontSize = 30.sp)
-        }
+        // todo: show the four screens
+        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
+    }
 
+
+    @Composable
+    private fun ShowMainScreenPhilipsHue(
+        modifier: Modifier = Modifier,
+        splashViewModel: SplashViewmodel,
+        viewModel: MainViewModel,
+        activeBridges: Set<PhilipsHueBridgeInfo>,
+    ) {
+        // todo: display title
+
+        // todo: show the bridges sections
+
+        // todo: show messages (if any)
+
+        // and finally the fab
+        ShowMainPhilipsHueAddBridgeFab(
+            splashViewModel = splashViewModel,
+            viewModel = viewModel,
+            numActiveBridges = activeBridges.size
+        )
+    }
+
+
+    @Composable
+    private fun ShowMainPhilipsHueAddBridgeFab(
+        modifier: Modifier = Modifier,
+        splashViewModel: SplashViewmodel,
+        viewModel: MainViewModel,
+        numActiveBridges: Int
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .safeGesturesPadding()      // takes the insets into account (nav bars, etc)
+                .padding(60.dp)
+        ) {
+            // Add button to add a new bridge (if there are no active bridges, then
+            // show the extended FAB)
+            if (numActiveBridges == 0) {
+                ExtendedFloatingActionButton(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd),
+                    onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+                    elevation = FloatingActionButtonDefaults.elevation(12.dp),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = stringResource(id = R.string.add_button_content_desc)
+                        )
+                    },
+                    text = { Text(stringResource(id = R.string.ph_add_button)) }
+                )
+            }
+            else {
+                FloatingActionButton(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd),
+                    onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+                    elevation = FloatingActionButtonDefaults.elevation(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(id = R.string.add_button_content_desc)
+                    )
+                }
+            }
+        }
     }
 
     /**

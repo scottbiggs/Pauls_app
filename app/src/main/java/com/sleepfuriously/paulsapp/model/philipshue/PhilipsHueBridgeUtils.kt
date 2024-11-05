@@ -390,10 +390,10 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
     /**
      * Returns a Set of all bridges that are currently active.
      */
-    fun getAllActiveBridges() : Set<PhilipsHueBridgeInfo> {
+    fun getAllActiveBridges(bridges: Set<PhilipsHueBridgeInfo> = philipsHueBridges) : Set<PhilipsHueBridgeInfo> {
         val activeBridges = mutableSetOf<PhilipsHueBridgeInfo>()
 
-        philipsHueBridges.forEach { bridge ->
+        bridges.forEach { bridge ->
             if (bridge.active) {
                 activeBridges.add(bridge)
             }
