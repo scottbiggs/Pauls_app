@@ -11,19 +11,24 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.draggable2D
+import androidx.compose.foundation.gestures.rememberDraggable2DState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeGesturesPadding
@@ -32,6 +37,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -48,23 +54,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
@@ -72,6 +81,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
+import kotlin.math.roundToInt
 
 
 /**
@@ -109,6 +119,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Draw under system bars
         enableEdgeToEdge()
 
         viewModel  = MainViewModel()
@@ -126,23 +138,14 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    val ctx = LocalContext.current
-
                     // create composables of flows in the splashviewmodel
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
                     val iotTesting by splashViewmodel.iotTesting.collectAsStateWithLifecycle()
-//                    val iotTestStatus by splashViewmodel.iotTestsStatus.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
-
-                    /** used while initializing a specific bridge */
-                    val initializingBridgeState by splashViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
                     val philipsHueBridges by splashViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
 
-                    //--------------
-                    //  Philips Hue displays
-                    //
 
                     if (iotTesting) {
                         TestSetupScreen(
@@ -154,102 +157,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     else {
-//                        var myModifier = Modifier.padding(innerPadding)
-//                        if (navbarInTheWay()) {
-//                            myModifier = Modifier.padding(
-//                                start = innerPadding.calculateStartPadding()
-//                            )
-//                        }
-                        ShowMainScreen(
-                            viewModel = viewModel,
+                        FourPanes(
+                            0.3f,
                             splashViewmodel = splashViewmodel,
+                            viewModel = viewModel,
                             bridges = philipsHueBridges
                         )
                     }
 
-
-/*  this is no longer needed
-
-                    when (iotTestStatus) {
-                        TestStatus.TESTING,
-                        TestStatus.NOT_TESTED -> {
-                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
-                            TestSetupScreen(
-                                modifier = Modifier.padding(innerPadding),
-                                viewModel = viewModel,
-                                wifiWorking = wifiWorking ?: false,
-                                philipsHueTest = philipsHueTestStatus,
-                                philipsHueBridges = philipsHueBridges,
-                            )
-                        }
-
-                        TestStatus.TEST_GOOD -> {
-                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
-                            ShowMainScreen(
-                                modifier = Modifier.padding(innerPadding),
-                                viewModel
-                            )
-                        }
-
-                        TestStatus.TEST_BAD -> {
-                            Log.d(TAG, "iotTestStatus is ${iotTestStatus.name}")
-                            if (initializingBridgeState == BridgeInitStates.NOT_INITIALIZING) {
-                                TestBad(
-                                    splashViewmodel = splashViewmodel,
-                                    wifiWorking = wifiWorking ?: false
-                                )
-                            }
-                            else {
-                                ManualBridgeSetup(
-                                    splashViewmodel,
-                                    initializingBridgeState
-                                )
-                            }
-                        }
-
-                    }
-*/
-
-                    // for testing setBridgeToken
-//                    val token = splashViewmodel.bridgeToken.collectAsState()
-//
-//                    Column(modifier = Modifier.padding(innerPadding)) {
-//                        Text("token = ${token.value}")
-//                        Button(onClick = {
-//                            splashViewmodel.getBridgeTokenTest(ctx)
-//                        }) {
-//                            Text("get token")
-//                        }
-//
-//                        Spacer(modifier = Modifier.height(30.dp))
-//
-//                        Button(onClick = {
-//                            splashViewmodel.setBridgeTokenTest(ctx, "foo forever!")
-//                        }) {
-//                            Text("set token")
-//                        }
-//                    }
-
-                    // for testing isWifiWorking()
-//                    val wifiState = splashViewmodel.wifiWorking.collectAsState()
-//                    val txt = when (wifiState.value) {
-//                        null -> "not tested yet"
-//                        true -> "yes"
-//                        false -> "no"
-//                    }
-//
-//                    Column(modifier = Modifier.padding(innerPadding)) {
-//
-//                        Text(txt)
-//
-//                        Button(onClick = {
-//                            splashViewmodel.isWifiWorking(ctx)
-//                        }) {
-//                            Text("is wifi working?")
-//                        }
-//
-//                    }
-                    // end testing
                 }
             }
         }
@@ -262,53 +177,203 @@ class MainActivity : ComponentActivity() {
     //----------------------------
 
     /**
-     * The main screen that the user interacts with.  All the big
-     * stuff goes here.
+     * The primary display.  Breaks the screen into four arrange-able panes.
+     *
+     * @param   minPercent      Tells the most that a pane can shrink.  For example
+     *                          0.1 means that the pane can get to 10% its original
+     *                          size.
      */
+    @OptIn(ExperimentalFoundationApi::class)
     @Composable
-    fun ShowMainScreen(
-        modifier : Modifier = Modifier,
+    private fun FourPanes(
+        minPercent : Float,
         splashViewmodel: SplashViewmodel,
         viewModel: MainViewModel,
+        modifier : Modifier = Modifier,
         bridges: Set<PhilipsHueBridgeInfo>
     ) {
-        Log.d(TAG, "ShowMainScreen()")
+        //-------------
+        // these are the offsets from the center of the drawing area
+        //
+        var offsetPixelsX by remember { mutableFloatStateOf(0f) }
+        var offsetPixelsY by remember { mutableFloatStateOf(0f) }
 
-        // make sure that we don't draw under any inserts
-        // see https://developer.android.com/develop/ui/compose/layouts/insets#inset-fundamentals
-        modifier.safeContentPadding()
-
-        // useful to know!
-        val config = LocalConfiguration.current
-        val screenHeight = config.screenHeightDp.dp
-        val screenWidth = config.screenWidthDp.dp
-        val landscape = config.orientation == ORIENTATION_LANDSCAPE
-
-        // todo: show the four screens
-        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
-    }
+        //-------------
+        // weights
+        //
+        var leftWeight by remember { mutableFloatStateOf(1f) }
+        var rightWeight by remember { mutableFloatStateOf(1f) }
+        var topWeight by remember { mutableFloatStateOf(1f) }
+        var bottomWeight by remember { mutableFloatStateOf(1f) }
 
 
+
+        BoxWithConstraints(
+            modifier = modifier
+                .fillMaxSize()
+                .background(color = Color.DarkGray)
+//                .safeGesturesPadding()     // takes the insets into account (nav bars, etc)
+//                .safeContentPadding()      // takes the insets into account (nav bars, etc)
+        ) {
+            // Get the pix and dp sizes of the screen.
+            // Don't know if I need to do by remember or simply an assignment.
+            val screenWidthDp by remember { mutableStateOf(maxWidth) }
+            val screenHeightDp by remember { mutableStateOf(maxHeight) }
+
+            Log.d(TAG, "screen dp = ($screenWidthDp, $screenHeightDp)")
+
+            val screenWidthPx = constraints.maxWidth
+            val screenHeightPx = constraints.maxHeight
+
+            Log.d(TAG, "screen px = ($screenWidthPx, $screenHeightPx)")
+
+            // set the min and max values of the offset
+            val minScreenWidthPx by remember { mutableFloatStateOf(screenWidthPx * -(1f - minPercent) / 2f) }
+            val maxScreenWidthPx by remember { mutableFloatStateOf(screenWidthPx * (1f - minPercent) / 2f) }
+            val minScreenHeightPx by remember { mutableFloatStateOf(screenHeightPx * -(1f - minPercent) / 2f) }
+            val maxScreenHeightPx by remember { mutableFloatStateOf(screenHeightPx * (1f - minPercent) / 2f) }
+
+            Log.d(TAG, "$minScreenWidthPx < screenWidthPx < $maxScreenWidthPx")
+
+            // set the weights
+            leftWeight = 0.5f + (offsetPixelsX / screenWidthPx)
+            rightWeight = 1f - leftWeight
+
+            topWeight = 0.5f + (offsetPixelsY / screenHeightPx)
+            bottomWeight = 1f - topWeight
+
+            // create the stroke for the border around each of the panes
+            val niceBorderModifier = Modifier
+                .fillMaxSize()
+                .padding(2.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.primary)),
+                    RoundedCornerShape(12.dp)
+                )
+
+            //
+            // Now to draw the four panes.  This is done by a column
+            // of two rows.
+            //
+            Column {
+                Row(modifier = Modifier
+                    .weight(topWeight)
+                ) {
+                    Box(modifier = niceBorderModifier
+                        .weight(leftWeight)
+                    ) {
+                        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
+                    }
+                    Box(modifier = niceBorderModifier
+                        .weight(rightWeight)
+                    ) {
+                        Text("top right", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                    }
+                }
+
+                Row(modifier = Modifier
+                    .weight(bottomWeight)
+                ) {
+                    Box(modifier = niceBorderModifier
+                        .weight(leftWeight)
+                    ) {
+                        Text("bottom left", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                    }
+                    Box(modifier = niceBorderModifier
+                        .weight(rightWeight)
+                    ) {
+                        Text("bottom right", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                    }
+                }
+
+            }
+
+            //---------------
+            // the cursor
+            //
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .height(70.dp)
+                        .width(70.dp)
+                        .offset {
+                            IntOffset(
+                                offsetPixelsX.roundToInt(),
+                                offsetPixelsY.roundToInt()
+                            )
+                        }
+                        .draggable2D(
+                            state = rememberDraggable2DState { delta ->
+
+                                // all this math is to keep the stuff within the boundaries
+                                val tmpOffsetX = offsetPixelsX + delta.x
+                                offsetPixelsX = if (tmpOffsetX < minScreenWidthPx) {
+                                    minScreenWidthPx
+                                } else if (tmpOffsetX > maxScreenWidthPx) {
+                                    maxScreenWidthPx
+                                } else {
+                                    tmpOffsetX
+                                }
+
+                                val tmpOffsetY = offsetPixelsY + delta.y
+                                offsetPixelsY = if (tmpOffsetY < minScreenHeightPx) {
+                                    minScreenHeightPx
+                                } else if (tmpOffsetY > maxScreenHeightPx) {
+                                    maxScreenHeightPx
+                                } else {
+                                    tmpOffsetY
+                                }
+
+                            }
+                        ),
+
+                    painter = painterResource(id = R.drawable.four_dots),
+                    contentDescription = stringResource(id = R.string.cross_handle_content_desc),
+//                alpha = 0f      // makes the image invisible!
+                )
+            }
+
+        }
+
+    } // FourPanes()
+
+
+    /**
+     * Displays the philips hue stuff.
+     *
+     * @param   activeBridges       The bridges that are currently active in the house
+     *                              that the app is running.
+     */
     @Composable
     private fun ShowMainScreenPhilipsHue(
         modifier: Modifier = Modifier,
         splashViewModel: SplashViewmodel,
         viewModel: MainViewModel,
-        activeBridges: Set<PhilipsHueBridgeInfo>,
+        bridges: Set<PhilipsHueBridgeInfo>,
     ) {
-        Column(modifier = modifier.fillMaxSize().safeContentPadding()) {
+        Column(modifier = modifier
+            .fillMaxSize()
+            .safeContentPadding()
+        ) {
 
             // display title
             Text(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(top = 8.dp),
+                    .padding(top = 4.dp),
                 fontSize = 32.sp,
                 text = stringResource(R.string.ph_main_title)
             )
+
+            // todo: show the bridges sections
+
         }
 
-        // todo: show the bridges sections
 
         // todo: show messages (if any)
 
@@ -316,7 +381,7 @@ class MainActivity : ComponentActivity() {
         ShowMainPhilipsHueAddBridgeFab(
             splashViewModel = splashViewModel,
             viewModel = viewModel,
-            numActiveBridges = activeBridges.size
+            numActiveBridges = bridges.size     // fixme: this counts ALL bridges, not just active ones!
         )
     }
 
@@ -332,7 +397,7 @@ class MainActivity : ComponentActivity() {
             modifier = modifier
                 .fillMaxSize()
                 .safeGesturesPadding()      // takes the insets into account (nav bars, etc)
-                .padding(60.dp)
+                .padding(24.dp)
         ) {
             // Add button to add a new bridge (if there are no active bridges, then
             // show the extended FAB)

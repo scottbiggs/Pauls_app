@@ -45,6 +45,9 @@
     <string name="ph_add_button">Add Bridge</string>
     <string name="add_button_content_desc">add bridge</string>
 
+    <!-- main screen -->
+    <string name="cross_handle_content_desc">drag to adjust screen</string>
+
     <!-- basics -->
     <string name="yes">yes</string>
     <string name="no">no</string>
