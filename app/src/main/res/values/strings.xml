@@ -41,7 +41,7 @@
     </string>
 
     <!-- philips hue section -->
-    <string name="ph_main_title">Philips Hue Lights</string>
+    <string name="ph_bridge_name">bridge: %1s</string>
     <string name="ph_add_button">Add Bridge</string>
     <string name="add_button_content_desc">add bridge</string>
     <string name="lightbulb_content_desc">dimming light bulb</string>
@@ -50,6 +50,10 @@
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
+    <string name="ph_main_title">Philips Hue Lights</string>
+    <string name="nest_main_title">Nest</string>
+    <string name="pool_main_title">Pool</string>
+    <string name="security_main_title">Security</string>
 
     <!-- basics -->
     <string name="yes">yes</string>

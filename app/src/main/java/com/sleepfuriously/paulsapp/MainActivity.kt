@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.safeGesturesPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,7 +50,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -67,7 +65,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -91,17 +91,11 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
-import com.sleepfuriously.paulsapp.ui.theme.almostBlackLighter
-import com.sleepfuriously.paulsapp.ui.theme.almostBlackMuchLighter
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
-import com.sleepfuriously.paulsapp.ui.theme.darkBlueLight
-import com.sleepfuriously.paulsapp.ui.theme.darkBlueMain
-import com.sleepfuriously.paulsapp.ui.theme.darkCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.lightBlueLight
-import com.sleepfuriously.paulsapp.ui.theme.lightBlueMain
+import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
+import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 import kotlin.math.roundToInt
 
 
@@ -235,6 +229,7 @@ class MainActivity : ComponentActivity() {
                 .background(color = almostBlack)
 //                .safeGesturesPadding()     // takes the insets into account (nav bars, etc)
 //                .safeContentPadding()      // takes the insets into account (nav bars, etc)
+                .safeDrawingPadding()
         ) {
             // Get the pix and dp sizes of the screen.
             // Don't know if I need to do by remember or simply an assignment.
@@ -284,12 +279,32 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = niceBorderModifier
                         .weight(leftWeight)
                     ) {
-                        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
+                        Column {
+                            Text(
+                                stringResource(id = R.string.ph_main_title),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+                                fontSize = 32.sp,
+                                color = Color.White
+                            )
+                            ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
+                        }
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
                     ) {
-                        Text("top right", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                        Column {
+                            Text(
+                                stringResource(id = R.string.nest_main_title),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+                                fontSize = 32.sp,
+                                color = Color.White
+                            )
+                            // todo: show nest
+                        }
                     }
                 }
 
@@ -299,12 +314,32 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = niceBorderModifier
                         .weight(leftWeight)
                     ) {
-                        Text("bottom left", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                        Column {
+                            Text(
+                                stringResource(id = R.string.pool_main_title),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+                                fontSize = 32.sp,
+                                color = Color.White
+                            )
+                            // todo: show pool
+                        }
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
                     ) {
-                        Text("bottom right", modifier = Modifier.align(Alignment.Center), color = Color.White)
+                        Column {
+                            Text(
+                                stringResource(id = R.string.security_main_title),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+                                fontSize = 32.sp,
+                                color = Color.White
+                            )
+                            // todo: show security
+                        }
                     }
                 }
 
@@ -415,7 +450,8 @@ class MainActivity : ComponentActivity() {
             PhilipsHueBridgeInfo("1", rooms = testRooms),
             PhilipsHueBridgeInfo("2", active = true),
             PhilipsHueBridgeInfo("3", active = true, rooms = testRooms),
-            PhilipsHueBridgeInfo("4")
+            PhilipsHueBridgeInfo("4"),
+            PhilipsHueBridgeInfo("245", active = true, rooms = testRooms),
         )
 
         val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
@@ -441,13 +477,23 @@ class MainActivity : ComponentActivity() {
                     // only draw bridges that are active
                     if (bridge.active) {
                         item( span = { GridItemSpan(this.maxLineSpan) } ) {
-                            HorizontalDivider(
+                            // a gradient to separate the bridges
+                            Box(
                                 modifier = Modifier
-                                    .padding(top = 12.dp),
-                                color = darkCoolGray,
-                                thickness = 5.dp
+                                    .fillMaxWidth()
+                                    .padding(top = 32.dp)
+                                    .height(28.dp)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                coolGray,
+                                                Color(red = 0, green = 0, blue = 0, alpha = 0)
+                                            )
+                                        )
+                                    )
                             )
                         }
+
 
                         // The first item (which has the name of the bridge)
                         // will take the entire row of a grid.
@@ -458,9 +504,9 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
-                                text = "bridge: ${bridge.id}",
+                                text = stringResource(id = R.string.ph_bridge_name, bridge.id),
                                 fontSize = 24.sp,
-                                color = veryLightCoolGray
+                                color = yellowVeryLight
                             )
                         }
 
@@ -470,7 +516,7 @@ class MainActivity : ComponentActivity() {
                                 Text(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                                        .padding(start = 8.dp, end = 8.dp),
                                     text = noRoomsFound,
                                     fontSize = 18.sp,
                                     textAlign = TextAlign.Center
@@ -531,6 +577,7 @@ class MainActivity : ComponentActivity() {
 
         var sliderPosition by remember { mutableFloatStateOf(illumination) }
         var lightImage = getProperLightImage(sliderPosition)
+        var lightColor = getLightColor(sliderPosition)
 
         Column(modifier = Modifier
             .fillMaxSize()
@@ -555,6 +602,7 @@ class MainActivity : ComponentActivity() {
                     .align(Alignment.End),
                 contentScale = ContentScale.Fit,
                 painter = painterResource(id = lightImage),
+                colorFilter = ColorFilter.tint(lightColor),
                 contentDescription = stringResource(id = R.string.lightbulb_content_desc)
             )
 
@@ -563,6 +611,7 @@ class MainActivity : ComponentActivity() {
                 onValueChange = {
                     sliderPosition = it
                     lightImage = getProperLightImage(sliderPosition)
+                    lightColor = getLightColor(sliderPosition)
                     roomChangedFunction.invoke(sliderPosition)
                 },
                 modifier = Modifier
@@ -595,6 +644,23 @@ class MainActivity : ComponentActivity() {
                 R.drawable.bare_bulb_white_01
             }
         return lightImage
+    }
+
+    private fun getLightColor(illumination: Float) : Color {
+        val color =
+            if (illumination < 0.25f) {
+                coolGray
+            }
+            else if (illumination < 0.5f) {
+                lightCoolGray
+            }
+            else if (illumination < 0.75f) {
+                veryLightCoolGray
+            }
+            else {
+                Color.White
+            }
+        return color
     }
 
     @Composable
