@@ -90,7 +90,17 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
+import com.sleepfuriously.paulsapp.ui.theme.almostBlack
+import com.sleepfuriously.paulsapp.ui.theme.almostBlackLighter
+import com.sleepfuriously.paulsapp.ui.theme.almostBlackMuchLighter
+import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.darkBlueLight
+import com.sleepfuriously.paulsapp.ui.theme.darkBlueMain
+import com.sleepfuriously.paulsapp.ui.theme.darkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightBlueLight
+import com.sleepfuriously.paulsapp.ui.theme.lightBlueMain
+import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
+import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import kotlin.math.roundToInt
 
@@ -222,7 +232,7 @@ class MainActivity : ComponentActivity() {
         BoxWithConstraints(
             modifier = modifier
                 .fillMaxSize()
-                .background(color = Color.DarkGray)
+                .background(color = almostBlack)
 //                .safeGesturesPadding()     // takes the insets into account (nav bars, etc)
 //                .safeContentPadding()      // takes the insets into account (nav bars, etc)
         ) {
@@ -372,19 +382,29 @@ class MainActivity : ComponentActivity() {
 
         // setup tests
         val testRooms = mutableSetOf(
-            PhilipsHueRoomInfo("1", mutableSetOf(
+            PhilipsHueRoomInfo("baby's room", mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
 
-            PhilipsHueRoomInfo("2", mutableSetOf(
+            PhilipsHueRoomInfo("2 times 3 time 4", mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
 
-            PhilipsHueRoomInfo("3", mutableSetOf(
+            PhilipsHueRoomInfo("living room", mutableSetOf(
+                PhilipsHueLightInfo("1", name = "nightlight"),
+                PhilipsHueLightInfo("2", name = "desk light"),
+                PhilipsHueLightInfo("3", name = "backyard light"),
+            )),
+            PhilipsHueRoomInfo("bedroom", mutableSetOf(
+                PhilipsHueLightInfo("1", name = "nightlight"),
+                PhilipsHueLightInfo("2", name = "desk light"),
+                PhilipsHueLightInfo("3", name = "backyard light"),
+            )),
+            PhilipsHueRoomInfo("kitchen", mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
@@ -398,6 +418,8 @@ class MainActivity : ComponentActivity() {
             PhilipsHueBridgeInfo("4")
         )
 
+        val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
+
 
         Column(modifier = modifier
             .fillMaxSize()
@@ -405,7 +427,9 @@ class MainActivity : ComponentActivity() {
         ) {
 
             LazyVerticalGrid(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
                 columns = GridCells.Adaptive(200.dp),
                 verticalArrangement = Arrangement.Top,
                 horizontalArrangement = Arrangement.Start
@@ -413,35 +437,59 @@ class MainActivity : ComponentActivity() {
                 // Grouping the grids into bridges.  The first row will be the name
                 // of the bridge.
                 testBridges.forEach { bridge ->
-                    item( span = { GridItemSpan(this.maxLineSpan) } ) {
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .padding(horizontal = 50.dp),
-                            color = lightBlueLight,
-                            thickness = 2.dp
-                        )
-                    }
-                    item(
-                        span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
-                    ) {
-                        Text(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                            text = "bridge: ${bridge.id}",
-                            fontSize = 24.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
 
-                    bridge.rooms.forEach { room ->
-                        item {
-                            DisplayPhilipsHueRoom(
-                                roomName = room.id,
-                                illumination = room.getAverageIllumination().toFloat() / MAX_BRIGHTNESS.toFloat()
-                            ) {
-                                // todo call the illumination change in the viewmodel
-                                //  and make it display (var by remember in a slider?)
+                    // only draw bridges that are active
+                    if (bridge.active) {
+                        item( span = { GridItemSpan(this.maxLineSpan) } ) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .padding(top = 12.dp),
+                                color = darkCoolGray,
+                                thickness = 5.dp
+                            )
+                        }
+
+                        // The first item (which has the name of the bridge)
+                        // will take the entire row of a grid.
+                        item(
+                            span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+                        ) {
+                            Text(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
+                                text = "bridge: ${bridge.id}",
+                                fontSize = 24.sp,
+                                color = veryLightCoolGray
+                            )
+                        }
+
+                        if (bridge.rooms.size == 0) {
+                            // no rooms to display
+                            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                                Text(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                                    text = noRoomsFound,
+                                    fontSize = 18.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        else {
+                            // yes, there are rooms to display
+                            bridge.rooms.forEach { room ->
+                                item {
+                                    DisplayPhilipsHueRoom(
+                                        roomName = room.id,
+                                        illumination = room.getAverageIllumination()
+                                            .toFloat() / MAX_BRIGHTNESS.toFloat()
+                                    ) {
+                                        // todo call the illumination change in the viewmodel
+                                        //  and make it display (var by remember in a slider?)
+                                    }
+                                }
                             }
                         }
                     }
@@ -482,10 +530,11 @@ class MainActivity : ComponentActivity() {
     ) {
 
         var sliderPosition by remember { mutableFloatStateOf(illumination) }
+        var lightImage = getProperLightImage(sliderPosition)
 
         Column(modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(10.dp))
             .border(
                 BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
@@ -493,30 +542,60 @@ class MainActivity : ComponentActivity() {
             )
 
         ) {
-            Row {
-                Text(
-                    text = roomName,
-                    modifier = Modifier
-                        .padding(vertical = 4.dp, horizontal = 8.dp)
-                )
-                Image(
-                    contentScale = ContentScale.Fit,
-                    painter = painterResource(id = R.drawable.bare_bulb_white_01),
-                    contentDescription = stringResource(id = R.string.lightbulb_content_desc)
-                )
-            }
+            Text(
+                text = roomName,
+                modifier = Modifier
+                    .padding(vertical = 4.dp, horizontal = 8.dp)
+            )
+
+            Image(
+                modifier = Modifier
+                    .width(140.dp)
+//                    .padding(end = 10.dp)
+                    .align(Alignment.End),
+                contentScale = ContentScale.Fit,
+                painter = painterResource(id = lightImage),
+                contentDescription = stringResource(id = R.string.lightbulb_content_desc)
+            )
 
             Slider(
                 value = sliderPosition,
                 onValueChange = {
                     sliderPosition = it
+                    lightImage = getProperLightImage(sliderPosition)
                     roomChangedFunction.invoke(sliderPosition)
-                }
+                },
+                modifier = Modifier
+                    .padding(vertical = 4.dp, horizontal = 18.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(veryDarkCoolGray)
             )
-            Text(text = "brightness = $sliderPosition")
+            Text(
+                text = stringResource(id = R.string.brightness, sliderPosition),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
         }
     }
 
+    private fun getProperLightImage(illumination: Float) : Int {
+        val lightImage =
+            if (illumination < 0.25f) {
+                R.drawable.bare_bulb_white_04
+            }
+            else if (illumination < 0.5f) {
+                R.drawable.bare_bulb_white_03
+            }
+            else if (illumination < 0.75f) {
+                R.drawable.bare_bulb_white_02
+            }
+            else {
+                R.drawable.bare_bulb_white_01
+            }
+        return lightImage
+    }
 
     @Composable
     private fun ShowMainPhilipsHueAddBridgeFab(
@@ -528,8 +607,7 @@ class MainActivity : ComponentActivity() {
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .safeGesturesPadding()      // takes the insets into account (nav bars, etc)
-                .padding(24.dp)
+                .padding(38.dp)
         ) {
             // Add button to add a new bridge (if there are no active bridges, then
             // show the extended FAB)
@@ -538,7 +616,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .align(Alignment.BottomEnd),
                     onClick = { splashViewModel.beginAddPhilipsHueBridge() },
-                    elevation = FloatingActionButtonDefaults.elevation(12.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
                     icon = {
                         Icon(
                             imageVector = Icons.Filled.Add,
@@ -553,7 +631,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .align(Alignment.BottomEnd),
                     onClick = { splashViewModel.beginAddPhilipsHueBridge() },
-                    elevation = FloatingActionButtonDefaults.elevation(12.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Add,

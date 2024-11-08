@@ -95,7 +95,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
 
             // fixme
-            delay(1000)
+//            delay(1000)
 
             //------------
             // 1.  check wifi
@@ -110,7 +110,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
             }
 
             // fixme
-            delay(1000)
+//            delay(1000)
 
             //------------
             // 2.  check philips hue system
@@ -122,7 +122,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
             //------------
             // 3.  todo: test other IoT devices
             //
-            delay(2000)
+//            delay(2000)
 
         }.invokeOnCompletion {
             // Note: this code will be called when the above coroutine exits,
