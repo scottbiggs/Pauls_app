@@ -27,7 +27,7 @@
      showgrid="false"
      showguides="true"
      inkscape:zoom="2.4495902"
-     inkscape:cx="103.69081"
+     inkscape:cx="103.28258"
      inkscape:cy="91.443867"
      inkscape:window-width="1440"
      inkscape:window-height="847"
@@ -127,5 +127,11 @@
          d="m 1996.64,1687.72 h -218.6134 c -12.3333,0 -22.3333,-10 -22.3333,-22.3333 v 0 c 0,-12.3333 10,-22.3333 22.3333,-22.3333 H 1996.64 c 12.3333,0 22.3333,10 22.3333,22.3333 v 0 c 0,12.3333 -10,22.3333 -22.3333,22.3333"
          style="fill:#fefefe;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.133333" />
     </g>
+    <circle
+       style="fill:#fefefe;stroke-width:6.096;stroke-linecap:round"
+       id="path1"
+       cx="1484.6133"
+       cy="511.14673"
+       r="20.411577" />
   </g>
 </svg>

@@ -466,7 +466,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 4.dp),
-                columns = GridCells.Adaptive(200.dp),
+                columns = GridCells.Adaptive(MIN_PH_ROOM_WIDTH.dp),
                 verticalArrangement = Arrangement.Top,
                 horizontalArrangement = Arrangement.Start
             ) {
@@ -1260,61 +1260,19 @@ class MainActivity : ComponentActivity() {
     //----------------------------
     //  previews
     //----------------------------
-/*
-    @Preview(
-        name = "ManualBridgeSetupStep1 Landscape (night)",
-        uiMode = Configuration.UI_MODE_NIGHT_YES,
-        device = Devices.PIXEL_TABLET
-        )
+
+    @Preview (uiMode = Configuration.UI_MODE_NIGHT_YES)
     @Composable
-    private fun ManualBridgeSetupStep1LandscapePreview() {
-        val tmpViewmodel = SplashViewmodel()
-        ManualBridgeSetupStep1_Landscape(splashViewModel = tmpViewmodel)
-    }
-*/
-    @Preview(
-        name = "ManualBridgeSetupStep1 Portrait Normal (night)",
-        uiMode = Configuration.UI_MODE_NIGHT_YES,
-        device = Devices.PIXEL_TABLET
-    )
-    @Composable
-    private fun ManualBridgeSetupStep1PortriatPreviewNormal() {
-        val ctx = LocalContext.current
-        val tmpViewmodel = SplashViewmodel(ctx)
-        ManualBridgeSetupStep1_Portrait(
-            splashViewModel = tmpViewmodel,
-            state = BridgeInitStates.STAGE_1_GET_IP
-        )
-    }
-
-
-    /*
-        @Preview(name = "init part 1", uiMode = Configuration.UI_MODE_NIGHT_YES)
-        @Composable
-        private fun DisplayManualInitPart1Preview() {
-            PhilipsHueBridgeIpManualInit()
-        }
-
-        @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
-        @Composable
-        private fun SplashScreenContentsPreview() {
-            SplashScreenContents()
-        }
-    */
-    /*
-        @Preview(
-            name = "tablet",
-            device = "spec:shape=Normal,width=1240,height=640,unit=dp,dpi=480",
-            showSystemUi = true,
-            showBackground = true
-        )
-        @Composable
-        private fun ShowMainScreenPreview() {
-            PaulsAppTheme {
-                ShowMainScreen(viewModel = viewModel)
+    private fun DisplayPhilipsHueRoomPreview() {
+        Box(
+            modifier = Modifier
+                .width(MIN_PH_ROOM_WIDTH.dp)
+                .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
+        ) {
+            DisplayPhilipsHueRoom(roomName = "bedroom", illumination = 0.5f) {
             }
         }
-    */
+    }
 
 }
 
@@ -1326,3 +1284,6 @@ class MainActivity : ComponentActivity() {
 //----------------------------
 
 private const val TAG = "MainActivity"
+
+/** The grid of rooms in the PH section, each room must be at least this wide */
+private const val MIN_PH_ROOM_WIDTH = 200

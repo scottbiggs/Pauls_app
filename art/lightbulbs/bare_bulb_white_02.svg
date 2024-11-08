@@ -103,5 +103,11 @@
          d="m 1996.64,1687.72 h -218.6134 c -12.3333,0 -22.3333,-10 -22.3333,-22.3333 v 0 c 0,-12.3333 10,-22.3333 22.3333,-22.3333 H 1996.64 c 12.3333,0 22.3333,10 22.3333,22.3333 v 0 c 0,12.3333 -10,22.3333 -22.3333,22.3333"
          style="fill:#fefefe;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.133333" />
     </g>
+    <circle
+       style="fill:#fefefe;stroke-width:3.59664;stroke-linecap:round"
+       id="path1"
+       cx="1484.6133"
+       cy="523.14673"
+       r="12.042831" />
   </g>
 </svg>
