@@ -36,6 +36,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -47,10 +51,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -79,8 +85,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
+import com.sleepfuriously.paulsapp.ui.theme.lightBlueLight
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import kotlin.math.roundToInt
 
 
@@ -356,21 +367,87 @@ class MainActivity : ComponentActivity() {
         viewModel: MainViewModel,
         bridges: Set<PhilipsHueBridgeInfo>,
     ) {
+
+        val ctx = LocalContext.current
+
+        // setup tests
+        val testRooms = mutableSetOf(
+            PhilipsHueRoomInfo("1", mutableSetOf(
+                PhilipsHueLightInfo("1", name = "nightlight"),
+                PhilipsHueLightInfo("2", name = "desk light"),
+                PhilipsHueLightInfo("3", name = "backyard light"),
+            )),
+
+            PhilipsHueRoomInfo("2", mutableSetOf(
+                PhilipsHueLightInfo("1", name = "nightlight"),
+                PhilipsHueLightInfo("2", name = "desk light"),
+                PhilipsHueLightInfo("3", name = "backyard light"),
+            )),
+
+            PhilipsHueRoomInfo("3", mutableSetOf(
+                PhilipsHueLightInfo("1", name = "nightlight"),
+                PhilipsHueLightInfo("2", name = "desk light"),
+                PhilipsHueLightInfo("3", name = "backyard light"),
+            )),
+        )
+
+        val testBridges = setOf(
+            PhilipsHueBridgeInfo("1", rooms = testRooms),
+            PhilipsHueBridgeInfo("2", active = true),
+            PhilipsHueBridgeInfo("3", active = true, rooms = testRooms),
+            PhilipsHueBridgeInfo("4")
+        )
+
+
         Column(modifier = modifier
             .fillMaxSize()
             .safeContentPadding()
         ) {
 
-            // display title
-            Text(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 4.dp),
-                fontSize = 32.sp,
-                text = stringResource(R.string.ph_main_title)
-            )
+            LazyVerticalGrid(
+                modifier = Modifier.fillMaxSize(),
+                columns = GridCells.Adaptive(200.dp),
+                verticalArrangement = Arrangement.Top,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                // Grouping the grids into bridges.  The first row will be the name
+                // of the bridge.
+                testBridges.forEach { bridge ->
+                    item( span = { GridItemSpan(this.maxLineSpan) } ) {
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .padding(horizontal = 50.dp),
+                            color = lightBlueLight,
+                            thickness = 2.dp
+                        )
+                    }
+                    item(
+                        span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+                    ) {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                            text = "bridge: ${bridge.id}",
+                            fontSize = 24.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
 
-            // todo: show the bridges sections
+                    bridge.rooms.forEach { room ->
+                        item {
+                            DisplayPhilipsHueRoom(
+                                roomName = room.id,
+                                illumination = room.getAverageIllumination().toFloat() / MAX_BRIGHTNESS.toFloat()
+                            ) {
+                                // todo call the illumination change in the viewmodel
+                                //  and make it display (var by remember in a slider?)
+                            }
+                        }
+                    }
+
+                }
+            }
 
         }
 
@@ -383,6 +460,61 @@ class MainActivity : ComponentActivity() {
             viewModel = viewModel,
             numActiveBridges = bridges.size     // fixme: this counts ALL bridges, not just active ones!
         )
+    }
+
+    /**
+     * UI for a single room.
+     *
+     * @param   roomName        The name to display for this room
+     *
+     * @param   illumination    How much is this room currently illumniated.
+     *                          0 = off all the way to 1 = full on.
+     *
+     * @param   roomChangedFunction     Function to call when the illumination is
+     *                                  changed by the user.  It takes the new
+     *                                  illumination value.
+     */
+    @Composable
+    private fun DisplayPhilipsHueRoom(
+        roomName: String,
+        illumination: Float,
+        roomChangedFunction: (newIllumination: Float) -> Unit
+    ) {
+
+        var sliderPosition by remember { mutableFloatStateOf(illumination) }
+
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+                RoundedCornerShape(12.dp)
+            )
+
+        ) {
+            Row {
+                Text(
+                    text = roomName,
+                    modifier = Modifier
+                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                )
+                Image(
+                    contentScale = ContentScale.Fit,
+                    painter = painterResource(id = R.drawable.bare_bulb_white_01),
+                    contentDescription = stringResource(id = R.string.lightbulb_content_desc)
+                )
+            }
+
+            Slider(
+                value = sliderPosition,
+                onValueChange = {
+                    sliderPosition = it
+                    roomChangedFunction.invoke(sliderPosition)
+                }
+            )
+            Text(text = "brightness = $sliderPosition")
+        }
     }
 
 

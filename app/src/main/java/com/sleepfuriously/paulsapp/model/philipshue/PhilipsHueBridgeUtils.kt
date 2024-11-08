@@ -525,44 +525,6 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
 
 
 //-----------------------------------
-//  classes & enums
-//-----------------------------------
-
-/**
- * Holds info about a philips hue bridge.
- */
-data class PhilipsHueBridgeInfo(
-    /** unique identifier for this bridge */
-    val id : String,
-    /** The ip of this bridge in the local network.  Null means that the ip hasn't been figured out yet. */
-    var ip : String? = null,
-    /** The token "name" used to access this bridge.  Null means that no token has been created yet. */
-    var token : String? = null,
-    /** When was this bridge last accessed? */
-    var lastUsed: Long = 0L,
-    /** When true, this bridge is in active use */
-    var active : Boolean = false
-)
-
-/**
- * The states of the Philips Hue bridge.
- */
-enum class PhilipsHueBridgeStatus {
-
-    /** the bridge has not been initialized yet */
-    BRIDGE_UNINITIALIZED,
-    /** currently attempting to initialize the bridge */
-    BRIDGE_INITIALIZING,
-    /** attempt to initialize the bridge has timed out */
-    BRIDGE_INITIALIZATION_TIMEOUT,
-    /** successfully initialized */
-    BRIDGE_INITIALIZED,
-    /** some error has occurred when dealing with the bridge */
-    ERROR
-}
-
-
-//-----------------------------------
 //  constants
 //-----------------------------------
 

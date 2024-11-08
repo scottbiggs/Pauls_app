@@ -44,6 +44,7 @@
     <string name="ph_main_title">Philips Hue Lights</string>
     <string name="ph_add_button">Add Bridge</string>
     <string name="add_button_content_desc">add bridge</string>
+    <string name="lightbulb_content_desc">dimming light bulb</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
