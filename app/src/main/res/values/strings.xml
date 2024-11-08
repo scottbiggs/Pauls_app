@@ -46,7 +46,7 @@
     <string name="add_button_content_desc">add bridge</string>
     <string name="lightbulb_content_desc">dimming light bulb</string>
     <string name="no_rooms_for_bridge">This bridge has no rooms</string>
-    <string name="brightness">brightness = %1.2f</string>
+    <string name="brightness">brightness = %1d%%</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>

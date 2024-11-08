@@ -571,7 +571,7 @@ class MainActivity : ComponentActivity() {
                     .background(veryDarkCoolGray)
             )
             Text(
-                text = stringResource(id = R.string.brightness, sliderPosition),
+                text = stringResource(id = R.string.brightness, (sliderPosition * 100).roundToInt()),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
