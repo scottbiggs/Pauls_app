@@ -280,17 +280,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = niceBorderModifier
                         .weight(leftWeight)
                     ) {
-                        Column {
-                            Text(
-                                stringResource(id = R.string.ph_main_title),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-                                fontSize = 32.sp,
-                                color = Color.White
-                            )
-                            ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
-                        }
+                        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
@@ -414,8 +404,6 @@ class MainActivity : ComponentActivity() {
         bridges: Set<PhilipsHueBridgeInfo>,
     ) {
 
-        val ctx = LocalContext.current
-
         // setup tests
         val testRooms = mutableSetOf(
             PhilipsHueRoomInfo("baby's room", true, mutableSetOf(
@@ -457,11 +445,36 @@ class MainActivity : ComponentActivity() {
 
         val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
-
-        Column(modifier = modifier
-            .fillMaxSize()
-            .safeContentPadding()
+        // the content
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .safeContentPadding()
         ) {
+            // the top--a title and a fab (to add bridges)
+            Row(
+//                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+
+                Text(
+                    stringResource(id = R.string.ph_main_title),
+                    modifier = Modifier
+                        .padding(top = 12.dp, start = 32.dp, bottom = 8.dp),
+                    fontSize = 32.sp,
+                    color = Color.White
+                )
+
+                // pushes the fab to the far right
+                Spacer(modifier = Modifier.weight(1f))
+
+                ShowMainPhilipsHueAddBridgeFab(
+                    splashViewModel = splashViewModel,
+                    viewModel = viewModel,
+                    numActiveBridges = bridges.size     // fixme: this counts ALL bridges, not just active ones!
+                )
+
+            }
 
             LazyVerticalGrid(
                 modifier = Modifier
@@ -477,7 +490,7 @@ class MainActivity : ComponentActivity() {
 
                     // only draw bridges that are active
                     if (bridge.active) {
-                        item( span = { GridItemSpan(this.maxLineSpan) } ) {
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
                             // a gradient to separate the bridges
                             Box(
                                 modifier = Modifier
@@ -523,8 +536,7 @@ class MainActivity : ComponentActivity() {
                                     textAlign = TextAlign.Center
                                 )
                             }
-                        }
-                        else {
+                        } else {
                             // yes, there are rooms to display
                             bridge.rooms.forEach { room ->
                                 item {
@@ -533,7 +545,7 @@ class MainActivity : ComponentActivity() {
                                         illumination = room.getAverageIllumination()
                                             .toFloat() / MAX_BRIGHTNESS.toFloat(),
                                         lightSwitchOn = room.on,
-                                    ) { newIllumination , switchOn ->
+                                    ) { newIllumination, switchOn ->
                                         // todo call the illumination change in the viewmodel
                                         //  and make it display (var by remember in a slider?)
                                     }
@@ -545,17 +557,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // todo: show messages (if any)
+
         }
-
-
-        // todo: show messages (if any)
-
-        // and finally the fab
-        ShowMainPhilipsHueAddBridgeFab(
-            splashViewModel = splashViewModel,
-            viewModel = viewModel,
-            numActiveBridges = bridges.size     // fixme: this counts ALL bridges, not just active ones!
-        )
     }
 
     /**
@@ -713,40 +717,33 @@ class MainActivity : ComponentActivity() {
         viewModel: MainViewModel,
         numActiveBridges: Int
     ) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(38.dp)
-        ) {
-            // Add button to add a new bridge (if there are no active bridges, then
-            // show the extended FAB)
-            if (numActiveBridges == 0) {
-                ExtendedFloatingActionButton(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd),
-                    onClick = { splashViewModel.beginAddPhilipsHueBridge() },
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(id = R.string.add_button_content_desc)
-                        )
-                    },
-                    text = { Text(stringResource(id = R.string.ph_add_button)) }
-                )
-            }
-            else {
-                FloatingActionButton(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd),
-                    onClick = { splashViewModel.beginAddPhilipsHueBridge() },
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                ) {
+        // Add button to add a new bridge (if there are no active bridges, then
+        // show the extended FAB)
+        if (numActiveBridges == 0) {
+            ExtendedFloatingActionButton(
+                modifier = Modifier
+                    .padding(top = 26.dp, end = 38.dp),
+                onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                icon = {
                     Icon(
                         imageVector = Icons.Filled.Add,
                         contentDescription = stringResource(id = R.string.add_button_content_desc)
                     )
-                }
+                },
+                text = { Text(stringResource(id = R.string.ph_add_button)) }
+            )
+        } else {
+            FloatingActionButton(
+                modifier = Modifier
+                    .padding(top = 16.dp, end = 38.dp),
+                onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(id = R.string.add_button_content_desc)
+                )
             }
         }
     }
