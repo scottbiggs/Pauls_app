@@ -68,7 +68,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
 
 
     /** access to the philips hue bridge and all that stuff that goes with it */
-    private lateinit var bridgeUtils : PhilipsHueBridgeUtils
+    lateinit var bridgeUtils : PhilipsHueBridgeUtils
 
     /** This variable holds a new bridge.  Once it's filled in, it'll be added to the list */
     var newBridge: PhilipsHueBridgeInfo? = null

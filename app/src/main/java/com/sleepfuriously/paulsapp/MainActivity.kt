@@ -444,6 +444,7 @@ class MainActivity : ComponentActivity() {
         )
 
         val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
+        val activeBridges = splashViewModel.bridgeUtils.getAllActiveBridges(bridges)
 
         // the content
         Column(
@@ -453,7 +454,6 @@ class MainActivity : ComponentActivity() {
         ) {
             // the top--a title and a fab (to add bridges)
             Row(
-//                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
 
@@ -471,7 +471,7 @@ class MainActivity : ComponentActivity() {
                 ShowMainPhilipsHueAddBridgeFab(
                     splashViewModel = splashViewModel,
                     viewModel = viewModel,
-                    numActiveBridges = bridges.size     // fixme: this counts ALL bridges, not just active ones!
+                    numActiveBridges = activeBridges.size
                 )
 
             }
