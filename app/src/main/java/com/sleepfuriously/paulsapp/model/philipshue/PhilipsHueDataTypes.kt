@@ -23,6 +23,7 @@ data class PhilipsHueBridgeInfo(
  */
 data class PhilipsHueRoomInfo(
     val id: String,
+    var on: Boolean = false,
     val lights: MutableSet<PhilipsHueLightInfo>
 ) {
     /**

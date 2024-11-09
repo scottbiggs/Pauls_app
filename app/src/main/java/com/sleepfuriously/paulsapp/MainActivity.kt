@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -77,7 +79,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -417,29 +418,29 @@ class MainActivity : ComponentActivity() {
 
         // setup tests
         val testRooms = mutableSetOf(
-            PhilipsHueRoomInfo("baby's room", mutableSetOf(
+            PhilipsHueRoomInfo("baby's room", true, mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
 
-            PhilipsHueRoomInfo("2 times 3 time 4", mutableSetOf(
+            PhilipsHueRoomInfo("2 times 3 time 4", true, mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
 
-            PhilipsHueRoomInfo("living room", mutableSetOf(
+            PhilipsHueRoomInfo("living room", true, mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
-            PhilipsHueRoomInfo("bedroom", mutableSetOf(
+            PhilipsHueRoomInfo("bedroom", true, mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
             )),
-            PhilipsHueRoomInfo("kitchen", mutableSetOf(
+            PhilipsHueRoomInfo("kitchen", false, mutableSetOf(
                 PhilipsHueLightInfo("1", name = "nightlight"),
                 PhilipsHueLightInfo("2", name = "desk light"),
                 PhilipsHueLightInfo("3", name = "backyard light"),
@@ -530,8 +531,9 @@ class MainActivity : ComponentActivity() {
                                     DisplayPhilipsHueRoom(
                                         roomName = room.id,
                                         illumination = room.getAverageIllumination()
-                                            .toFloat() / MAX_BRIGHTNESS.toFloat()
-                                    ) {
+                                            .toFloat() / MAX_BRIGHTNESS.toFloat(),
+                                        lightSwitchOn = room.on,
+                                    ) { newIllumination , switchOn ->
                                         // todo call the illumination change in the viewmodel
                                         //  and make it display (var by remember in a slider?)
                                     }
@@ -566,18 +568,26 @@ class MainActivity : ComponentActivity() {
      *
      * @param   roomChangedFunction     Function to call when the illumination is
      *                                  changed by the user.  It takes the new
-     *                                  illumination value.
+     *                                  illumination value and a boolean for if the
+     *                                  switch is on/off.
      */
     @Composable
     private fun DisplayPhilipsHueRoom(
         roomName: String,
         illumination: Float,
-        roomChangedFunction: (newIllumination: Float) -> Unit
+        lightSwitchOn: Boolean,
+        roomChangedFunction: (newIllumination: Float, switchOn: Boolean) -> Unit,
     ) {
 
+        // variables for the widgets
         var sliderPosition by remember { mutableFloatStateOf(illumination) }
-        var lightImage = getProperLightImage(sliderPosition)
-        var lightColor = getLightColor(sliderPosition)
+        var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
+
+        // variables for displaying the lightbulb
+        var lightImage by remember { mutableStateOf(getProperLightImage(sliderPosition)) }
+        var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
+
+        Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
 
         Column(modifier = Modifier
             .fillMaxSize()
@@ -595,24 +605,45 @@ class MainActivity : ComponentActivity() {
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             )
 
-            Image(
+            Row (
                 modifier = Modifier
-                    .width(140.dp)
-//                    .padding(end = 10.dp)
-                    .align(Alignment.End),
-                contentScale = ContentScale.Fit,
-                painter = painterResource(id = lightImage),
-                colorFilter = ColorFilter.tint(lightColor),
-                contentDescription = stringResource(id = R.string.lightbulb_content_desc)
-            )
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Switch(
+                    modifier = Modifier
+                        .padding(start = 8.dp, bottom = 8.dp)
+                        .rotate(-90f),
+                    checked = roomLightsSwitchOn,
+                    onCheckedChange = { newSliderState ->
+                        roomLightsSwitchOn = newSliderState
+                        if (roomLightsSwitchOn) {
+                            lightImage = getProperLightImage(sliderPosition)
+                            lightColor = getLightColor(sliderPosition)
+                        }
+                        else {
+                            lightImage = getProperLightImage(0f)
+                            lightColor = getLightColor(0f)
+                        }
+                        roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
+                    }
+                )
+
+                // This pushes the switch to the far left and the lightbulb to
+                // the far right.
+                Spacer(modifier = Modifier.weight(1f))
+
+                DrawLightBulb(lightImage, lightColor)
+            }
 
             Slider(
                 value = sliderPosition,
+                enabled = roomLightsSwitchOn,
                 onValueChange = {
                     sliderPosition = it
                     lightImage = getProperLightImage(sliderPosition)
                     lightColor = getLightColor(sliderPosition)
-                    roomChangedFunction.invoke(sliderPosition)
+                    roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
                 },
                 modifier = Modifier
                     .padding(vertical = 4.dp, horizontal = 18.dp)
@@ -627,6 +658,18 @@ class MainActivity : ComponentActivity() {
                     .align(Alignment.CenterHorizontally)
             )
         }
+    }
+
+    @Composable
+    private fun DrawLightBulb(imageId : Int, colorTint: Color) {
+        Image(
+            modifier = Modifier
+                .width(140.dp),
+            contentScale = ContentScale.Fit,
+            painter = painterResource(imageId),
+            colorFilter = ColorFilter.tint(colorTint),
+            contentDescription = stringResource(id = R.string.lightbulb_content_desc)
+        )
     }
 
     private fun getProperLightImage(illumination: Float) : Int {
@@ -1269,7 +1312,12 @@ class MainActivity : ComponentActivity() {
                 .width(MIN_PH_ROOM_WIDTH.dp)
                 .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
         ) {
-            DisplayPhilipsHueRoom(roomName = "bedroom", illumination = 0.5f) {
+            DisplayPhilipsHueRoom(
+                roomName = "bedroom",
+                illumination = 0.5f,
+                lightSwitchOn = true
+            ) { _, _ ->
+                // not used in preview!
             }
         }
     }
