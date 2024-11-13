@@ -3,8 +3,8 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.content.Context
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.OkHttpUtils
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.getCodeFromResponse
 import com.sleepfuriously.paulsapp.model.getPrefsSet
+import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.savePrefsLong
 import com.sleepfuriously.paulsapp.model.savePrefsString
 import kotlinx.coroutines.runBlocking
@@ -136,27 +136,18 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
 
 
     /**
-     * Tests to see if the bridge is at the current ip.
-     * If the ip is not known, this returns false.
-     * Token is not used.
+     * Tests to see if a bridge is at the given ip.
      *
-     * @param   id      The id of the bridge to test
+     * @param   ip          The ip that may point to a philips hue bridge
      *
      * WARNING:
      *  This must be called off the main thread as it access
      *  the network.
      */
-    suspend fun doesBridgeRespondToIp(id: String) : Boolean {
+    suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
 
-        val bridge = getBridgeInfo(id)
-        if (bridge == null) {
-            Log.d(TAG, "doesBridgeRespondToIp() cannot find bridge ID = $id")
-            return false
-        }
-
-        // exit with false if no ip
-        val ip = bridge.ip ?: return false
-        if (ip.isEmpty()) return false
+        // exit with false if no ip or wrong format
+        if (ip.isEmpty() || (isValidBasicIp(ip) == false)) return false
 
         try {
             val fullIp = createFullAddress(
@@ -166,13 +157,9 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
             )
             Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
 
-            val response = OkHttpUtils.synchronousGetRequest(fullIp)
-            Log.d(TAG, "doesBridgeRespondToIp -> $response")
+            val myResponse = OkHttpUtils.synchronousGetRequest(fullIp)
 
-            // check this response.  It should have a code in the 200s
-            val code = getCodeFromResponse(response)
-            Log.d(TAG, "code = $code")
-            if (response.isSuccessful) {
+            if (myResponse.isSuccessful) {
                 return true
             }
         }
@@ -276,6 +263,7 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
 
         return true
     }
+
 
     /**
      * Retrieves a string version of the ip from the current bridge info.

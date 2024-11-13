@@ -86,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sleepfuriously.paulsapp.model.OkHttpUtils
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
@@ -140,7 +141,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         viewModel  = MainViewModel()
-        splashViewmodel = SplashViewmodel(this)
+        splashViewmodel = SplashViewmodel()
 
         // surest way to hide the action bar
         actionBar?.hide()
@@ -154,23 +155,37 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    // create composables of flows in the splashviewmodel
+                    // create data to receive flows from the splashviewmodel
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
                     val iotTesting by splashViewmodel.iotTesting.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
+                    val addNewBridgeState by splashViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
                     val philipsHueBridges by splashViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
 
 
+                    //------------------------
+                    //  What to display?  Depends on what's happening.
+                    //
+                    //  - going through the initial testing cycle
+                    //      -> testing screen
+                    //  - addNewBridgeState is something other than NOT_INITIALIZING
+                    //      -> we need to handle the initialization
+                    //  - normal state
+                    //      -> FourPanes
                     if (iotTesting) {
                         TestSetupScreen(
                             modifier = Modifier.padding(innerPadding),
                             viewModel = viewModel,
+                            splashViewmodel = splashViewmodel,
                             wifiWorking = wifiWorking ?: false,
                             philipsHueTest = philipsHueTestStatus,
                             philipsHueBridges = philipsHueBridges
                         )
+                    }
+                    else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
+                        ManualBridgeSetup(splashViewmodel, addNewBridgeState)
                     }
                     else {
                         FourPanes(
@@ -721,7 +736,7 @@ class MainActivity : ComponentActivity() {
         // show the extended FAB)
         if (numActiveBridges == 0) {
             ExtendedFloatingActionButton(
-                modifier = Modifier
+                modifier = modifier
                     .padding(top = 26.dp, end = 38.dp),
                 onClick = { splashViewModel.beginAddPhilipsHueBridge() },
                 elevation = FloatingActionButtonDefaults.elevation(8.dp),
@@ -735,7 +750,7 @@ class MainActivity : ComponentActivity() {
             )
         } else {
             FloatingActionButton(
-                modifier = Modifier
+                modifier = modifier
                     .padding(top = 16.dp, end = 38.dp),
                 onClick = { splashViewModel.beginAddPhilipsHueBridge() },
                 elevation = FloatingActionButtonDefaults.elevation(8.dp),
@@ -782,18 +797,37 @@ class MainActivity : ComponentActivity() {
     fun TestSetupScreen(
         modifier : Modifier = Modifier,
         viewModel: MainViewModel,
+        splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean?,
         philipsHueTest: TestStatus,
         philipsHueBridges: Set<PhilipsHueBridgeInfo>,
     ) {
         Log.d(TAG, "TestSetupScreen()")
 
+        val ctx = LocalContext.current
+
         Column(modifier = modifier.fillMaxSize()) {
+
+            // wifi
             Text("wifi = $wifiWorking")
+
+            // list known bridges
+            Text("here the known bridges:")
             philipsHueBridges.forEach() { bridge ->
                 Text("   bridge ${bridge.id}: ip = ${bridge.ip}, token = ${bridge.token}, lastUsed = ${bridge.lastUsed}, active = ${bridge.active}")
             }
-            Text("philips hue tests complete = $philipsHueTest")
+
+
+            Text("push to test synchronous PUT to bridge")
+            Button(
+                onClick = {
+                    Toast.makeText(ctx, "get this part working, scott!", Toast.LENGTH_LONG).show()
+//                    splashViewModel.testPutToBridge()
+            }) {
+                Text("go")
+            }
+
+            Text("philips hue tests completeness = $philipsHueTest")
         }
 
     }
@@ -875,48 +909,6 @@ class MainActivity : ComponentActivity() {
 
 
     /**
-     * Initializing the Philips Hue bridge, part 1.
-     * The user simply has to fill in the IP of the bridge.
-     * Information on how to do it is also displayed.
-     */
-    @Composable
-    private fun PhilipsHueBridgeIpManualInit() {
-        var ipText by remember { mutableStateOf("") }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(color = MaterialTheme.colorScheme.secondary)
-        ) {
-
-            Text(
-                stringResource(id = R.string.enter_ip_hint),
-                color = MaterialTheme.colorScheme.onSecondary
-            )
-            OutlinedTextField(
-                value = ipText,
-                label = { Text(stringResource(id = R.string.enter_ip)) },
-                singleLine = true,
-                onValueChange = { ipText = it }
-            )
-        }
-
-    }
-
-
-    /**
-     * This requires the user to hit the big button on the Philips
-     * Hue bridge and THEN hit the go button on their device.  This
-     * starts the sequence of the bridge sending back the secret
-     * name for this app to use.
-     */
-    @Composable
-    private fun DisplayManualInitPart2() {
-
-    }
-
-
-    /**
      * Handles displaying the splash screen.  Needs to be
      * called BEFORE setContent() in [onCreate].
      *
@@ -970,14 +962,12 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun ManualBridgeSetup(
-        viewmodel: SplashViewmodel,
+        splashViewmodel: SplashViewmodel,
         initBridgeState: BridgeInitStates,
         modifier: Modifier = Modifier,
     ) {
         val config = LocalConfiguration.current
         val landscape = config.orientation == ORIENTATION_LANDSCAPE
-        val screenHeight = config.screenHeightDp
-        val screenWidth = config.screenWidthDp
 
         when (initBridgeState) {
             BridgeInitStates.NOT_INITIALIZING -> {
@@ -989,19 +979,28 @@ class MainActivity : ComponentActivity() {
                     stringResource(id = R.string.exit)
                 )
             }
+
+            // These states involve stage 1
             BridgeInitStates.STAGE_1_GET_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 if (landscape) {
-                    ManualBridgeSetupStep1_Landscape(viewmodel, initBridgeState)
+                    ManualBridgeSetupStep1_landscape(splashViewmodel, initBridgeState)
                 }
                 else {
-                    ManualBridgeSetupStep1_Portrait(viewmodel, initBridgeState)
+                    ManualBridgeSetupStep1_Portrait(splashViewmodel, initBridgeState)
                 }
             }
+
+            // Stage 2 states
             BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
             BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> {
-                // todo
+                if (landscape) {
+                    ManualBridgeSetupStep2_landscape(splashViewmodel, initBridgeState)
+                }
+                else {
+                    ManualBridgeSetupStep2_portait(splashViewmodel, initBridgeState)
+                }
             }
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
                 // todo
@@ -1010,7 +1009,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun ManualBridgeSetupStep1_Landscape(
+    private fun ManualBridgeSetupStep1_landscape(
         splashViewModel: SplashViewmodel,
         state: BridgeInitStates
     ) {
@@ -1021,6 +1020,7 @@ class MainActivity : ComponentActivity() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .safeContentPadding()      // takes the insets into account (nav bars, etc)
                 .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -1098,7 +1098,7 @@ class MainActivity : ComponentActivity() {
                             keyboardType = KeyboardType.Decimal
                         ),
                         keyboardActions = KeyboardActions(
-                            onNext = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }
+                            onNext = { splashViewModel.addPhilipsHueBridgeIp(ipText) }
                         )
                     )
                     Button(
@@ -1106,7 +1106,7 @@ class MainActivity : ComponentActivity() {
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 8.dp)
                             .width(120.dp),
-                        onClick = { splashViewModel.AddPhilipsHueBridgeIp(ipText) } ) {
+                        onClick = { splashViewModel.addPhilipsHueBridgeIp(ipText) } ) {
                         Text(stringResource(id = R.string.next))
                     }
                 }
@@ -1119,8 +1119,8 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
             splashViewmodel.bridgeAddErrorMsgIsDisplayed()
         }
-        if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
-            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_bad_ip_format), Toast.LENGTH_LONG).show()
+        if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
+            Toast.makeText(ctx, stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, ipText), Toast.LENGTH_LONG).show()
             splashViewmodel.bridgeAddErrorMsgIsDisplayed()
         }
 
@@ -1264,7 +1264,7 @@ class MainActivity : ComponentActivity() {
                                         keyboardType = KeyboardType.Decimal
                                     ),
                                     keyboardActions = KeyboardActions(
-                                        onNext = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }
+                                        onNext = { splashViewModel.addPhilipsHueBridgeIp(ipText) }
                                     )
                                 )
 
@@ -1273,7 +1273,7 @@ class MainActivity : ComponentActivity() {
                                         .align(Alignment.CenterVertically)
                                         .padding(top = 8.dp, start = 12.dp)
                                         .width(120.dp),
-                                    onClick = { splashViewModel.AddPhilipsHueBridgeIp(ipText) }) {
+                                    onClick = { splashViewModel.addPhilipsHueBridgeIp(ipText) }) {
                                     Text(stringResource(id = R.string.next))
                                 }
                             }
@@ -1297,10 +1297,80 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    @Composable
+    private fun ManualBridgeSetupStep2_landscape(
+        splashViewModel: SplashViewmodel,
+        state: BridgeInitStates
+    ) {
+        val ctx = LocalContext.current
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeContentPadding()      // takes the insets into account (nav bars, etc)
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(id = R.string.connect_to_ph_bridge),
+                fontSize = 28.sp,
+            )
+
+            Image(
+                modifier = Modifier.weight(1f),     // image will fill remaining height
+                contentScale = ContentScale.Fit,
+                painter = painterResource(id = R.drawable.press_bridge_button),
+                contentDescription = stringResource(id = R.string.press_bridge_button_desc)
+            )
+            Text(
+                stringResource(R.string.press_bridge_button),
+                modifier = Modifier.fillMaxWidth(0.5f),
+                textAlign = TextAlign.Center,
+                fontSize = 24.sp
+            )
+
+            Button(
+                onClick = {
+                    splashViewModel.bridgeButtonPushed()
+                }
+            ) { Text(stringResource(R.string.ok)) }
+        }
+    }
+
+    @Composable
+    private fun ManualBridgeSetupStep2_portait(
+        splashViewModel: SplashViewmodel,
+        state: BridgeInitStates
+    ) {
+        // todo
+    }
+
     //----------------------------
     //  previews
     //----------------------------
 
+    @Preview (
+        uiMode = Configuration.UI_MODE_NIGHT_YES,
+        widthDp = 800, heightDp = 400
+        )
+    @Composable
+    private fun ManualBridgeSetupStep2_landscapePreview() {
+
+        val ctx = LocalContext.current
+
+        Box(
+            modifier = Modifier
+                .width(MIN_PH_ROOM_WIDTH.dp)
+                .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
+        ) {
+            ManualBridgeSetupStep2_landscape(
+                SplashViewmodel(),
+                BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+            )
+        }
+    }
+
+/*
     @Preview (uiMode = Configuration.UI_MODE_NIGHT_YES)
     @Composable
     private fun DisplayPhilipsHueRoomPreview() {
@@ -1318,6 +1388,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+*/
 
 }
 

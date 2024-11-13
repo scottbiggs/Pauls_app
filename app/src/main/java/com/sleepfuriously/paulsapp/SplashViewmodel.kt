@@ -9,7 +9,6 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -28,7 +27,7 @@ import kotlinx.coroutines.launch
  *
  * 3. todo - all other IoT devices
  */
-class SplashViewmodel(ctx: Context) : ViewModel() {
+class SplashViewmodel : ViewModel() {
 
     //-------------------------
     //  class data
@@ -44,17 +43,10 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
     var philipsHueTestStatus = _philipsHueTestsStatus.asStateFlow()
 
 
-    private val _iotTesting = MutableStateFlow(false)
+    // fixme:  this is set to TRUE for testing the okHttpUtils!!!!
+    private val _iotTesting = MutableStateFlow(true)
     /** Will be true only while tests are running */
     var iotTesting = _iotTesting.asStateFlow()
-
-
-//    private val _iotTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
-//    /**
-//     * When true, all Internet of Things tests are complete.
-//     * Results will be in the appropriate varables.
-//     */
-//    var iotTestsStatus = _iotTestsStatus.asStateFlow()
 
 
     private val _addNewBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
@@ -139,7 +131,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
 
     /**
      * Call this to change the IP for an EXISTING philips hue bridge.
-     * If you want to set a new bridge, call [AddPhilipsHueBridgeIp]
+     * If you want to set a new bridge, call [addPhilipsHueBridgeIp]
      *
      * NOTE
      *  No testing is done for the bridge in question (other than that
@@ -158,7 +150,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
      * side effects:
      *      The bridge will be permanently changed to hold the new id
      */
-    fun setPhilipsHueIp(bridgeId: String, newIp: String) : Boolean {
+    private fun setPhilipsHueIp(bridgeId: String, newIp: String) : Boolean {
 
         if (isValidBasicIp(newIp)) {
             bridgeUtils.saveBridgeIpStr(bridgeId, newIp)
@@ -201,7 +193,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
      *
      *      newBridge               may have a valid ip (if user typed it in right)
      */
-    fun AddPhilipsHueBridgeIp(newIp: String) {
+    fun addPhilipsHueBridgeIp(newIp: String) {
 
         // this includes a test and may take a while
         viewModelScope.launch(Dispatchers.IO) {
@@ -249,6 +241,41 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
             else -> {
                 Log.e(TAG, "error in bridgeInitErrorMsgDisplayed()!  State = ${_addNewBridgeState.value} is not an error state!")
             }
+        }
+    }
+
+    /**
+     * During the bridge initialization process, this function should be called
+     * immediately after the user presses the button on their bridge.  This enables
+     * the bridge to respond to a name (token) request.
+     *
+     * side effects
+     *      addNewBridgeState - If successful, this is changed to STAGE_3_ALL_GOOD_AND_DONE.
+     *                          Otherwise it's changed to STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE.
+     */
+    fun bridgeButtonPushed() {
+
+        // send a
+
+        // create the body
+
+    }
+
+    /**
+     * After receiving the notification that the bridge was successfully added,
+     * the UI should call this to reset everything to [BridgeInitStates.NOT_INITIALIZING].
+     */
+    fun bridgeAddAllGoodAndDone() {
+        _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+    }
+
+
+    /**
+     * Test to see if we can actually send a PUT command to the bridge.
+     */
+    fun testPutToBridge() {
+        viewModelScope.launch(Dispatchers.IO) {
+
         }
     }
 
@@ -300,7 +327,7 @@ class SplashViewmodel(ctx: Context) : ViewModel() {
             }
 
             // check bridge is responding
-            if (bridgeUtils.doesBridgeRespondToIp(bridge.id) == false) {
+            if (bridgeUtils.doesBridgeRespondToIp(ip) == false) {
                 bridge.active = false
                 continue
             }

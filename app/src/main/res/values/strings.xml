@@ -39,6 +39,15 @@
     <string name="new_bridge_stage_1_error_bad_ip_format">I don\'t understand what you typed.
         Please an IP in this format: [number].[number].[number].[number]
     </string>
+    <string name="new_bridge_stage_1_error_no_bridge_at_ip">Hmmm, I cannot find a bridge at IP = %1s.\n
+        Please check to make sure the bridge is on and the IP is correct.
+    </string>
+    <string name="new_bridge_success">Yay, your bridge was successfully added!</string>
+    <string name="new_bridge_impossible_state_error">Error, should never have NOT_INITIALIZING state in PhilipsHueManualInit()!</string>
+    <string name="connect_to_ph_bridge">Connect to the Philips Hue Bridge</string>
+    <string name="press_bridge_button_desc">Image showing button press on the Philips Hue bridge.</string>
+    <string name="press_bridge_button">To complete the connection process, press the large button on the top of your Philips Hue Bridge
+        and then press the \'ok\' button below.</string>
 
     <!-- philips hue section -->
     <string name="ph_bridge_name">bridge: %1s</string>
