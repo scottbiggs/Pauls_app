@@ -3,12 +3,11 @@
 
     <!-- startup -->
     <string name="initializing" tools:ignore="TypographyEllipsis">Initializing connection to IoT devices...</string>
-    <string name="cannot_find_bridge">Unable to find the Philips Hue Bridge.</string>
+    <string name="cannot_find_bridge">Unable to find the Philips Hue bridge.</string>
     <string name="do_you_want_to_search_for_bridge">Search for the Philips Hue bridge?</string>
-    <string name="enter_bridge_ip">Please enter the IP for the Philips Hue Bridge</string>
-    <string name="bridge_found">Philips Hue Bridge found</string>
+    <string name="enter_bridge_ip">Please enter the IP for the Philips Hue bridge</string>
+    <string name="bridge_found">Philips Hue bridge found</string>
     <string name="ip_is">IP is %1$s</string>
-    <string name="error_init_bridge">An error occurred initializing bridge.</string>
 
     <!-- startup Philips Hue Bridge -->
     <string name="start_ph_bridge_init_button">init bridge</string>
@@ -19,22 +18,22 @@
         Tap the button to initialize your Philips Hue devices.</string>
     <string name="philips_hue_ip_not_working">The Philips Hue bridge is not responding to the current ip address of %1s.\n
         Tap the button to re-initialize your Philips Hue devices</string>
-    <string name="philips_hue_token_not_set">Cannot find a name/token for the Philips Hue Bridge.\n
+    <string name="philips_hue_token_not_set">Cannot find a name/token for the Philips Hue bridge.\n
         Tap the button to initialize your Philips Hue devices.</string>
-    <string name="philips_hue_token_not_working">The current name/token of %1s is not recognized by the Philips Hue Bridge.
+    <string name="philips_hue_token_not_working">The current name/token of %1s is not recognized by the Philips Hue bridge.
         Tap the button to re-initialize your Philips Hue devices</string>
     <string name="initialize_philips_hue">Initialize Philips Hue</string>
 
-    <!-- initializing the Philips Hue Bridge -->
+    <!-- initializing the Philips Hue bridge -->
     <string name="stage_1">Step 1</string>
     <string name="find_the_bridge_ip">Find the IP of the Philips Hue bridge</string>
     <string name="bridge_ip_step_1">Open the Philips Hue app and tap on the settings icon at the bottom left of the screen.</string>
     <string name="bridge_ip_step_1_desc">Where to find the settings on the philips hue app start screen.</string>
     <string name="bridge_ip_step_2">In the Settings screen, scroll down and select the Bridge Settings.</string>
-    <string name="bridge_ip_step_2_desc">Where to find the bridge settings on the settings screen.</string>
+    <string name="bridge_ip_step_2_desc">Where to find the Bridge Settings on the settings screen.</string>
     <string name="bridge_ip_step_3">In the Bridge Settings, scroll down to the IP-address.
         Type the number (including dots) and tap \'next\'.</string>
-    <string name="bridge_ip_step_3_desc">Where to find the ip-address on the bridge settings screen.</string>
+    <string name="bridge_ip_step_3_desc">Where to find the ip-address on the Bridge Settings screen.</string>
     <string name="invalid_ip">The IP you entered is not valid. Please try again."</string>
     <string name="new_bridge_stage_1_error_bad_ip_format">I don\'t understand what you typed.
         Please an IP in this format: [number].[number].[number].[number]
@@ -44,10 +43,14 @@
     </string>
     <string name="new_bridge_success">Yay, your bridge was successfully added!</string>
     <string name="new_bridge_impossible_state_error">Error, should never have NOT_INITIALIZING state in PhilipsHueManualInit()!</string>
-    <string name="connect_to_ph_bridge">Connect to the Philips Hue Bridge</string>
+    <string name="connect_to_ph_bridge">Connect to the Philips Hue bridge</string>
+    <string name="connect_bridge_ip_success">I found a Philips Hue bridge at IP %1s</string>
     <string name="press_bridge_button_desc">Image showing button press on the Philips Hue bridge.</string>
-    <string name="press_bridge_button">To complete the connection process, press the large button on the top of your Philips Hue Bridge
+    <string name="press_bridge_button">To complete the connection process, press the large button on the top of your Philips Hue bridge
         and then press the \'ok\' button below.</string>
+    <string name="registering_bridge_button_not_pressed">Unable to get proper response from the Philips Hue bridge. Was the button on the bridge pressed?</string>
+    <string name="registering_bridge_unsuccessful">Could not get a response from the Philips Hue bridge at IP %1s. Is it turned on and connected?</string>
+    <string name="registering_bridge_cannot_parse_response">Unable to decipher the response for the Philips Hue bridge at IP %1s. Is this the correct device?</string>
 
     <!-- philips hue section -->
     <string name="ph_bridge_name">bridge: %1s</string>

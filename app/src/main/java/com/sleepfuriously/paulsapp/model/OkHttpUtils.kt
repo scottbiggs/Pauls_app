@@ -3,10 +3,10 @@ package com.sleepfuriously.paulsapp.model
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MultipartBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
 /**
@@ -43,40 +43,42 @@ object OkHttpUtils {
 
 
     /**
-     * This delivers a POST to the specified url.
+     * This delivers a POST to the specified url with a String data.
      *
-     * @param   postBodyName        The name of the contents
+     * @param   url         Where to send the POST
      *
-     * @param   postBodyContents    Contents of the body of the POST as a String.
-     *                              You (caller) do all the json translation stuff.
+     * @param   bodyStr        The string to send as data
+     *
+     * @param   header      Any headers that needs to be attached.
+     *                      This is a Map<String, String> as there
+     *                      can be multiple headers.
+     *                      Use null (default) if no headers are needed
+     *                      (they rarely are in our case).
      *
      * @return  The response from the server
      *
      * NOTE
-     *      Must be called from a coroutine.  It changes the
-     *      context so the Main thread won't be blocked.
+     *      May NOT be called on the main thread!
      */
-    suspend fun synchronousSendPostRequest(
+    suspend fun synchronousPostString(
         url: String,
-        postBodyName: String,
-        postBodyContents: String
+        bodyStr: String,
+        header: Map<String, String>? = null,
     ) : MyResponse {
 
-        Log.d(TAG, "synchronousSendPostRequest( $url, $postBodyName, $postBodyContents)")
+        Log.d(TAG, "synchronousSendPostRequest( url = $url, body = $bodyStr, header = $header )")
 
-        val formBody : RequestBody = MultipartBody.Builder()
-            .addFormDataPart(postBodyName, postBodyContents)
-            .build()
-
+        // need to make a RequestBody from the string (complicated!)
+        val body = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaType())
         val request = Request.Builder()
             .url(url)
-            .post(formBody)
+            .post(body)
             .build()
 
-        // this insures that we're not on the main thread
         val myResponse: MyResponse
 
-        withContext(Dispatchers.IO) {
+        // this insures that we're not on the main thread
+        withContext(Dispatchers.IO) {   // does this even work?
             myResponse = MyResponse(okHttpClient.newCall(request).execute())
         }
 
@@ -147,7 +149,10 @@ data class MyResponse(
     val code: Int,
     val message: String,
     val body: String,
-    /** List of headers.  The first of each pair is the name, the 2nd is the value. */
+    /**
+     * List of headers.  The first of each pair is the name, the 2nd is the value.
+     * I will probably never use these as these are technical details of the transmission.
+     */
     val headers: List<Pair<String, String>>
 ) {
 

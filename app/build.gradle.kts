@@ -82,4 +82,7 @@ dependencies {
 
     // for coroutines outside of Activities
     implementation(libs.androidx.lifecycle.runtime.ktx.v241)
+
+    // we're using the gson lib
+    implementation(libs.gson)
 }

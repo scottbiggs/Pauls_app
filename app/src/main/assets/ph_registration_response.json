@@ -1,0 +1,14 @@
+[
+  {
+    "error": {
+      "type": 7,
+      "address": "/username",
+      "description": "invalid value, kim burgestrand, for parameter, username"
+    }
+  },
+  {
+    "success": {
+      "username": "burgestrand"
+    }
+  }
+]

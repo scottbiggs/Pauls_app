@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,7 +87,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sleepfuriously.paulsapp.model.OkHttpUtils
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
@@ -157,13 +157,20 @@ class MainActivity : ComponentActivity() {
 
                     // create data to receive flows from the splashviewmodel
                     val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                    val iotTesting by splashViewmodel.iotTesting.collectAsStateWithLifecycle()
+                    val iotTestingState by splashViewmodel.iotTestingState.collectAsStateWithLifecycle()
+                    val iotTestingErrorMsg by splashViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
                     val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
                     val addNewBridgeState by splashViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
+                    val finishNow by splashViewmodel.crashNow.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
                     val philipsHueBridges by splashViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
 
+
+                    // Before anything, do we need to exit?
+                    if (finishNow) {
+                        finish()
+                    }
 
                     //------------------------
                     //  What to display?  Depends on what's happening.
@@ -174,7 +181,7 @@ class MainActivity : ComponentActivity() {
                     //      -> we need to handle the initialization
                     //  - normal state
                     //      -> FourPanes
-                    if (iotTesting) {
+                    if (iotTestingState == TestStatus.TESTING) {
                         TestSetupScreen(
                             modifier = Modifier.padding(innerPadding),
                             viewModel = viewModel,
@@ -184,10 +191,28 @@ class MainActivity : ComponentActivity() {
                             philipsHueBridges = philipsHueBridges
                         )
                     }
+
+                    else if (wifiWorking == false) {
+                        TestBad(
+                            splashViewmodel = splashViewmodel,
+                            wifiWorking = false,
+                            errorMsg = stringResource(R.string.wifi_not_working)
+                        )
+                    }
+
+                    else if (iotTestingState == TestStatus.TEST_BAD) {
+                        TestBad(
+                            splashViewmodel = splashViewmodel,
+                            wifiWorking = wifiWorking ?: false,
+                            errorMsg = iotTestingErrorMsg
+                        )
+                    }
+
                     else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
                         ManualBridgeSetup(splashViewmodel, addNewBridgeState)
                     }
                     else {
+                        Log.d(TAG, "about to show FourPanes()! iotTesting = $iotTestingState, addNewBridgeState = $addNewBridgeState")
                         FourPanes(
                             0.3f,
                             splashViewmodel = splashViewmodel,
@@ -223,6 +248,9 @@ class MainActivity : ComponentActivity() {
         modifier : Modifier = Modifier,
         bridges: Set<PhilipsHueBridgeInfo>
     ) {
+
+        Log.d(TAG, "FourPanes() start.  bridges = $bridges")
+
         //-------------
         // these are the offsets from the center of the drawing area
         //
@@ -841,18 +869,18 @@ class MainActivity : ComponentActivity() {
         modifier : Modifier = Modifier,
         splashViewmodel: SplashViewmodel,
         wifiWorking: Boolean,
+        errorMsg: String = ""
     ) {
         // start with the wifi
         if (wifiWorking == false) {
-            WifiNotWorking(modifier)
+            TestErrorMessage(modifier, errorMsg)
         }
 
         else {
-            // This should not happen.  But if it does, a message will appear
-            // with an exit button.
+
             SimpleBoxMessage(
                 modifier,
-                "error: unhandled case in TestBad()",
+                errorMsg,
                 { finish() },
                 stringResource(id = R.string.exit)
             )
@@ -860,9 +888,10 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun WifiNotWorking(modifier: Modifier = Modifier) {
+    private fun TestErrorMessage(modifier: Modifier = Modifier, errMsg: String) {
         SimpleBoxMessage(modifier,
-            stringResource(id = R.string.wifi_not_working),
+//            stringResource(id = R.string.wifi_not_working),
+            errMsg,
             { finish() },
             stringResource(id = R.string.exit)
         )
@@ -922,7 +951,7 @@ class MainActivity : ComponentActivity() {
             // example: this will check the value every frame and keep showing
             //          the splash screen as long as the total value is true
             setKeepOnScreenCondition {
-                splashViewmodel.iotTesting.value
+                splashViewmodel.iotTestingState.value == TestStatus.TESTING
             }
 
             // set the exit animation
@@ -994,17 +1023,17 @@ class MainActivity : ComponentActivity() {
 
             // Stage 2 states
             BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
-            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> {
-                if (landscape) {
-                    ManualBridgeSetupStep2_landscape(splashViewmodel, initBridgeState)
-                }
-                else {
-                    ManualBridgeSetupStep2_portait(splashViewmodel, initBridgeState)
-                }
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
+                ManualBridgeSetupStep2(splashViewmodel, initBridgeState)
             }
+
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
-                // todo
+                ManualBridgeSetupStep3(splashViewmodel)
             }
+
         }
     }
 
@@ -1298,11 +1327,24 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun ManualBridgeSetupStep2_landscape(
+    private fun ManualBridgeSetupStep2(
         splashViewModel: SplashViewmodel,
         state: BridgeInitStates
     ) {
         val ctx = LocalContext.current
+
+        val bridgeErrorMsg = when (state) {
+            BridgeInitStates.NOT_INITIALIZING -> ""
+            BridgeInitStates.STAGE_1_GET_IP -> ""
+            BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> ""
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> ""
+            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON -> ""
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> stringResource(R.string.registering_bridge_button_not_pressed, splashViewmodel.newBridge?.ip ?: "null")
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> stringResource(R.string.registering_bridge_unsuccessful, splashViewmodel.newBridge?.ip ?: "null")
+            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE -> stringResource(R.string.registering_bridge_cannot_parse_response)
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED -> stringResource(R.string.registering_bridge_button_not_pressed, splashViewmodel.newBridge?.ip ?: "null")
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> ""
+        }
 
         Column(
             modifier = Modifier
@@ -1322,6 +1364,14 @@ class MainActivity : ComponentActivity() {
                 painter = painterResource(id = R.drawable.press_bridge_button),
                 contentDescription = stringResource(id = R.string.press_bridge_button_desc)
             )
+
+            val ipStr = splashViewmodel.newBridge?.ip
+            Text(
+                stringResource(R.string.connect_bridge_ip_success, ipStr ?: "error"),
+                modifier = Modifier.fillMaxWidth(0.5f).padding(bottom = 12.dp),
+                textAlign = TextAlign.Center,
+                fontSize = 24.sp
+            )
             Text(
                 stringResource(R.string.press_bridge_button),
                 modifier = Modifier.fillMaxWidth(0.5f),
@@ -1329,13 +1379,33 @@ class MainActivity : ComponentActivity() {
                 fontSize = 24.sp
             )
 
+
             Button(
                 onClick = {
                     splashViewModel.bridgeButtonPushed()
-                }
-            ) { Text(stringResource(R.string.ok)) }
+                },
+                modifier = Modifier
+                    .padding(bottom = 24.dp, top = 8.dp)
+                    .width(width = 100.dp)
+                    .height(50.dp)
+            ) { Text(
+                stringResource(R.string.ok),
+                fontSize = 18.sp
+                )
+            }
+        } // Column
+
+        if (bridgeErrorMsg.isBlank() == false) {
+            SimpleBoxMessage(
+                msgText = bridgeErrorMsg,
+                onClick = {
+                    splashViewModel.bridgeAddErrorMsgIsDisplayed()
+                },
+                buttonText = stringResource(R.string.ok)
+            )
         }
     }
+
 
     @Composable
     private fun ManualBridgeSetupStep2_portait(
@@ -1345,13 +1415,39 @@ class MainActivity : ComponentActivity() {
         // todo
     }
 
+
+    @Composable
+    private fun ManualBridgeSetupStep3(splashViewModel: SplashViewmodel) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeContentPadding()      // takes the insets into account (nav bars, etc)
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(id = R.string.new_bridge_success),
+                fontSize = 28.sp,
+            )
+
+            Button(
+                onClick = {
+                    splashViewModel.bridgeAddAllGoodAndDone()
+                }
+            ) { Text(stringResource(R.string.ok)) }
+
+        }
+
+    }
+
     //----------------------------
     //  previews
     //----------------------------
 
     @Preview (
         uiMode = Configuration.UI_MODE_NIGHT_YES,
-        widthDp = 800, heightDp = 400
+        widthDp = 1600, heightDp = 800
         )
     @Composable
     private fun ManualBridgeSetupStep2_landscapePreview() {
@@ -1363,7 +1459,7 @@ class MainActivity : ComponentActivity() {
                 .width(MIN_PH_ROOM_WIDTH.dp)
                 .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
         ) {
-            ManualBridgeSetupStep2_landscape(
+            ManualBridgeSetupStep2(
                 SplashViewmodel(),
                 BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
             )
@@ -1391,8 +1487,6 @@ class MainActivity : ComponentActivity() {
 */
 
 }
-
-
 
 
 //----------------------------

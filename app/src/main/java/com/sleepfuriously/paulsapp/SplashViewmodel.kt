@@ -2,13 +2,18 @@ package com.sleepfuriously.paulsapp
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -38,15 +43,18 @@ class SplashViewmodel : ViewModel() {
     var wifiWorking = _wifiWorking.asStateFlow()
 
 
-    private val _philipsHueTestsStatus = MutableStateFlow(TestStatus.NOT_TESTED)
+    private val _philipsHueTestStatus = MutableStateFlow(TestStatus.NOT_TESTED)
     /** when true, all philips hue tests are complete */
-    var philipsHueTestStatus = _philipsHueTestsStatus.asStateFlow()
+    var philipsHueTestStatus = _philipsHueTestStatus.asStateFlow()
 
 
-    // fixme:  this is set to TRUE for testing the okHttpUtils!!!!
-    private val _iotTesting = MutableStateFlow(true)
+    private val _iotTestingState = MutableStateFlow(TestStatus.NOT_TESTED)
     /** Will be true only while tests are running */
-    var iotTesting = _iotTesting.asStateFlow()
+    var iotTestingState = _iotTestingState.asStateFlow()
+
+    private val _iotTestingErrorMsg = MutableStateFlow("")
+    /** This will hold any message about the current iot testing errors */
+    var iotTestingErrorMsg = _iotTestingErrorMsg.asStateFlow()
 
 
     private val _addNewBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
@@ -58,6 +66,10 @@ class SplashViewmodel : ViewModel() {
     /** Holds the list of all bridges */
     var philipsHueBridges = _philipsHueBridges.asStateFlow()
 
+
+    private val _crashNow = MutableStateFlow(false)
+    /** when true, the Activity should call finish() */
+    var crashNow = _crashNow.asStateFlow()
 
     /** access to the philips hue bridge and all that stuff that goes with it */
     lateinit var bridgeUtils : PhilipsHueBridgeUtils
@@ -78,8 +90,11 @@ class SplashViewmodel : ViewModel() {
      */
     fun checkIoT(ctx: Context) {
 
-        _iotTesting.value = true
-//        _iotTestsStatus.value = TestStatus.TESTING
+        Log.d(TAG, "checkIoT() start. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
+
+        _iotTestingState.value = TestStatus.TESTING
+
+        Log.d(TAG, "checkIoT() part 1. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
 
         var allTestsSuccessful = true       // start optimistically
 
@@ -87,7 +102,7 @@ class SplashViewmodel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
 
             // fixme
-//            delay(1000)
+            delay(1000)
 
             //------------
             // 1.  check wifi
@@ -98,6 +113,9 @@ class SplashViewmodel : ViewModel() {
                 // Caution: this will skip the succeeding tests to never happen,
                 // causing them to never indicate that they completed.
                 allTestsSuccessful = false
+                _iotTestingState.value = TestStatus.TEST_BAD
+                _iotTestingErrorMsg.value = ctx.getString(R.string.wifi_not_working)
+                Log.d(TAG, "checkIoT() cannot find wifi connectivity: aborting!")
                 return@launch
             }
 
@@ -108,8 +126,7 @@ class SplashViewmodel : ViewModel() {
             // 2.  check philips hue system
             //
             checkPhilipsHue(ctx)
-            allTestsSuccessful =
-                philipsHueTestStatus.value == TestStatus.TEST_GOOD
+            allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
 
             //------------
             // 3.  todo: test other IoT devices
@@ -121,8 +138,9 @@ class SplashViewmodel : ViewModel() {
             // even if by a return statement.
 
             // signal tests complete
-            Log.d(TAG, "completion: allTestsSuccessful = $allTestsSuccessful")
-            _iotTesting.value = false
+            Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
+            _iotTestingState.value = TestStatus.TEST_GOOD
+            _iotTestingErrorMsg.value = ""
 //            _iotTestsStatus.value =
 //                if (allTestsSuccessful) TestStatus.TEST_GOOD
 //                else TestStatus.TEST_BAD
@@ -234,9 +252,11 @@ class SplashViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
             }
 
-            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> {
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
             }
+
 
             else -> {
                 Log.e(TAG, "error in bridgeInitErrorMsgDisplayed()!  State = ${_addNewBridgeState.value} is not an error state!")
@@ -255,10 +275,47 @@ class SplashViewmodel : ViewModel() {
      */
     fun bridgeButtonPushed() {
 
-        // send a
+        val bridge = newBridge ?: return
 
-        // create the body
+        viewModelScope.launch(Dispatchers.IO) {
+            val registerResponse = bridgeUtils.registerAppToBridge(bridge)
+            val token = registerResponse.first
 
+            if (token == null) {
+                Log.d(TAG, "bridgeButtonPushed(), null was returned from registerAppToBridge()")
+
+                when (registerResponse.second) {
+                    GetBridgeTokenErrorEnum.NO_ERROR,
+                    GetBridgeTokenErrorEnum.BAD_IP -> {
+                        Log.e(TAG, "Error state ${registerResponse.second} should not occur at this point in bridge registration.")
+                        // we should crash now!!!
+                        _crashNow.value = true
+                    }
+                    GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE -> {
+                        Log.d(TAG, "bridgeButtonPushed(), unsuccessful response")
+                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE
+                    }
+                    GetBridgeTokenErrorEnum.TOKEN_NOT_FOUND -> {
+                        Log.d(TAG, "bridgeButtonPushed() - could not find token")
+                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
+                    }
+
+                    GetBridgeTokenErrorEnum.CANNOT_PARSE_RESPONSE_BODY -> {
+                        Log.d(TAG, "bridgeButtonPushed() - unable to parse the response body")
+                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE
+                    }
+                    GetBridgeTokenErrorEnum.BUTTON_NOT_HIT -> {
+                        Log.d(TAG, "bridgeButtonPushed() - button not hit")
+                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED
+                    }
+                }
+                _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
+            }
+            else {
+                // yay, it worked!
+                _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
+            }
+        }
     }
 
     /**
@@ -275,7 +332,7 @@ class SplashViewmodel : ViewModel() {
      */
     fun testPutToBridge() {
         viewModelScope.launch(Dispatchers.IO) {
-
+            // todo
         }
     }
 
@@ -303,7 +360,8 @@ class SplashViewmodel : ViewModel() {
 
         // Get the bridge utils started.  This will go through
         // its test routines during initialization.
-        _philipsHueTestsStatus.value = TestStatus.TESTING
+        _philipsHueTestStatus.value = TestStatus.TESTING
+        _iotTestingErrorMsg.value = ""
         bridgeUtils = PhilipsHueBridgeUtils(ctx)
 
         // Get all the bridges.  If there are none, signal
@@ -337,7 +395,7 @@ class SplashViewmodel : ViewModel() {
             bridge.active = true
 
             // Do we have a token?
-            val token = bridgeUtils.getBridgeToken(bridge.id)
+            val token = bridgeUtils.getCurrentBridgeToken(bridge.id)
             if (token.isNullOrBlank()) {
                 continue
             }
@@ -352,7 +410,8 @@ class SplashViewmodel : ViewModel() {
         // All tests complete.  The results are stored within each
         // bridge in the list.  We'll signal that the tests are complete
         // by setting the status to TEST_GOOD.
-        _philipsHueTestsStatus.value = TestStatus.TEST_GOOD
+        _philipsHueTestStatus.value = TestStatus.TEST_GOOD
+        _iotTestingErrorMsg.value = ""
     }
 
 }
@@ -396,8 +455,20 @@ enum class BridgeInitStates {
     STAGE_1_ERROR__BAD_IP_FORMAT,
     STAGE_1_ERROR__NO_BRIDGE_AT_IP,
 
+    /** User needs to hit the bridge button and then hit next so we can initiate registration */
     STAGE_2_PRESS_BRIDGE_BUTTON,
+
+    /** we tried to get a token, but didn't succeed--possibly didn't push the button? */
     STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+
+    /** the response returned cannot be parsed--probably because this wasn't a Philips Hue bridge? */
+    STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+
+    /** we tried to register the app with the bridge without pushing the button on it first */
+    STAGE_2_ERROR__BUTTON_NOT_PUSHED,
+
+    /** The bridge didn't respond or responded in a completely unintelligiable way (not RESTful) */
+    STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE,
 
     STAGE_3_ALL_GOOD_AND_DONE
 }
