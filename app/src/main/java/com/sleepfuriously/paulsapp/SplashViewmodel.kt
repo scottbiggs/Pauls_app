@@ -249,16 +249,22 @@ class SplashViewmodel : ViewModel() {
         when (_addNewBridgeState.value) {
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> {
+                Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 1")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
             }
 
             BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
             BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
+                Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 2")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
             }
 
-
-            else -> {
+            BridgeInitStates.NOT_INITIALIZING,
+            BridgeInitStates.STAGE_1_GET_IP,
+            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
                 Log.e(TAG, "error in bridgeInitErrorMsgDisplayed()!  State = ${_addNewBridgeState.value} is not an error state!")
             }
         }
@@ -275,7 +281,11 @@ class SplashViewmodel : ViewModel() {
      */
     fun bridgeButtonPushed() {
 
-        val bridge = newBridge ?: return
+        if (newBridge == null) {
+            Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
+            return
+        }
+        val bridge = newBridge ?: return        // yah, redundant.  But that's kotlin for ya!
 
         viewModelScope.launch(Dispatchers.IO) {
             val registerResponse = bridgeUtils.registerAppToBridge(bridge)

@@ -253,7 +253,6 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
             // fixme:  this is NOT RIGHT (just using for testing)
             bodyStr = """
 {
-  "username": "$username",
   "devicetype": "$deviceType"
 }
                 """
@@ -268,7 +267,7 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
             Log.i(TAG, "requestTokenFromBridge($bridgeIp) -> $token")
 
             if (token != null) {
-                return Pair(null, GetBridgeTokenErrorEnum.TOKEN_NOT_FOUND)
+                return Pair(token, GetBridgeTokenErrorEnum.NO_ERROR)
             }
             else {
                 Log.e(TAG, "unable to parse body in requestTokenFromBridge($bridgeIp)")
