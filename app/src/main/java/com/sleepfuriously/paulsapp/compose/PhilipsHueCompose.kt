@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -68,13 +70,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.MainActivity
-import com.sleepfuriously.paulsapp.viewmodels.MainViewmodel
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
@@ -103,62 +102,12 @@ import kotlin.math.roundToInt
 @Composable
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
-    philipsHueViewModel: PhilipsHueViewmodel,
-    viewModel: MainViewmodel,
+    philipsHueViewmodel: PhilipsHueViewmodel,
     bridges: Set<PhilipsHueBridgeInfo>,
 ) {
 
-    // setup tests
-    val testRooms = mutableSetOf(
-        PhilipsHueRoomInfo(
-            "baby's room", true, mutableSetOf(
-                PhilipsHueLightInfo("1", name = "nightlight"),
-                PhilipsHueLightInfo("2", name = "desk light"),
-                PhilipsHueLightInfo("3", name = "backyard light"),
-            )
-        ),
-
-        PhilipsHueRoomInfo(
-            "2 times 3 time 4", true, mutableSetOf(
-                PhilipsHueLightInfo("1", name = "nightlight"),
-                PhilipsHueLightInfo("2", name = "desk light"),
-                PhilipsHueLightInfo("3", name = "backyard light"),
-            )
-        ),
-
-        PhilipsHueRoomInfo(
-            "living room", true, mutableSetOf(
-                PhilipsHueLightInfo("1", name = "nightlight"),
-                PhilipsHueLightInfo("2", name = "desk light"),
-                PhilipsHueLightInfo("3", name = "backyard light"),
-            )
-        ),
-        PhilipsHueRoomInfo(
-            "bedroom", true, mutableSetOf(
-                PhilipsHueLightInfo("1", name = "nightlight"),
-                PhilipsHueLightInfo("2", name = "desk light"),
-                PhilipsHueLightInfo("3", name = "backyard light"),
-            )
-        ),
-        PhilipsHueRoomInfo(
-            "kitchen", false, mutableSetOf(
-                PhilipsHueLightInfo("1", name = "nightlight"),
-                PhilipsHueLightInfo("2", name = "desk light"),
-                PhilipsHueLightInfo("3", name = "backyard light"),
-            )
-        ),
-    )
-
-    val testBridges = setOf(
-        PhilipsHueBridgeInfo("1", rooms = testRooms),
-        PhilipsHueBridgeInfo("2", active = true),
-        PhilipsHueBridgeInfo("3", active = true, rooms = testRooms),
-        PhilipsHueBridgeInfo("4"),
-        PhilipsHueBridgeInfo("245", active = true, rooms = testRooms),
-    )
-
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
-    val activeBridges = philipsHueViewModel.bridgeUtils.getAllActiveBridges(bridges)
+    val activeBridges = philipsHueViewmodel.bridgeUtils.getAllActiveBridges(bridges)
 
     // the content
     Column(
@@ -183,11 +132,9 @@ fun ShowMainScreenPhilipsHue(
             Spacer(modifier = Modifier.weight(1f))
 
             ShowMainPhilipsHueAddBridgeFab(
-                philipsHueViewModel = philipsHueViewModel,
-                viewModel = viewModel,
+                viewmodel = philipsHueViewmodel,
                 numActiveBridges = activeBridges.size
             )
-
         }
 
         LazyVerticalGrid(
@@ -200,7 +147,7 @@ fun ShowMainScreenPhilipsHue(
         ) {
             // Grouping the grids into bridges.  The first row will be the name
             // of the bridge.
-            testBridges.forEach { bridge ->
+            activeBridges.forEach { bridge ->
 
                 // only draw bridges that are active
                 if (bridge.active) {
@@ -285,47 +232,54 @@ fun ShowMainScreenPhilipsHue(
 fun ManualBridgeSetup(
     parentActivity: MainActivity,
     philipsHueViewmodel: PhilipsHueViewmodel,
+    waitingForResults: Boolean,
     initBridgeState: BridgeInitStates,
     modifier: Modifier = Modifier,
 ) {
     val config = LocalConfiguration.current
     val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
-    when (initBridgeState) {
-        BridgeInitStates.NOT_INITIALIZING -> {
-            // this should not happen.
-            SimpleBoxMessage(
-                modifier,
-                "error: should not be in ManualBridgeSetup() with this bridge init state.",
-                { parentActivity.finish() },
-                stringResource(id = R.string.exit)
-            )
-        }
-
-        // These states involve stage 1
-        BridgeInitStates.STAGE_1_GET_IP,
-        BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
-        BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
-            if (landscape) {
-                ManualBridgeSetupStep1_landscape(philipsHueViewmodel, initBridgeState)
-            } else {
-                ManualBridgeSetupStep1_Portrait(philipsHueViewmodel, initBridgeState)
+    Log.d(TAG, "ManualBridgeSetup() waitingForResults = $waitingForResults")
+    if (waitingForResults) {
+        ManualInitWaiting(philipsHueViewmodel)
+    }
+    else {
+        when (initBridgeState) {
+            BridgeInitStates.NOT_INITIALIZING -> {
+                // this should not happen.
+                SimpleBoxMessage(
+                    modifier,
+                    "error: should not be in ManualBridgeSetup() with this bridge init state.",
+                    { parentActivity.finish() },
+                    stringResource(id = R.string.exit)
+                )
             }
-        }
 
-        // Stage 2 states
-        BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
-        BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
-        BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
-        BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
-        BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
-            ManualBridgeSetupStep2(philipsHueViewmodel, initBridgeState)
-        }
+            // These states involve stage 1
+            BridgeInitStates.STAGE_1_GET_IP,
+            BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
+                if (landscape) {
+                    ManualBridgeSetupStep1_landscape(philipsHueViewmodel, initBridgeState)
+                } else {
+                    ManualBridgeSetupStep1_Portrait(philipsHueViewmodel, initBridgeState)
+                }
+            }
 
-        BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
-            ManualBridgeSetupStep3(philipsHueViewmodel)
-        }
+            // Stage 2 states
+            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
+                ManualBridgeSetupStep2(philipsHueViewmodel, initBridgeState)
+            }
 
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+                ManualBridgeSetupStep3(philipsHueViewmodel)
+            }
+
+        }
     }
 }
 
@@ -336,7 +290,11 @@ private fun ManualBridgeSetupStep1_landscape(
 ) {
 
     val ctx = LocalContext.current
-    var ipText by remember { mutableStateOf("") }
+    var ipText by remember { mutableStateOf(viewmodel.newBridge?.ip ?: "") }
+
+    BackHandler {
+        viewmodel.bridgeInitGoBack()
+    }
 
     Column(
         modifier = Modifier
@@ -419,7 +377,10 @@ private fun ManualBridgeSetupStep1_landscape(
                         keyboardType = KeyboardType.Decimal
                     ),
                     keyboardActions = KeyboardActions(
-                        onNext = { viewmodel.addPhilipsHueBridgeIp(ipText) }
+                        onNext = {
+                            Log.d(TAG, "ManualBridgeSetupStep1() - keyboardAction Next")
+                            viewmodel.addPhilipsHueBridgeIp(ipText)
+                        }
                     )
                 )
                 Button(
@@ -466,6 +427,10 @@ private fun ManualBridgeSetupStep1_Portrait(
     val config = LocalConfiguration.current
     val screenHeight = config.screenHeightDp
     val screenWidth = config.screenWidthDp
+
+    BackHandler {
+        viewmodel.bridgeInitGoBack()
+    }
 
     //----------------
     // We want each column to be just small enough on the screen so that
@@ -639,6 +604,11 @@ private fun ManualBridgeSetupStep2(
     viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
+
+    BackHandler {
+        viewmodel.bridgeInitGoBack()
+    }
+
     val ctx = LocalContext.current
 
     val bridgeErrorMsg = when (state) {
@@ -732,15 +702,23 @@ private fun ManualBridgeSetupStep2(
 
 @Composable
 private fun ManualBridgeSetupStep2_portait(
-    philipsHueViewModel: PhilipsHueViewmodel,
+    viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
+    BackHandler {
+        viewmodel.bridgeInitGoBack()
+    }
+
     // todo
 }
 
 
 @Composable
-private fun ManualBridgeSetupStep3(philipsHueViewModel: PhilipsHueViewmodel) {
+private fun ManualBridgeSetupStep3(viewmodel: PhilipsHueViewmodel) {
+
+    BackHandler {
+        viewmodel.bridgeInitGoBack()
+    }
 
     Column(
         modifier = Modifier
@@ -756,7 +734,7 @@ private fun ManualBridgeSetupStep3(philipsHueViewModel: PhilipsHueViewmodel) {
 
         Button(
             onClick = {
-                philipsHueViewModel.bridgeAddAllGoodAndDone()
+                viewmodel.bridgeAddAllGoodAndDone()
             }
         ) { Text(stringResource(R.string.ok)) }
 
@@ -764,12 +742,36 @@ private fun ManualBridgeSetupStep3(philipsHueViewModel: PhilipsHueViewmodel) {
 
 }
 
+@Composable
+private fun ManualInitWaiting(
+    viewmodel: PhilipsHueViewmodel,
+    modifier: Modifier = Modifier
+) {
+
+    BackHandler {
+        viewmodel.bridgeCancelTest()
+    }
+
+    Box (
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ){
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(stringResource(R.string.wait_while_checking_bridge_ip))
+        }
+    }
+}
+
 
 @Composable
 private fun ShowMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
-    philipsHueViewModel: PhilipsHueViewmodel,
-    viewModel: MainViewmodel,
+    viewmodel: PhilipsHueViewmodel,
     numActiveBridges: Int
 ) {
     // Add button to add a new bridge (if there are no active bridges, then
@@ -778,7 +780,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
         ExtendedFloatingActionButton(
             modifier = modifier
                 .padding(top = 26.dp, end = 38.dp),
-            onClick = { philipsHueViewModel.beginAddPhilipsHueBridge() },
+            onClick = { viewmodel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
             icon = {
                 Icon(
@@ -792,7 +794,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
         FloatingActionButton(
             modifier = modifier
                 .padding(top = 16.dp, end = 38.dp),
-            onClick = { philipsHueViewModel.beginAddPhilipsHueBridge() },
+            onClick = { viewmodel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
         ) {
             Icon(
@@ -955,6 +957,7 @@ private fun getLightColor(illumination: Float) : Color {
 //  previews
 //---------------------------------
 
+/*
 @Preview(
     uiMode = Configuration.UI_MODE_NIGHT_YES,
     widthDp = 1600, heightDp = 800
@@ -975,7 +978,14 @@ private fun ManualBridgeSetupStep2_landscapePreview() {
         )
     }
 }
+*/
 
+
+@Preview
+@Composable
+private fun ManualInitWaitingPreview() {
+    ManualInitWaiting(PhilipsHueViewmodel())
+}
 
 /*
     @Preview (uiMode = Configuration.UI_MODE_NIGHT_YES)

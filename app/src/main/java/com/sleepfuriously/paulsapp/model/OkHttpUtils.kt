@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.util.concurrent.TimeUnit
 
 /**
  * Bare-bones way to send and receive data from something via network
@@ -16,7 +17,13 @@ import okhttp3.Response
 object OkHttpUtils {
 
     /** reference to the okhttp library */
-    private val okHttpClient = OkHttpClient()
+//    private val okHttpClient = OkHttpClient()
+    private val okHttpClient = OkHttpClient.Builder()
+        .callTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
+        .writeTimeout(2, TimeUnit.SECONDS)
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .build()
 
 
     /**
@@ -85,6 +92,12 @@ object OkHttpUtils {
         return myResponse
     }
 
+    /**
+     * Yep, this is the big blunt hammer.  Kills all outstanding requests.
+     */
+    fun cancelAll() {
+//        okHttpClient.     todo
+    }
 }
 
 /**

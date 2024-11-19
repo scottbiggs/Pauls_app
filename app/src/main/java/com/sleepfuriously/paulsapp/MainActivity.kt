@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
     //----------------------------
 
     /** access to the view model */
-    private lateinit var viewModel: MainViewmodel
+    private lateinit var viewmodel: MainViewmodel
 
     /** accessor for philps hue viewmodel */
     private lateinit var philipsHueViewmodel: PhilipsHueViewmodel
@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
         // Draw under system bars
         enableEdgeToEdge()
 
-        viewModel  = MainViewmodel()
+        viewmodel  = MainViewmodel()
         philipsHueViewmodel = PhilipsHueViewmodel()
 
         // surest way to hide the action bar
@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
                     val philipsHueTestStatus by philipsHueViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
                     val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
                     val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
+                    val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
                     val philipsHueBridges by philipsHueViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
@@ -150,8 +151,6 @@ class MainActivity : ComponentActivity() {
                     if (iotTestingState == TestStatus.TESTING) {
                         TestSetupScreen(
                             modifier = Modifier.padding(innerPadding),
-                            viewModel = viewModel,
-                            philipsHueViewmodel = philipsHueViewmodel,
                             wifiWorking = wifiWorking ?: false,
                             philipsHueTest = philipsHueTestStatus,
                             philipsHueBridges = philipsHueBridges
@@ -173,14 +172,19 @@ class MainActivity : ComponentActivity() {
                     }
 
                     else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
-                        ManualBridgeSetup(this, philipsHueViewmodel, addNewBridgeState)
+                        Log.d(TAG, "in onCreate(), showWaitSpinner = $showWaitSpinner")
+                        ManualBridgeSetup(
+                            parentActivity = this,
+                            philipsHueViewmodel = philipsHueViewmodel,
+                            waitingForResults = showWaitSpinner,
+                            initBridgeState = addNewBridgeState)
                     }
                     else {
                         Log.d(TAG, "about to show FourPanes()! iotTesting = $iotTestingState, addNewBridgeState = $addNewBridgeState")
                         FourPanes(
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
-                            viewModel = viewModel,
+                            viewModel = viewmodel,
                             bridges = philipsHueBridges
                         )
                     }
@@ -291,7 +295,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel, viewModel, bridges)
+                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel, bridges)
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
@@ -443,8 +447,6 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun TestSetupScreen(
         modifier : Modifier = Modifier,
-        viewModel: MainViewmodel,
-        philipsHueViewmodel: PhilipsHueViewmodel,
         wifiWorking: Boolean?,
         philipsHueTest: TestStatus,
         philipsHueBridges: Set<PhilipsHueBridgeInfo>,

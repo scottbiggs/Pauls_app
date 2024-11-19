@@ -60,6 +60,10 @@ class PhilipsHueViewmodel : ViewModel() {
     /** when true, the Activity should call finish() */
     var crashNow = _crashNow.asStateFlow()
 
+    private val _waitingForResponse = MutableStateFlow(false)
+    /** when true, we are in the process of waiting for an important response from a bridge (probably) */
+    var waitingForResponse = _waitingForResponse.asStateFlow()
+
     /** access to the philips hue bridge and all that stuff that goes with it */
     lateinit var bridgeUtils : PhilipsHueBridgeUtils
 
@@ -177,6 +181,41 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     /**
+     * Called when the back button is hit during bridge registration.
+     * It's the responsibility of this function to figure out the current
+     * state and change to the appropriate back state.
+     */
+    fun bridgeInitGoBack() {
+        Log.d(TAG, "bridgeInitGoBack() started.  Current init state = ${_addNewBridgeState.value}")
+
+        when (_addNewBridgeState.value) {
+            BridgeInitStates.NOT_INITIALIZING -> {
+                Log.e(TAG, "   Error: should never go back while in ${_addNewBridgeState.value}. Returning to NOT_INIALIZING state.")
+                _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+            }
+            BridgeInitStates.STAGE_1_GET_IP,
+            BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
+                _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
+            }
+            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
+                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
+            }
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+                _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
+            }
+        }
+    }
+
+
+    /**
      * Begins the logical part of initializing the philips hue bridge.
      *
      * side effects:
@@ -204,18 +243,25 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun addPhilipsHueBridgeIp(newIp: String) {
 
+        Log.d(TAG, "addPhilipsHueBridgeIp()")
+
         // this includes a test and may take a while
         viewModelScope.launch(Dispatchers.IO) {
+
+            Log.d(TAG, "setting _waitingForResponse to TRUE!!!")
+            _waitingForResponse.value = true
 
             // check format
             if (isValidBasicIp(newIp) == false) {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT
+                _waitingForResponse.value = false
                 return@launch
             }
 
             // is there actually a bridge there?
             if (bridgeUtils.doesBridgeRespondToIp(newIp) == false) {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP
+                _waitingForResponse.value = false
                 return@launch
             }
 
@@ -223,6 +269,9 @@ class PhilipsHueViewmodel : ViewModel() {
             // (yes, I want to crash if newBridge is null)
             newBridge!!.ip = newIp
             _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+
+            Log.d(TAG, "setting _waitingForResponse back to false")
+            _waitingForResponse.value = false
         }
     }
 
@@ -242,6 +291,9 @@ class PhilipsHueViewmodel : ViewModel() {
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> {
                 Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 1")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
+
+                // also reset the bridge ip as it was messed up to begin with
+                newBridge?.ip = ""
             }
 
             BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
@@ -332,14 +384,12 @@ class PhilipsHueViewmodel : ViewModel() {
 
 
     /**
-     * Test to see if we can actually send a PUT command to the bridge.
+     * This will try to cancel any network testing that's going on (user hit a cancel
+     * button).
      */
-    fun testPutToBridge() {
-        viewModelScope.launch(Dispatchers.IO) {
-            // todo
-        }
-    }
+    fun bridgeCancelTest() {
 
+    }
 
     //-------------------------
     //  private functions
@@ -477,4 +527,4 @@ enum class BridgeInitStates {
     STAGE_3_ALL_GOOD_AND_DONE
 }
 
-private const val TAG = "SplashViewModel"
+private const val TAG = "PhilipsHueViewodel"

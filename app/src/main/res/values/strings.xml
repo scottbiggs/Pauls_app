@@ -50,7 +50,9 @@
         and then press the \'ok\' button below.</string>
     <string name="registering_bridge_button_not_pressed">Unable to get proper response from the Philips Hue bridge. Was the button on the bridge pressed?</string>
     <string name="registering_bridge_unsuccessful">Could not get a response from the Philips Hue bridge at IP %1s. Is it turned on and connected?</string>
-    <string name="registering_bridge_cannot_parse_response">Unable to decipher the response for the Philips Hue bridge at IP %1s. Is this the correct device?</string>
+    <string name="registering_bridge_cannot_parse_response">Unable to decipher the response for the Philips Hue bridge at IP %1s.
+        Is this the correct device?</string>
+    <string name="wait_while_checking_bridge_ip">Please hold tight while I check that IP…</string>
 
     <!-- philips hue section -->
     <string name="ph_bridge_name">bridge: %1s</string>
