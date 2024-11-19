@@ -1,8 +1,6 @@
 package com.sleepfuriously.paulsapp
 
 import android.animation.ObjectAnimator
-import android.content.res.Configuration
-import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -23,40 +21,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,20 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,17 +57,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepfuriously.paulsapp.compose.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.SimpleBoxMessage
-import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
-import com.sleepfuriously.paulsapp.ui.theme.coolGray
-import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
+import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
+import com.sleepfuriously.paulsapp.viewmodels.MainViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.TestStatus
 import kotlin.math.roundToInt
 
 
@@ -127,10 +90,10 @@ class MainActivity : ComponentActivity() {
     //----------------------------
 
     /** access to the view model */
-    private lateinit var viewModel: MainViewModel
+    private lateinit var viewModel: MainViewmodel
 
-    /** accessor for splash screen viewmodel */
-    private lateinit var splashViewmodel: SplashViewmodel
+    /** accessor for philps hue viewmodel */
+    private lateinit var philipsHueViewmodel: PhilipsHueViewmodel
 
 
     //----------------------------
@@ -143,14 +106,14 @@ class MainActivity : ComponentActivity() {
         // Draw under system bars
         enableEdgeToEdge()
 
-        viewModel  = MainViewModel()
-        splashViewmodel = SplashViewmodel()
+        viewModel  = MainViewmodel()
+        philipsHueViewmodel = PhilipsHueViewmodel()
 
         // surest way to hide the action bar
         actionBar?.hide()
 
         // start initializations and splash screen
-        splashViewmodel.checkIoT(this)
+        philipsHueViewmodel.checkIoT(this)
         showSplashScreen()
 
         setContent {
@@ -158,20 +121,20 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    // create data to receive flows from the splashviewmodel
-                    val wifiWorking by splashViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                    val iotTestingState by splashViewmodel.iotTestingState.collectAsStateWithLifecycle()
-                    val iotTestingErrorMsg by splashViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
-                    val philipsHueTestStatus by splashViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
-                    val addNewBridgeState by splashViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
-                    val finishNow by splashViewmodel.crashNow.collectAsStateWithLifecycle()
+                    // create data to receive flows from the philips hue viewmodel
+                    val wifiWorking by philipsHueViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                    val iotTestingState by philipsHueViewmodel.iotTestingState.collectAsStateWithLifecycle()
+                    val iotTestingErrorMsg by philipsHueViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
+                    val philipsHueTestStatus by philipsHueViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
+                    val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
+                    val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
-                    val philipsHueBridges by splashViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
+                    val philipsHueBridges by philipsHueViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
 
 
                     // Before anything, do we need to exit?
-                    if (finishNow) {
+                    if (philipsHueFinishNow) {
                         finish()
                     }
 
@@ -188,7 +151,7 @@ class MainActivity : ComponentActivity() {
                         TestSetupScreen(
                             modifier = Modifier.padding(innerPadding),
                             viewModel = viewModel,
-                            splashViewmodel = splashViewmodel,
+                            philipsHueViewmodel = philipsHueViewmodel,
                             wifiWorking = wifiWorking ?: false,
                             philipsHueTest = philipsHueTestStatus,
                             philipsHueBridges = philipsHueBridges
@@ -210,13 +173,13 @@ class MainActivity : ComponentActivity() {
                     }
 
                     else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
-                        ManualBridgeSetup(this, splashViewmodel, addNewBridgeState)
+                        ManualBridgeSetup(this, philipsHueViewmodel, addNewBridgeState)
                     }
                     else {
                         Log.d(TAG, "about to show FourPanes()! iotTesting = $iotTestingState, addNewBridgeState = $addNewBridgeState")
                         FourPanes(
                             0.3f,
-                            splashViewmodel = splashViewmodel,
+                            philipsHueViewmodel = philipsHueViewmodel,
                             viewModel = viewModel,
                             bridges = philipsHueBridges
                         )
@@ -244,8 +207,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun FourPanes(
         minPercent : Float,
-        splashViewmodel: SplashViewmodel,
-        viewModel: MainViewModel,
+        philipsHueViewmodel: PhilipsHueViewmodel,
+        viewModel: MainViewmodel,
         modifier : Modifier = Modifier,
         bridges: Set<PhilipsHueBridgeInfo>
     ) {
@@ -328,7 +291,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        ShowMainScreenPhilipsHue(modifier, splashViewmodel, viewModel, bridges)
+                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel, viewModel, bridges)
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
@@ -480,8 +443,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun TestSetupScreen(
         modifier : Modifier = Modifier,
-        viewModel: MainViewModel,
-        splashViewmodel: SplashViewmodel,
+        viewModel: MainViewmodel,
+        philipsHueViewmodel: PhilipsHueViewmodel,
         wifiWorking: Boolean?,
         philipsHueTest: TestStatus,
         philipsHueBridges: Set<PhilipsHueBridgeInfo>,
@@ -506,7 +469,7 @@ class MainActivity : ComponentActivity() {
             Button(
                 onClick = {
                     Toast.makeText(ctx, "get this part working, scott!", Toast.LENGTH_LONG).show()
-//                    splashViewModel.testPutToBridge()
+//                    philipsHueViewmodel.testPutToBridge()
             }) {
                 Text("go")
             }
@@ -556,7 +519,7 @@ class MainActivity : ComponentActivity() {
      * called BEFORE setContent() in [onCreate].
      *
      * preconditions:
-     *      splashScreenViewmodel       ready to use
+     *      philipsHueViewmodel       ready to use
      */
     private fun showSplashScreen() {
         // Needs to be called before setContent() or setContentView().
@@ -565,7 +528,7 @@ class MainActivity : ComponentActivity() {
             // example: this will check the value every frame and keep showing
             //          the splash screen as long as the total value is true
             setKeepOnScreenCondition {
-                splashViewmodel.iotTestingState.value == TestStatus.TESTING
+                philipsHueViewmodel.iotTestingState.value == TestStatus.TESTING
             }
 
             // set the exit animation

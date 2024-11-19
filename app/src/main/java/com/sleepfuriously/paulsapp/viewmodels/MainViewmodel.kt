@@ -1,4 +1,4 @@
-package com.sleepfuriously.paulsapp
+package com.sleepfuriously.paulsapp.viewmodels
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
  * main screen.  The parts of the screen should have their
  * own viewmodels.
  */
-class MainViewModel : ViewModel() {
+class MainViewmodel : ViewModel() {
 
     /** Tells the UI which state to display */
     var displayStates by mutableStateOf(MainActivityDisplayStates.UNKNOWN)
@@ -104,4 +104,4 @@ enum class MainActivityDisplayStates {
     UNKNOWN
 }
 
-private const val TAG = "MainViewModel"
+private const val TAG = "MainViewmodel"

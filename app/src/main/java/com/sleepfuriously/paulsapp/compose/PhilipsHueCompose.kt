@@ -66,11 +66,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sleepfuriously.paulsapp.BridgeInitStates
+import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.MainActivity
-import com.sleepfuriously.paulsapp.MainViewModel
+import com.sleepfuriously.paulsapp.viewmodels.MainViewmodel
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.SplashViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
@@ -103,8 +103,8 @@ import kotlin.math.roundToInt
 @Composable
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
-    splashViewModel: SplashViewmodel,
-    viewModel: MainViewModel,
+    philipsHueViewModel: PhilipsHueViewmodel,
+    viewModel: MainViewmodel,
     bridges: Set<PhilipsHueBridgeInfo>,
 ) {
 
@@ -158,7 +158,7 @@ fun ShowMainScreenPhilipsHue(
     )
 
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
-    val activeBridges = splashViewModel.bridgeUtils.getAllActiveBridges(bridges)
+    val activeBridges = philipsHueViewModel.bridgeUtils.getAllActiveBridges(bridges)
 
     // the content
     Column(
@@ -183,7 +183,7 @@ fun ShowMainScreenPhilipsHue(
             Spacer(modifier = Modifier.weight(1f))
 
             ShowMainPhilipsHueAddBridgeFab(
-                splashViewModel = splashViewModel,
+                philipsHueViewModel = philipsHueViewModel,
                 viewModel = viewModel,
                 numActiveBridges = activeBridges.size
             )
@@ -284,7 +284,7 @@ fun ShowMainScreenPhilipsHue(
 @Composable
 fun ManualBridgeSetup(
     parentActivity: MainActivity,
-    splashViewmodel: SplashViewmodel,
+    philipsHueViewmodel: PhilipsHueViewmodel,
     initBridgeState: BridgeInitStates,
     modifier: Modifier = Modifier,
 ) {
@@ -307,9 +307,9 @@ fun ManualBridgeSetup(
         BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
         BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
             if (landscape) {
-                ManualBridgeSetupStep1_landscape(splashViewmodel, initBridgeState)
+                ManualBridgeSetupStep1_landscape(philipsHueViewmodel, initBridgeState)
             } else {
-                ManualBridgeSetupStep1_Portrait(splashViewmodel, initBridgeState)
+                ManualBridgeSetupStep1_Portrait(philipsHueViewmodel, initBridgeState)
             }
         }
 
@@ -319,11 +319,11 @@ fun ManualBridgeSetup(
         BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
         BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
         BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
-            ManualBridgeSetupStep2(splashViewmodel, initBridgeState)
+            ManualBridgeSetupStep2(philipsHueViewmodel, initBridgeState)
         }
 
         BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
-            ManualBridgeSetupStep3(splashViewmodel)
+            ManualBridgeSetupStep3(philipsHueViewmodel)
         }
 
     }
@@ -331,7 +331,7 @@ fun ManualBridgeSetup(
 
 @Composable
 private fun ManualBridgeSetupStep1_landscape(
-    viewmodel: SplashViewmodel,
+    viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
 
@@ -457,7 +457,7 @@ private fun ManualBridgeSetupStep1_landscape(
 
 @Composable
 private fun ManualBridgeSetupStep1_Portrait(
-    viewmodel: SplashViewmodel,
+    viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
     val ctx = LocalContext.current
@@ -636,7 +636,7 @@ private fun ManualBridgeSetupStep1_Portrait(
 
 @Composable
 private fun ManualBridgeSetupStep2(
-    viewmodel: SplashViewmodel,
+    viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
     val ctx = LocalContext.current
@@ -732,7 +732,7 @@ private fun ManualBridgeSetupStep2(
 
 @Composable
 private fun ManualBridgeSetupStep2_portait(
-    splashViewModel: SplashViewmodel,
+    philipsHueViewModel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
     // todo
@@ -740,7 +740,7 @@ private fun ManualBridgeSetupStep2_portait(
 
 
 @Composable
-private fun ManualBridgeSetupStep3(splashViewModel: SplashViewmodel) {
+private fun ManualBridgeSetupStep3(philipsHueViewModel: PhilipsHueViewmodel) {
 
     Column(
         modifier = Modifier
@@ -756,7 +756,7 @@ private fun ManualBridgeSetupStep3(splashViewModel: SplashViewmodel) {
 
         Button(
             onClick = {
-                splashViewModel.bridgeAddAllGoodAndDone()
+                philipsHueViewModel.bridgeAddAllGoodAndDone()
             }
         ) { Text(stringResource(R.string.ok)) }
 
@@ -768,8 +768,8 @@ private fun ManualBridgeSetupStep3(splashViewModel: SplashViewmodel) {
 @Composable
 private fun ShowMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
-    splashViewModel: SplashViewmodel,
-    viewModel: MainViewModel,
+    philipsHueViewModel: PhilipsHueViewmodel,
+    viewModel: MainViewmodel,
     numActiveBridges: Int
 ) {
     // Add button to add a new bridge (if there are no active bridges, then
@@ -778,7 +778,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
         ExtendedFloatingActionButton(
             modifier = modifier
                 .padding(top = 26.dp, end = 38.dp),
-            onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+            onClick = { philipsHueViewModel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
             icon = {
                 Icon(
@@ -792,7 +792,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
         FloatingActionButton(
             modifier = modifier
                 .padding(top = 16.dp, end = 38.dp),
-            onClick = { splashViewModel.beginAddPhilipsHueBridge() },
+            onClick = { philipsHueViewModel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
         ) {
             Icon(
@@ -970,7 +970,7 @@ private fun ManualBridgeSetupStep2_landscapePreview() {
             .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
     ) {
         ManualBridgeSetupStep2(
-            SplashViewmodel(),
+            PhilipsHueViewmodel(),
             BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
         )
     }

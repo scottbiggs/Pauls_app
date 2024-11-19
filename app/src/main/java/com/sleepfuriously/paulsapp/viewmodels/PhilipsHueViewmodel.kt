@@ -1,12 +1,10 @@
-package com.sleepfuriously.paulsapp
+package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
@@ -19,20 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the startup splash screen.  While this is displaying,
- * many initializations take place.
- *
- * 1. Wifi
- *   a. is wifi turned on for the device?
- *   b. is wifi connected?
- *
- * 2. IoT - Philips Hue
- *   a. do we have a token?
- *   b. does token work?
- *
- * 3. todo - all other IoT devices
+ * Viewmodel for all the Philips Hue devices.
  */
-class SplashViewmodel : ViewModel() {
+class PhilipsHueViewmodel : ViewModel() {
 
     //-------------------------
     //  class data
@@ -48,10 +35,12 @@ class SplashViewmodel : ViewModel() {
     var philipsHueTestStatus = _philipsHueTestStatus.asStateFlow()
 
 
+    // todo: move to MainViewmodel
     private val _iotTestingState = MutableStateFlow(TestStatus.NOT_TESTED)
     /** Will be true only while tests are running */
     var iotTestingState = _iotTestingState.asStateFlow()
 
+    // todo: move to MainViewmodel
     private val _iotTestingErrorMsg = MutableStateFlow("")
     /** This will hold any message about the current iot testing errors */
     var iotTestingErrorMsg = _iotTestingErrorMsg.asStateFlow()
@@ -83,6 +72,8 @@ class SplashViewmodel : ViewModel() {
     //-------------------------
 
     /**
+     * todo: move to MainViewmodel
+     *
      * Runs all the initalization tests of the IoT devices.
      *
      * side effects
@@ -303,16 +294,19 @@ class SplashViewmodel : ViewModel() {
                     }
                     GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE -> {
                         Log.d(TAG, "bridgeButtonPushed(), unsuccessful response")
-                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE
+                        _addNewBridgeState.value =
+                            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE
                     }
                     GetBridgeTokenErrorEnum.TOKEN_NOT_FOUND -> {
                         Log.d(TAG, "bridgeButtonPushed() - could not find token")
-                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
+                        _addNewBridgeState.value =
+                            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
                     }
 
                     GetBridgeTokenErrorEnum.CANNOT_PARSE_RESPONSE_BODY -> {
                         Log.d(TAG, "bridgeButtonPushed() - unable to parse the response body")
-                        _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE
+                        _addNewBridgeState.value =
+                            BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE
                     }
                     GetBridgeTokenErrorEnum.BUTTON_NOT_HIT -> {
                         Log.d(TAG, "bridgeButtonPushed() - button not hit")
