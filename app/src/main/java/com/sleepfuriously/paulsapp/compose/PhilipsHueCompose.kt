@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +38,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -286,6 +286,7 @@ fun ManualBridgeSetup(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ManualBridgeSetupStep1_landscape(
     modifier: Modifier = Modifier,
@@ -379,49 +380,23 @@ private fun ManualBridgeSetupStep1_landscape(
                     text = stringResource(id = R.string.bridge_ip_step_3),
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Row(
+
+                TextFieldAndButton(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, start = 16.dp, end = 16.dp),
-                    Arrangement.Center
-                ) {
-                    OutlinedTextField(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-//                            .weight(4f)
-                            .width(160.dp)
-                            .align(Alignment.CenterVertically),
-                        value = ipText,
-                        label = { Text(stringResource(id = R.string.enter_ip)) },
-                        singleLine = true,
-                        onValueChange = { ipText = it },
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Next,
-                            keyboardType = KeyboardType.Decimal
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = {
-                                Log.d(TAG, "ManualBridgeSetupStep1() - keyboardAction Next")
-                                viewmodel.addPhilipsHueBridgeIp(ipText)
-                            }
-                        )
-                    )
-                    Button(
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .align(Alignment.CenterVertically),
-                        onClick = { viewmodel.addPhilipsHueBridgeIp(ipText) }) {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.baseline_arrow_forward_24),
-                            contentDescription = stringResource(R.string.next)
-                        )
-                    }
-                }
-            }
+                        .fillMaxWidth(0.8f)
+                        .padding(top = 8.dp)
+                        .align(Alignment.CenterHorizontally),
+                    label = stringResource(R.string.enter_ip),
+                    onClick = viewmodel::addPhilipsHueBridgeIp,
+                    buttonLabel = stringResource(R.string.enter_ip),
+                    imeActivate = true,
+                    keyboardType = KeyboardType.Decimal
+                )
+            } // 3rd column
+
         } // Row of the 3 images and text (textfield and button in 3rd)
 
-    }
+    } // main column
 
     // display any error messages
     if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {

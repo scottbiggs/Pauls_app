@@ -247,7 +247,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun addPhilipsHueBridgeIp(newIp: String) {
 
-        Log.d(TAG, "addPhilipsHueBridgeIp()")
+        Log.d(TAG, "begin addPhilipsHueBridgeIp( newIp = $newIp )")
 
         // this includes a test and may take a while
         viewModelScope.launch(Dispatchers.IO) {
