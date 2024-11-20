@@ -174,6 +174,7 @@ class MainActivity : ComponentActivity() {
                     else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
                         Log.d(TAG, "in onCreate(), showWaitSpinner = $showWaitSpinner")
                         ManualBridgeSetup(
+                            modifier = Modifier.height(200.dp),
                             parentActivity = this,
                             philipsHueViewmodel = philipsHueViewmodel,
                             waitingForResults = showWaitSpinner,

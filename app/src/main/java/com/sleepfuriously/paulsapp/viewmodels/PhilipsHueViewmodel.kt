@@ -193,25 +193,29 @@ class PhilipsHueViewmodel : ViewModel() {
                 Log.e(TAG, "   Error: should never go back while in ${_addNewBridgeState.value}. Returning to NOT_INIALIZING state.")
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
             }
+
             BridgeInitStates.STAGE_1_GET_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
-                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
             }
+
             BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
-            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
             BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
-            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
             BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
-                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
             }
+
+            BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED -> {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+            }
+
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
-                Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
             }
         }
+        Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
     }
 
 

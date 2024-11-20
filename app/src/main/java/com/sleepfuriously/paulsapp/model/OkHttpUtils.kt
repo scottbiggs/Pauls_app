@@ -180,7 +180,7 @@ data class MyResponse(
          *
          * WARNING
          *  Unlike the normal constructor, this needs to be called off the
-         *  main thread as it accesses [Response] data. todo: test this!
+         *  main thread as it accesses [Response] data.
          */
         operator fun invoke(response: Response): MyResponse {
 

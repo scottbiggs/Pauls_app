@@ -1,6 +1,5 @@
 package com.sleepfuriously.paulsapp.compose
 
-import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.util.Log
 import android.widget.Toast
@@ -38,6 +37,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -223,6 +223,9 @@ fun ShowMainScreenPhilipsHue(
     }
 }
 
+//---------------------------------
+//  bridge init
+//---------------------------------
 
 /**
  * Walks the user through the initialization process of the philips
@@ -230,18 +233,18 @@ fun ShowMainScreenPhilipsHue(
  */
 @Composable
 fun ManualBridgeSetup(
+    modifier: Modifier = Modifier,
     parentActivity: MainActivity,
     philipsHueViewmodel: PhilipsHueViewmodel,
     waitingForResults: Boolean,
-    initBridgeState: BridgeInitStates,
-    modifier: Modifier = Modifier,
+    initBridgeState: BridgeInitStates
 ) {
     val config = LocalConfiguration.current
     val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
     Log.d(TAG, "ManualBridgeSetup() waitingForResults = $waitingForResults")
     if (waitingForResults) {
-        ManualInitWaiting(philipsHueViewmodel)
+        ManualInitWaiting(philipsHueViewmodel, modifier)
     }
     else {
         when (initBridgeState) {
@@ -260,9 +263,9 @@ fun ManualBridgeSetup(
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 if (landscape) {
-                    ManualBridgeSetupStep1_landscape(philipsHueViewmodel, initBridgeState)
+                    ManualBridgeSetupStep1_landscape(modifier, philipsHueViewmodel, initBridgeState)
                 } else {
-                    ManualBridgeSetupStep1_Portrait(philipsHueViewmodel, initBridgeState)
+                    ManualBridgeSetupStep1_Portrait(modifier, philipsHueViewmodel, initBridgeState)
                 }
             }
 
@@ -272,11 +275,11 @@ fun ManualBridgeSetup(
             BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
             BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
             BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
-                ManualBridgeSetupStep2(philipsHueViewmodel, initBridgeState)
+                ManualBridgeSetupStep2(modifier, philipsHueViewmodel, initBridgeState)
             }
 
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
-                ManualBridgeSetupStep3(philipsHueViewmodel)
+                ManualBridgeSetupStep3(modifier, philipsHueViewmodel)
             }
 
         }
@@ -285,6 +288,7 @@ fun ManualBridgeSetup(
 
 @Composable
 private fun ManualBridgeSetupStep1_landscape(
+    modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
@@ -312,6 +316,7 @@ private fun ManualBridgeSetupStep1_landscape(
                 .fillMaxWidth()
                 .padding(top = 18.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
         ) {
+            // 1st column
             Column(
                 Modifier
                     .fillMaxHeight()
@@ -319,6 +324,7 @@ private fun ManualBridgeSetupStep1_landscape(
             ) {
                 Image(
                     contentScale = ContentScale.Fit,
+                    alignment = Alignment.TopCenter,
                     painter = painterResource(id = R.drawable.bridge_ip_step_1),
                     contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
                 )
@@ -326,10 +332,13 @@ private fun ManualBridgeSetupStep1_landscape(
                     modifier = Modifier
                         .padding(horizontal = 24.dp),
                     textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
                     text = stringResource(id = R.string.bridge_ip_step_1)
                 )
             }
             Spacer(modifier = Modifier.width(18.dp))
+
+            // 2nd column
             Column(
                 Modifier
                     .fillMaxHeight()
@@ -337,6 +346,7 @@ private fun ManualBridgeSetupStep1_landscape(
             ) {
                 Image(
                     contentScale = ContentScale.Fit,
+                    alignment = Alignment.TopCenter,
                     painter = painterResource(id = R.drawable.bridge_ip_step_2),
                     contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
                 )
@@ -344,10 +354,13 @@ private fun ManualBridgeSetupStep1_landscape(
                     modifier = Modifier
                         .padding(horizontal = 24.dp),
                     textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
                     text = stringResource(id = R.string.bridge_ip_step_2)
                 )
             }
             Spacer(modifier = Modifier.width(18.dp))
+
+            // 3rd column
             Column(
                 Modifier
                     .fillMaxHeight()
@@ -355,6 +368,7 @@ private fun ManualBridgeSetupStep1_landscape(
             ) {
                 Image(
                     contentScale = ContentScale.Fit,
+                    alignment = Alignment.TopCenter,
                     painter = painterResource(id = R.drawable.bridge_ip_step_3),
                     contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
                 )
@@ -362,37 +376,50 @@ private fun ManualBridgeSetupStep1_landscape(
                     modifier = Modifier
                         .padding(horizontal = 24.dp),
                     textAlign = TextAlign.Center,
-                    text = stringResource(id = R.string.bridge_ip_step_3)
+                    text = stringResource(id = R.string.bridge_ip_step_3),
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                OutlinedTextField(
+                Row(
                     modifier = Modifier
-                        .padding(top = 4.dp)
-                        .align(Alignment.CenterHorizontally),
-                    value = ipText,
-                    label = { Text(stringResource(id = R.string.enter_ip)) },
-                    singleLine = true,
-                    onValueChange = { ipText = it },
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next,
-                        keyboardType = KeyboardType.Decimal
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = {
-                            Log.d(TAG, "ManualBridgeSetupStep1() - keyboardAction Next")
-                            viewmodel.addPhilipsHueBridgeIp(ipText)
-                        }
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, start = 16.dp, end = 16.dp),
+                    Arrangement.Center
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+//                            .weight(4f)
+                            .width(160.dp)
+                            .align(Alignment.CenterVertically),
+                        value = ipText,
+                        label = { Text(stringResource(id = R.string.enter_ip)) },
+                        singleLine = true,
+                        onValueChange = { ipText = it },
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Next,
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                Log.d(TAG, "ManualBridgeSetupStep1() - keyboardAction Next")
+                                viewmodel.addPhilipsHueBridgeIp(ipText)
+                            }
+                        )
                     )
-                )
-                Button(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 8.dp)
-                        .width(120.dp),
-                    onClick = { viewmodel.addPhilipsHueBridgeIp(ipText) }) {
-                    Text(stringResource(id = R.string.next))
+                    Button(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .align(Alignment.CenterVertically),
+                        onClick = { viewmodel.addPhilipsHueBridgeIp(ipText) }) {
+                        Image(
+                            contentScale = ContentScale.Fit,
+                            painter = painterResource(id = R.drawable.baseline_arrow_forward_24),
+                            contentDescription = stringResource(R.string.next)
+                        )
+                    }
                 }
             }
-        }
+        } // Row of the 3 images and text (textfield and button in 3rd)
 
     }
 
@@ -418,8 +445,9 @@ private fun ManualBridgeSetupStep1_landscape(
 
 @Composable
 private fun ManualBridgeSetupStep1_Portrait(
+    modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
-    state: BridgeInitStates
+    state: BridgeInitStates,
 ) {
     val ctx = LocalContext.current
     var ipText by remember { mutableStateOf("") }
@@ -447,7 +475,7 @@ private fun ManualBridgeSetupStep1_Portrait(
 
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -457,14 +485,14 @@ private fun ManualBridgeSetupStep1_Portrait(
             fontSize = 28.sp
         )
         LazyRow(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .padding(top = 18.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
             state = rememberLazyListState(initialFirstVisibleItemIndex = 0) // alwasy start at the beginning
         ) {
             item {
                 LazyColumn(
-                    Modifier
+                    modifier
                         .fillMaxHeight()
                         .width(columnWidth.dp)
                         .weight(1f)
@@ -478,7 +506,7 @@ private fun ManualBridgeSetupStep1_Portrait(
                     }
                     item {
                         Text(
-                            modifier = Modifier
+                            modifier = modifier
                                 .padding(horizontal = 24.dp),
                             textAlign = TextAlign.Center,
                             text = stringResource(id = R.string.bridge_ip_step_1)
@@ -487,12 +515,12 @@ private fun ManualBridgeSetupStep1_Portrait(
                 }
             }
             item {
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = modifier.width(24.dp))
             }
 
             item {
                 LazyColumn(
-                    Modifier
+                    modifier
                         .fillMaxHeight()
                         .width(columnWidth.dp)
                         .weight(1f)
@@ -506,7 +534,7 @@ private fun ManualBridgeSetupStep1_Portrait(
                     }
                     item {
                         Text(
-                            modifier = Modifier
+                            modifier = modifier
                                 .padding(horizontal = 24.dp),
                             textAlign = TextAlign.Center,
                             text = stringResource(id = R.string.bridge_ip_step_2)
@@ -515,13 +543,13 @@ private fun ManualBridgeSetupStep1_Portrait(
                 }
             }
             item {
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = modifier.width(24.dp))
             }
 
             item {
 
                 LazyColumn(
-                    Modifier
+                    modifier
                         .fillMaxWidth()
                         .fillMaxHeight()
                         .width(columnWidth.dp)
@@ -537,7 +565,7 @@ private fun ManualBridgeSetupStep1_Portrait(
                     }
                     item {
                         Text(
-                            modifier = Modifier
+                            modifier = modifier
                                 .padding(horizontal = 24.dp),
                             textAlign = TextAlign.Center,
                             text = stringResource(id = R.string.bridge_ip_step_3)
@@ -546,7 +574,7 @@ private fun ManualBridgeSetupStep1_Portrait(
                     item {
                         Row {
                             OutlinedTextField(
-                                modifier = Modifier
+                                modifier = modifier
                                     .padding(top = 4.dp)
                                     .align(Alignment.CenterVertically),
                                 value = ipText,
@@ -563,7 +591,7 @@ private fun ManualBridgeSetupStep1_Portrait(
                             )
 
                             Button(
-                                modifier = Modifier
+                                modifier = modifier
                                     .align(Alignment.CenterVertically)
                                     .padding(top = 8.dp, start = 12.dp)
                                     .width(120.dp),
@@ -601,6 +629,7 @@ private fun ManualBridgeSetupStep1_Portrait(
 
 @Composable
 private fun ManualBridgeSetupStep2(
+    modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
     state: BridgeInitStates
 ) {
@@ -714,14 +743,17 @@ private fun ManualBridgeSetupStep2_portait(
 
 
 @Composable
-private fun ManualBridgeSetupStep3(viewmodel: PhilipsHueViewmodel) {
+private fun ManualBridgeSetupStep3(
+    modifier: Modifier = Modifier,
+    viewmodel: PhilipsHueViewmodel
+) {
 
     BackHandler {
         viewmodel.bridgeInitGoBack()
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .safeContentPadding()      // takes the insets into account (nav bars, etc)
             .padding(8.dp),
@@ -820,6 +852,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
  */
 @Composable
 private fun DisplayPhilipsHueRoom(
+    modifier: Modifier = Modifier,
     roomName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
@@ -836,7 +869,7 @@ private fun DisplayPhilipsHueRoom(
 
     Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
 
-    Column(modifier = Modifier
+    Column(modifier = modifier
         .fillMaxSize()
         .padding(horizontal = 10.dp, vertical = 4.dp)
         .clip(RoundedCornerShape(10.dp))
@@ -848,17 +881,17 @@ private fun DisplayPhilipsHueRoom(
     ) {
         Text(
             text = roomName,
-            modifier = Modifier
+            modifier = modifier
                 .padding(vertical = 4.dp, horizontal = 8.dp)
         )
 
         Row (
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth(),
             verticalAlignment = Alignment.Bottom
         ) {
             Switch(
-                modifier = Modifier
+                modifier = modifier
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = roomLightsSwitchOn,
@@ -878,7 +911,7 @@ private fun DisplayPhilipsHueRoom(
 
             // This pushes the switch to the far left and the lightbulb to
             // the far right.
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = modifier.weight(1f))
 
             DrawLightBulb(lightImage, lightColor)
         }
@@ -892,7 +925,7 @@ private fun DisplayPhilipsHueRoom(
                 lightColor = getLightColor(sliderPosition)
                 roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
             },
-            modifier = Modifier
+            modifier = modifier
                 .padding(vertical = 4.dp, horizontal = 18.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(veryDarkCoolGray)
@@ -981,11 +1014,13 @@ private fun ManualBridgeSetupStep2_landscapePreview() {
 */
 
 
+/*
 @Preview
 @Composable
 private fun ManualInitWaitingPreview() {
     ManualInitWaiting(PhilipsHueViewmodel())
 }
+*/
 
 /*
     @Preview (uiMode = Configuration.UI_MODE_NIGHT_YES)
