@@ -87,15 +87,13 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
     //-----------------------------------
 
     /**
-     * Returns the bridge with the given id.  If the id is bogus
-     * this returns null.  Great way to check to see if a bridge
-     * exists.
-     *
-     * fixme:  needs testing
+     * Returns the bridge with the given id from the current
+     * Set of bridges.  If the id is bogus this returns null.
+     * Great way to check to see if a bridge exists.
      */
-    fun getBridgeInfo(id: String) : PhilipsHueBridgeInfo? {
+    fun getBridgeInfo(bridgeId: String) : PhilipsHueBridgeInfo? {
         return  philipsHueBridges.find { bridge ->
-            bridge.id == id
+            bridge.id == bridgeId
         }
     }
 
@@ -192,14 +190,14 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
      *          happen if connected to a different bridge or the
      *          bridge has forgotten this token somehow.
      *
-     * @param   id      The id of the bridge to get the token for.
+     * @param   bridgeId    The id of the bridge to get the token for.
      *
      * @return      The token (String) needed to access the bridge.
      *              Null if no token has been assigned or the id
      *              isn't found.
      */
-    suspend fun getCurrentBridgeToken(id: String) : String? {
-        val bridge = getBridgeInfo(id) ?: return null
+    suspend fun getCurrentBridgeToken(bridgeId: String) : String? {
+        val bridge = getBridgeInfo(bridgeId) ?: return null
         return bridge.token
     }
 
@@ -283,8 +281,8 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
     }
 
     /**
-     * Sets the given string to be the new philips hue bridge
-     * token.  This also stores the token in long-term memory.
+     * Sets the given string to be the new philips hue bridge token
+     * for the specified bridge.  This also stores the token in long-term memory.
      *
      * If the bridge does not exist, then a new one is created.
      *
@@ -349,12 +347,12 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
     /**
      * Retrieves a string version of the ip from the current bridge info.
      *
-     * @param       id      Identifier for the bridge in question.
+     * @param       bridgeId      Identifier for the bridge in question.
      *
      * @return      The ip of the bridge in String form.  Null if not found.
      */
-    fun getBridgeIPStr(id: String) : String? {
-        val bridge = getBridgeInfo(id) ?: return null
+    fun getBridgeIPStr(bridgeId: String) : String? {
+        val bridge = getBridgeInfo(bridgeId) ?: return null
 
         return bridge.ip
     }

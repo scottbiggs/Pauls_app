@@ -52,7 +52,8 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun SimpleFullScreenBoxMessage(
-    @SuppressLint("ModifierParameter") backgroundModifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter")
+    backgroundModifier: Modifier = Modifier,
     textModifier: Modifier = Modifier,
     msgText: String = "error",
     onClick: () -> Unit,

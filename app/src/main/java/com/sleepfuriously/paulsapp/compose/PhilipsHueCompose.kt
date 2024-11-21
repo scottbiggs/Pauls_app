@@ -702,25 +702,34 @@ private fun ManualBridgeSetupStep3(
         viewmodel.bridgeInitGoBack()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .safeContentPadding()      // takes the insets into account (nav bars, etc)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(id = R.string.new_bridge_success),
-            style = MaterialTheme.typography.headlineMedium,
+    SimpleFullScreenBoxMessage(
+        backgroundModifier = modifier,
+        onClick = {
+            viewmodel.bridgeAddAllGoodAndDone()
+        },
+        msgText = stringResource(id = R.string.new_bridge_success),
+        buttonText = stringResource(R.string.ok)
         )
 
-        Button(
-            onClick = {
-                viewmodel.bridgeAddAllGoodAndDone()
-            }
-        ) { Text(stringResource(R.string.ok)) }
-
-    }
+//    Column(
+//        modifier = modifier
+//            .fillMaxSize()
+//            .safeContentPadding()      // takes the insets into account (nav bars, etc)
+//            .padding(8.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally
+//    ) {
+//        Text(
+//            text = stringResource(id = R.string.new_bridge_success),
+//            style = MaterialTheme.typography.headlineMedium,
+//        )
+//
+//        Button(
+//            onClick = {
+//                viewmodel.bridgeAddAllGoodAndDone()
+//            }
+//        ) { Text(stringResource(R.string.ok)) }
+//
+//    }
 
 }
 

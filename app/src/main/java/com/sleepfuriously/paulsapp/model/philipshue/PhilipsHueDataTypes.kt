@@ -5,12 +5,12 @@ package com.sleepfuriously.paulsapp.model.philipshue
  */
 data class PhilipsHueBridgeInfo(
     /** unique identifier for this bridge */
-    val id : String,
+    var id : String,
     /** The ip of this bridge in the local network.  Null means that the ip hasn't been figured out yet. */
     var ip : String? = null,
     /** The token "name" used to access this bridge.  Null means that no token has been created yet. */
     var token : String? = null,
-    /** When was this bridge last accessed? */
+    /** When was this bridge last accessed? (millis since jan 1, 1970) */
     var lastUsed: Long = 0L,
     /** When true, this bridge is in active use */
     var active : Boolean = false,

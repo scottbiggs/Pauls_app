@@ -51,7 +51,7 @@ class PhilipsHueViewmodel : ViewModel() {
     var addNewBridgeState = _addNewBridgeState.asStateFlow()
 
 
-    private val _philipsHueBridges = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf<PhilipsHueBridgeInfo>())
+    private val _philipsHueBridges = MutableStateFlow(mutableSetOf<PhilipsHueBridgeInfo>())
     /** Holds the list of all bridges */
     var philipsHueBridges = _philipsHueBridges.asStateFlow()
 
@@ -391,7 +391,8 @@ class PhilipsHueViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
             }
             else {
-                // yay, it worked!
+                // yay, it worked!  Add the token to the new bridge and set the success state
+                newBridge!!.token = token
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
             }
         }
@@ -399,9 +400,26 @@ class PhilipsHueViewmodel : ViewModel() {
 
     /**
      * After receiving the notification that the bridge was successfully added,
-     * the UI should call this to reset everything to [BridgeInitStates.NOT_INITIALIZING].
+     * the new bridge needs to be added to the bridge list (and saved).  The
+     * UI should call this to reset everything to [BridgeInitStates.NOT_INITIALIZING].
      */
     fun bridgeAddAllGoodAndDone() {
+
+        // Need to get an id for this new bridge and set some other data
+        newBridge!!.id = bridgeUtils.getNewId()     // yes, throw an exception if newBridge is null!
+        newBridge!!.active = true
+        newBridge!!.lastUsed = System.currentTimeMillis()
+//        newBridge!!.rooms =       todo
+
+        // add this to our Set of bridges
+        _philipsHueBridges.value.add(newBridge!!)
+
+        // and don't forget to save it!
+        bridgeUtils.
+
+
+        // lastly signal that we're done with the new bridge stuff
+        newBridge = null
         _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
     }
 
@@ -411,7 +429,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * button).
      */
     fun bridgeCancelTest() {
-
+        // todo
     }
 
     //-------------------------
@@ -441,11 +459,10 @@ class PhilipsHueViewmodel : ViewModel() {
         _iotTestingErrorMsg.value = ""
         bridgeUtils = PhilipsHueBridgeUtils(ctx)
 
-        // Get all the bridges.  If there are none, signal
-        // this condition.
+        // Get all the bridges.
         _philipsHueBridges.value = bridgeUtils.getAllActiveBridges()
-        if (philipsHueBridges.value.isEmpty()) {
-            // todo: the fact that the bridges list is empty should suffice
+        if (_philipsHueBridges.value.isEmpty()) {
+            // nothing to do if there are no bridges
             return
         }
 
