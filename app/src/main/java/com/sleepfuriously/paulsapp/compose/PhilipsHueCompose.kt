@@ -123,8 +123,8 @@ fun ShowMainScreenPhilipsHue(
             Text(
                 stringResource(id = R.string.ph_main_title),
                 modifier = Modifier
-                    .padding(top = 12.dp, start = 32.dp, bottom = 8.dp),
-                fontSize = 32.sp,
+                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+                style = MaterialTheme.typography.headlineLarge,
                 color = Color.White
             )
 
@@ -180,7 +180,7 @@ fun ShowMainScreenPhilipsHue(
                                 .fillMaxWidth()
                                 .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
                             text = stringResource(id = R.string.ph_bridge_name, bridge.id),
-                            fontSize = 24.sp,
+                            style = MaterialTheme.typography.headlineSmall,
                             color = yellowVeryLight
                         )
                     }
@@ -193,7 +193,7 @@ fun ShowMainScreenPhilipsHue(
                                     .fillMaxWidth()
                                     .padding(start = 8.dp, end = 8.dp),
                                 text = noRoomsFound,
-                                fontSize = 18.sp,
+                                style = MaterialTheme.typography.labelLarge,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -310,7 +310,7 @@ private fun ManualBridgeSetupStep1_landscape(
     ) {
         Text(
             stringResource(id = R.string.find_the_bridge_ip),
-            fontSize = 28.sp
+            style = MaterialTheme.typography.headlineMedium,
         )
         Row(
             modifier = Modifier
@@ -460,7 +460,7 @@ private fun ManualBridgeSetupStep1_Portrait(
     ) {
         Text(
             stringResource(id = R.string.find_the_bridge_ip),
-            fontSize = 28.sp
+            style = MaterialTheme.typography.headlineMedium,
         )
         LazyRow(
             modifier = modifier
@@ -652,7 +652,7 @@ private fun ManualBridgeSetupStep2(
     ) {
         Text(
             text = stringResource(id = R.string.connect_to_ph_bridge),
-            fontSize = 28.sp,
+            style = MaterialTheme.typography.headlineSmall,
         )
 
         Image(
@@ -669,13 +669,13 @@ private fun ManualBridgeSetupStep2(
                 .fillMaxWidth(0.5f)
                 .padding(bottom = 12.dp),
             textAlign = TextAlign.Center,
-            fontSize = 24.sp
+            style = MaterialTheme.typography.headlineSmall,
         )
         Text(
             stringResource(R.string.press_bridge_button),
             modifier = Modifier.fillMaxWidth(0.5f),
             textAlign = TextAlign.Center,
-            fontSize = 24.sp
+            style = MaterialTheme.typography.headlineSmall,
         )
 
 
@@ -690,7 +690,7 @@ private fun ManualBridgeSetupStep2(
         ) {
             Text(
                 stringResource(R.string.ok),
-                fontSize = 18.sp
+                style = MaterialTheme.typography.labelLarge,
             )
         }
     } // Column
@@ -739,7 +739,7 @@ private fun ManualBridgeSetupStep3(
     ) {
         Text(
             text = stringResource(id = R.string.new_bridge_success),
-            fontSize = 28.sp,
+            style = MaterialTheme.typography.headlineMedium,
         )
 
         Button(

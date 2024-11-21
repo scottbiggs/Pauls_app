@@ -309,7 +309,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-                                fontSize = 32.sp,
+                                style = MaterialTheme.typography.headlineLarge,      // the proper way to change text sizes
                                 color = Color.White
                             )
                             // todo: show nest
@@ -332,7 +332,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-                                fontSize = 32.sp,
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = Color.White
                             )
                             // todo: show pool
@@ -350,7 +350,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-                                fontSize = 32.sp,
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = Color.White
                             )
                             // todo: show security
