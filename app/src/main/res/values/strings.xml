@@ -32,7 +32,7 @@
     <string name="bridge_ip_step_2">In the Settings screen, scroll down and select the Bridge Settings.</string>
     <string name="bridge_ip_step_2_desc">Where to find the Bridge Settings on the settings screen.</string>
     <string name="bridge_ip_step_3">In the Bridge Settings, scroll down to the IP-address.
-        Type the number (including dots) and tap \'next\'.</string>
+        Type the number (including dots) and tap \'next\ (right arrow)'.</string>
     <string name="bridge_ip_step_3_desc">Where to find the ip-address on the Bridge Settings screen.</string>
     <string name="invalid_ip">The IP you entered is not valid. Please try again."</string>
     <string name="new_bridge_stage_1_error_bad_ip_format">I don\'t understand what you typed.
@@ -44,11 +44,12 @@
     <string name="new_bridge_success">Yay, your bridge was successfully added!</string>
     <string name="new_bridge_impossible_state_error">Error, should never have NOT_INITIALIZING state in PhilipsHueManualInit()!</string>
     <string name="connect_to_ph_bridge">Connect to the Philips Hue bridge</string>
-    <string name="connect_bridge_ip_success">I found a Philips Hue bridge at IP %1s</string>
+    <string name="connect_bridge_ip_success">I found a Philips Hue bridge at IP = %1s</string>
     <string name="press_bridge_button_desc">Image showing button press on the Philips Hue bridge.</string>
     <string name="press_bridge_button">To complete the connection process, press the large button on the top of your Philips Hue bridge
-        and then press the \'ok\' button below.</string>
-    <string name="registering_bridge_button_not_pressed">Unable to get proper response from the Philips Hue bridge. Was the button on the bridge pressed?</string>
+        and then press the \'next\' button below.</string>
+    <string name="registering_bridge_button_not_pressed">Unable to get proper response from the Philips Hue bridge.
+        Perhaps the button on the bridge was not pressed.</string>
     <string name="registering_bridge_unsuccessful">Could not get a response from the Philips Hue bridge at IP %1s. Is it turned on and connected?</string>
     <string name="registering_bridge_cannot_parse_response">Unable to decipher the response for the Philips Hue bridge at IP %1s.
         Is this the correct device?</string>

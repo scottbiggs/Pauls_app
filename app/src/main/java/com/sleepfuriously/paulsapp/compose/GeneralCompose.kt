@@ -1,5 +1,6 @@
 package com.sleepfuriously.paulsapp.compose
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,17 +44,21 @@ import androidx.compose.ui.unit.dp
 //--------------------------
 
 /**
+ * Displays a message in a box that pretty much takes most of the screen.
+ * I plan to use this instead of a dialog.
+ *
  * @param   msgText        Message to display
  * @param   onClick     Function to run when the button is clicked.
  */
 @Composable
-fun SimpleBoxMessage(
-    modifier: Modifier = Modifier,
+fun SimpleFullScreenBoxMessage(
+    @SuppressLint("ModifierParameter") backgroundModifier: Modifier = Modifier,
+    textModifier: Modifier = Modifier,
     msgText: String = "error",
     onClick: () -> Unit,
     buttonText: String
 ) {
-    Box(modifier = modifier
+    Box(modifier = backgroundModifier
         .fillMaxSize()
         .padding(80.dp)
         .background(MaterialTheme.colorScheme.tertiary),
@@ -67,7 +72,7 @@ fun SimpleBoxMessage(
                 textAlign = TextAlign.Center,
                 text = msgText,
                 color = MaterialTheme.colorScheme.onTertiary,
-                modifier = modifier
+                modifier = textModifier
                     .wrapContentHeight()
             )
             Spacer(modifier = Modifier.height(32.dp))
@@ -130,13 +135,13 @@ fun TextFieldAndButton(
         onValueChange = { textFieldText = it },
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(
-            // Define Done as our IME action (doesn't matter what it was, as long
+            // Define Next as our IME action (doesn't matter what it was, as long
             // as it's the same as in the keyboardActions below).
-            imeAction = if (imeActivate) ImeAction.Done else ImeAction.None,
+            imeAction = if (imeActivate) ImeAction.Next else ImeAction.None,
             keyboardType = keyboardType
         ),
         keyboardActions = KeyboardActions(
-            onDone = { onClick.invoke(textFieldText) }
+            onNext = { onClick.invoke(textFieldText) }
         ),
         trailingIcon = {
             Row {

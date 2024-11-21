@@ -21,15 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
@@ -39,7 +36,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -62,12 +58,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.MainActivity
 import com.sleepfuriously.paulsapp.R
@@ -252,11 +245,11 @@ fun ManualBridgeSetup(
         when (initBridgeState) {
             BridgeInitStates.NOT_INITIALIZING -> {
                 // this should not happen.
-                SimpleBoxMessage(
-                    modifier,
-                    "error: should not be in ManualBridgeSetup() with this bridge init state.",
-                    { parentActivity.finish() },
-                    stringResource(id = R.string.exit)
+                SimpleFullScreenBoxMessage(
+                    backgroundModifier = modifier,
+                    msgText = "error: should not be in ManualBridgeSetup() with this bridge init state.",
+                    onClick = { parentActivity.finish() },
+                    buttonText = stringResource(id = R.string.exit)
                 )
             }
 
@@ -646,6 +639,7 @@ private fun ManualBridgeSetupStep2(
                 contentDescription = stringResource(id = R.string.press_bridge_button_desc)
             )
 
+            // success message
             val ipStr = viewmodel.newBridge?.ip
             Text(
                 stringResource(R.string.connect_bridge_ip_success, ipStr ?: "error"),
@@ -655,9 +649,13 @@ private fun ManualBridgeSetupStep2(
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.headlineSmall,
             )
+
+            // continue message
             Text(
                 stringResource(R.string.press_bridge_button),
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .padding(bottom = 12.dp),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.headlineSmall,
             )
@@ -673,7 +671,7 @@ private fun ManualBridgeSetupStep2(
                     .height(50.dp)
             ) {
                 Text(
-                    stringResource(R.string.ok),
+                    stringResource(R.string.next),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -682,7 +680,8 @@ private fun ManualBridgeSetupStep2(
 
     else {
         // else display the error message
-        SimpleBoxMessage(
+        SimpleFullScreenBoxMessage(
+            textModifier = Modifier.padding(horizontal = 84.dp),
             msgText = bridgeErrorMsg,
             onClick = {
                 viewmodel.bridgeAddErrorMsgIsDisplayed()
