@@ -370,6 +370,8 @@ private fun ManualBridgeSetupStep1_landscape(
                 Image(
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.TopCenter,
+                    modifier = Modifier
+                        .weight(1f),
                     painter = painterResource(id = R.drawable.bridge_ip_step_3),
                     contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
                 )
@@ -390,6 +392,7 @@ private fun ManualBridgeSetupStep1_landscape(
                     onClick = viewmodel::addPhilipsHueBridgeIp,
                     buttonLabel = stringResource(R.string.enter_ip),
                     imeActivate = true,
+                    defaultText = ipText,
                     keyboardType = KeyboardType.Decimal
                 )
             } // 3rd column
