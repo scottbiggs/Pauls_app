@@ -626,59 +626,62 @@ private fun ManualBridgeSetupStep2(
         BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> ""
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeContentPadding()      // takes the insets into account (nav bars, etc)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(id = R.string.connect_to_ph_bridge),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-
-        Image(
-            modifier = Modifier.weight(1f),     // image will fill remaining height
-            contentScale = ContentScale.Fit,
-            painter = painterResource(id = R.drawable.press_bridge_button),
-            contentDescription = stringResource(id = R.string.press_bridge_button_desc)
-        )
-
-        val ipStr = viewmodel.newBridge?.ip
-        Text(
-            stringResource(R.string.connect_bridge_ip_success, ipStr ?: "error"),
+    if (bridgeErrorMsg.isBlank()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .padding(bottom = 12.dp),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Text(
-            stringResource(R.string.press_bridge_button),
-            modifier = Modifier.fillMaxWidth(0.5f),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.headlineSmall,
-        )
-
-
-        Button(
-            onClick = {
-                viewmodel.bridgeButtonPushed()
-            },
-            modifier = Modifier
-                .padding(bottom = 24.dp, top = 8.dp)
-                .width(width = 100.dp)
-                .height(50.dp)
+                .fillMaxSize()
+                .safeContentPadding()      // takes the insets into account (nav bars, etc)
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                stringResource(R.string.ok),
-                style = MaterialTheme.typography.labelLarge,
+                text = stringResource(id = R.string.connect_to_ph_bridge),
+                style = MaterialTheme.typography.headlineSmall,
             )
-        }
-    } // Column
 
-    if (bridgeErrorMsg.isBlank() == false) {
+            Image(
+                modifier = Modifier.weight(1f),     // image will fill remaining height
+                contentScale = ContentScale.Fit,
+                painter = painterResource(id = R.drawable.press_bridge_button),
+                contentDescription = stringResource(id = R.string.press_bridge_button_desc)
+            )
+
+            val ipStr = viewmodel.newBridge?.ip
+            Text(
+                stringResource(R.string.connect_bridge_ip_success, ipStr ?: "error"),
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .padding(bottom = 12.dp),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                stringResource(R.string.press_bridge_button),
+                modifier = Modifier.fillMaxWidth(0.5f),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineSmall,
+            )
+
+
+            Button(
+                onClick = {
+                    viewmodel.bridgeButtonPushed()
+                },
+                modifier = Modifier
+                    .padding(bottom = 24.dp, top = 8.dp)
+                    .width(width = 100.dp)
+                    .height(50.dp)
+            ) {
+                Text(
+                    stringResource(R.string.ok),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        } // Column
+    } // if (bridgeErrorMsg.isBlank()
+
+    else {
+        // else display the error message
         SimpleBoxMessage(
             msgText = bridgeErrorMsg,
             onClick = {
@@ -687,20 +690,7 @@ private fun ManualBridgeSetupStep2(
             buttonText = stringResource(R.string.ok)
         )
     }
-}
-
-
-@Composable
-private fun ManualBridgeSetupStep2_portait(
-    viewmodel: PhilipsHueViewmodel,
-    state: BridgeInitStates
-) {
-    BackHandler {
-        viewmodel.bridgeInitGoBack()
-    }
-
-    // todo
-}
+} // ManualBridgeSetupStep2
 
 
 @Composable
