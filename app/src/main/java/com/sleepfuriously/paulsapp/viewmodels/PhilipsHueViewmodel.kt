@@ -233,6 +233,16 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
+     * This gets the ip that's currently stored as the ip of a bridge
+     * that is in the process of being connected to.  If their is no
+     * bridge or no ip has been set, then an empty string is returned.
+     */
+    fun getNewBridgeIp() : String {
+        Log.d(TAG, "getNewBridgeIp() -> ${newBridge?.ip}")
+        return newBridge?.ip ?: ""
+    }
+
+    /**
      * Call this to tell the viewmodel that the user has typed in an ip for
      * their bridge.
      *
@@ -262,6 +272,11 @@ class PhilipsHueViewmodel : ViewModel() {
                 return@launch
             }
 
+            // At this point, we might as well save the ip to this new bridge.
+            // The user may need to modify it later.
+            Log.d(TAG, "newbridge.ip set to $newIp")
+            newBridge!!.ip = newIp
+
             // is there actually a bridge there?
             if (bridgeUtils.doesBridgeRespondToIp(newIp) == false) {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP
@@ -271,7 +286,6 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // The ip looks good.  Save it and signal to move on.
             // (yes, I want to crash if newBridge is null)
-            newBridge!!.ip = newIp
             _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
 
             Log.d(TAG, "setting _waitingForResponse back to false")
@@ -291,13 +305,18 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun bridgeAddErrorMsgIsDisplayed() {
         when (_addNewBridgeState.value) {
-            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> {
                 Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 1")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
 
                 // also reset the bridge ip as it was messed up to begin with
+                Log.d(TAG, "newbridge.ip attempted to set to BLANK")
                 newBridge?.ip = ""
+            }
+
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
+                Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 1")
+                _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
             }
 
             BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,

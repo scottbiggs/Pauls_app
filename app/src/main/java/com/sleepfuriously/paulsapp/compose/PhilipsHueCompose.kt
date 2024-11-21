@@ -116,26 +116,13 @@ fun ShowMainScreenPhilipsHue(
             .safeContentPadding()
     ) {
         // the top--a title and a fab (to add bridges)
-        Row(
-            verticalAlignment = Alignment.Top
-        ) {
-
-            Text(
-                stringResource(id = R.string.ph_main_title),
-                modifier = Modifier
-                    .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White
-            )
-
-            // pushes the fab to the far right
-            Spacer(modifier = Modifier.weight(1f))
-
-            ShowMainPhilipsHueAddBridgeFab(
-                viewmodel = philipsHueViewmodel,
-                numActiveBridges = activeBridges.size
-            )
-        }
+        Text(
+            stringResource(id = R.string.ph_main_title),
+            modifier = Modifier
+                .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color.White
+        )
 
         LazyVerticalGrid(
             modifier = Modifier
@@ -218,9 +205,24 @@ fun ShowMainScreenPhilipsHue(
             }
         }
 
-        // todo: show messages (if any)
-
     }
+
+    // display the fab on top of stuff
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+    ) {
+        ShowMainPhilipsHueAddBridgeFab(
+            modifier = Modifier
+                .padding(bottom = 18.dp)
+                .align(Alignment.BottomEnd),    // only works if parent is Box
+            viewmodel = philipsHueViewmodel,
+            numActiveBridges = activeBridges.size
+        )
+    }
+
+    // todo: show messages (if any)
+
 }
 
 //---------------------------------
@@ -265,7 +267,11 @@ fun ManualBridgeSetup(
                 if (landscape) {
                     ManualBridgeSetupStep1_landscape(modifier, philipsHueViewmodel, initBridgeState)
                 } else {
-                    ManualBridgeSetupStep1_Portrait(modifier, philipsHueViewmodel, initBridgeState)
+                    ManualBridgeSetupStep1_Portrait(
+                        modifier,
+                        philipsHueViewmodel,
+                        initBridgeState
+                    )
                 }
             }
 
@@ -295,14 +301,13 @@ private fun ManualBridgeSetupStep1_landscape(
 ) {
 
     val ctx = LocalContext.current
-    var ipText by remember { mutableStateOf(viewmodel.newBridge?.ip ?: "") }
 
     BackHandler {
         viewmodel.bridgeInitGoBack()
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .safeContentPadding()      // takes the insets into account (nav bars, etc)
             .padding(8.dp),
@@ -392,7 +397,7 @@ private fun ManualBridgeSetupStep1_landscape(
                     onClick = viewmodel::addPhilipsHueBridgeIp,
                     buttonLabel = stringResource(R.string.enter_ip),
                     imeActivate = true,
-                    defaultText = ipText,
+                    defaultText = viewmodel.getNewBridgeIp(),
                     keyboardType = KeyboardType.Decimal
                 )
             } // 3rd column
@@ -413,13 +418,14 @@ private fun ManualBridgeSetupStep1_landscape(
     if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, ipText),
+            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.newBridge?.ip ?: ""),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
     }
 
-}
+} // ManualBridgeSetupStep1_landscape
+
 
 @Composable
 private fun ManualBridgeSetupStep1_Portrait(
@@ -428,7 +434,6 @@ private fun ManualBridgeSetupStep1_Portrait(
     state: BridgeInitStates,
 ) {
     val ctx = LocalContext.current
-    var ipText by remember { mutableStateOf("") }
 
     val config = LocalConfiguration.current
     val screenHeight = config.screenHeightDp
@@ -455,6 +460,7 @@ private fun ManualBridgeSetupStep1_Portrait(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .safeContentPadding()      // takes the insets into account (nav bars, etc)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -469,27 +475,24 @@ private fun ManualBridgeSetupStep1_Portrait(
             state = rememberLazyListState(initialFirstVisibleItemIndex = 0) // alwasy start at the beginning
         ) {
             item {
-                LazyColumn(
+                Column(
                     modifier
                         .fillMaxHeight()
                         .width(columnWidth.dp)
                         .weight(1f)
                 ) {
-                    item {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_1),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
-                        )
-                    }
-                    item {
-                        Text(
-                            modifier = modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_1)
-                        )
-                    }
+                    Image(
+                        modifier = Modifier.weight(1f),
+                        contentScale = ContentScale.Fit,
+                        painter = painterResource(id = R.drawable.bridge_ip_step_1),
+                        contentDescription = stringResource(id = R.string.bridge_ip_step_1_desc)
+                    )
+                    Text(
+                        modifier = modifier
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center,
+                        text = stringResource(id = R.string.bridge_ip_step_1)
+                    )
                 }
             }
             item {
@@ -497,27 +500,24 @@ private fun ManualBridgeSetupStep1_Portrait(
             }
 
             item {
-                LazyColumn(
+                Column(
                     modifier
                         .fillMaxHeight()
                         .width(columnWidth.dp)
                         .weight(1f)
                 ) {
-                    item {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_2),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
-                        )
-                    }
-                    item {
-                        Text(
-                            modifier = modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_2)
-                        )
-                    }
+                    Image(
+                        modifier = Modifier.weight(1f),
+                        contentScale = ContentScale.Fit,
+                        painter = painterResource(id = R.drawable.bridge_ip_step_2),
+                        contentDescription = stringResource(id = R.string.bridge_ip_step_2_desc)
+                    )
+                    Text(
+                        modifier = modifier
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center,
+                        text = stringResource(id = R.string.bridge_ip_step_2)
+                    )
                 }
             }
             item {
@@ -525,8 +525,7 @@ private fun ManualBridgeSetupStep1_Portrait(
             }
 
             item {
-
-                LazyColumn(
+                Column(
                     modifier
                         .fillMaxWidth()
                         .fillMaxHeight()
@@ -534,56 +533,39 @@ private fun ManualBridgeSetupStep1_Portrait(
                         .weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    item {
-                        Image(
-                            contentScale = ContentScale.Fit,
-                            painter = painterResource(id = R.drawable.bridge_ip_step_3),
-                            contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
-                        )
-                    }
-                    item {
-                        Text(
-                            modifier = modifier
-                                .padding(horizontal = 24.dp),
-                            textAlign = TextAlign.Center,
-                            text = stringResource(id = R.string.bridge_ip_step_3)
-                        )
-                    }
-                    item {
-                        Row {
-                            OutlinedTextField(
-                                modifier = modifier
-                                    .padding(top = 4.dp)
-                                    .align(Alignment.CenterVertically),
-                                value = ipText,
-                                label = { Text(stringResource(id = R.string.enter_ip)) },
-                                singleLine = true,
-                                onValueChange = { ipText = it },
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Next,
-                                    keyboardType = KeyboardType.Decimal
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onNext = { viewmodel.addPhilipsHueBridgeIp(ipText) }
-                                )
-                            )
 
-                            Button(
-                                modifier = modifier
-                                    .align(Alignment.CenterVertically)
-                                    .padding(top = 8.dp, start = 12.dp)
-                                    .width(120.dp),
-                                onClick = { viewmodel.addPhilipsHueBridgeIp(ipText) }) {
-                                Text(stringResource(id = R.string.next))
-                            }
-                        }
-                    }
+
+                    Image(
+                        modifier = Modifier.weight(1f),
+                        contentScale = ContentScale.Fit,
+                        painter = painterResource(id = R.drawable.bridge_ip_step_3),
+                        contentDescription = stringResource(id = R.string.bridge_ip_step_3_desc)
+                    )
+                    Text(
+                        modifier = modifier
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center,
+                        text = stringResource(id = R.string.bridge_ip_step_3)
+                    )
+
+                    TextFieldAndButton(
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .padding(top = 8.dp)
+                            .align(Alignment.CenterHorizontally),
+                        label = stringResource(R.string.enter_ip),
+                        onClick = viewmodel::addPhilipsHueBridgeIp,
+                        buttonLabel = stringResource(R.string.enter_ip),
+                        imeActivate = true,
+                        defaultText = viewmodel.getNewBridgeIp(),
+                        keyboardType = KeyboardType.Decimal
+                    )
                 }
 
             }
-        }
+        } // LazyRow
 
-    }
+    } // master Column
 
     // display any error messages
     if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
@@ -594,16 +576,17 @@ private fun ManualBridgeSetupStep1_Portrait(
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
     }
-    if (state == BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT) {
+    if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_bad_ip_format),
+            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.newBridge?.ip ?: ""),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
     }
 
-}
+} // ManualBridgeSetupStep1_Portrait
+
 
 @Composable
 private fun ManualBridgeSetupStep2(
