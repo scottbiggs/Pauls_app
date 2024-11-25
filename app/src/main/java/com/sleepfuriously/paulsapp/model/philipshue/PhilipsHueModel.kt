@@ -324,7 +324,7 @@ class PhilipsHueModel(private val ctx: Context) {
 
         try {
             val fullIp = createFullAddress(
-                prefix = PHILIPS_HUE_BRIDGE_URL_TEST_PREFIX,
+                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
                 ip = ip,
                 suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
             )
@@ -379,14 +379,13 @@ class PhilipsHueModel(private val ctx: Context) {
         // fixme: is the username even needed?
         val username = constructUserName(bridgeIp)
         val deviceType = constructDeviceType(bridgeIp)
-        Log.i(TAG, "registerAppToBridge() with username = $username, deviceType = $deviceType")
+        Log.i(TAG, "registerAppToBridge() - username = $username, deviceType = $deviceType")
+
+        val fullAddress = createFullAddress(ip = bridgeIp, suffix = "/api/")
+        Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
 
         val response = synchronousPostString(
-            url = createFullAddress(
-                ip = bridgeIp,
-                suffix = "/api/"
-            ),
-
+            fullAddress,
             // fixme:  this is NOT RIGHT (just using for testing)
             bodyStr = """
 {
@@ -435,7 +434,7 @@ class PhilipsHueModel(private val ctx: Context) {
 
         try {
             val fullIp = createFullAddress(
-                prefix = PHILIPS_HUE_BRIDGE_URL_TEST_PREFIX,
+                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
                 ip = bridgeIp,
                 suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
             )
@@ -528,7 +527,7 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     private fun createFullAddress(
         ip: String,
-        prefix: String = PHILIPS_HUE_BRIDGE_URL_TEST_PREFIX,
+        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
         suffix: String = "",
     ) : String {
 
@@ -811,7 +810,7 @@ class PhilipsHueModel(private val ctx: Context) {
         }
 
         // strip any prefix from this ip and save the info
-        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_TEST_PREFIX)
+        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX)
         bridge.ip = justIp                      // local
 
         val ipKey = assembleIpKey(bridgeId)
@@ -973,14 +972,38 @@ class PhilipsHueModel(private val ctx: Context) {
 }
 
 //-------------------------------------
+//  classes
+//-------------------------------------
+
+/**
+ * These are the possibilities of the types of errors that
+ * can occur while trying to get a new token (username) from
+ * the bridge.
+ */
+enum class GetBridgeTokenErrorEnum {
+    NO_ERROR,
+    /** ip is not proper format */
+    BAD_IP,
+    /** reponse was not successful--probably a bad url or no bridge */
+    UNSUCCESSFUL_RESPONSE,
+    /** for whatever reason there WAS a successful response, but a token wasn't found */
+    TOKEN_NOT_FOUND,
+    /** successful response, but the body would not parse properly--perhaps ip went to wrong device? */
+    CANNOT_PARSE_RESPONSE_BODY,
+    /** user did not hit the button on the bridge before we tried to register with it */
+    BUTTON_NOT_HIT
+}
+
+
+//-------------------------------------
 //  constants
 //-------------------------------------
 
 private const val TAG = "PhilipsHueModel"
 
 /** this prefix should appear before the numbers of the bridge's ip address when testing */
-//private const val PHILIPS_HUE_BRIDGE_URL_PREFIX = "https://"
-private const val PHILIPS_HUE_BRIDGE_URL_TEST_PREFIX = "http://"
+private const val PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX = "https://"
+private const val PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX = "http://"
 
 /** append this to the bridge's ip to get the debug screen */
 private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"
