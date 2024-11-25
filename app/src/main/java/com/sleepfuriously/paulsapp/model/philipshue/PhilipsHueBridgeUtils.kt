@@ -136,48 +136,6 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
 
 
     /**
-     * Tests to see if a bridge is at the given ip.
-     *
-     * @param   ip          The ip that may point to a philips hue bridge
-     *
-     * WARNING:
-     *  This must be called off the main thread as it access
-     *  the network.
-     */
-    suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
-
-        // exit with false if no ip or wrong format
-        if (ip.isEmpty() || (isValidBasicIp(ip) == false)) return false
-
-        try {
-            val fullIp = createFullAddress(
-                prefix = PHILIPS_HUE_BRIDGE_URL_PREFIX,
-                ip = ip,
-                suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
-            )
-            Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
-
-            val myResponse = OkHttpUtils.synchronousGetRequest(fullIp)
-
-            if (myResponse.isSuccessful) {
-                return true
-            }
-        }
-        catch (e: IOException) {
-            Log.e(TAG, "error when testing the bridge (IOException).  The ip ($ip) is probably bad.")
-            e.printStackTrace()
-            return false
-        }
-        catch (e: IllegalArgumentException) {
-            Log.e(TAG, "error when testing the bridge (IllegalArgumentException).  The ip (\"$ip\") is probably bad.")
-            e.printStackTrace()
-            return false
-        }
-
-        return false
-    }
-
-    /**
      * Finds the current "name" for the given philips hue bridge.  The name
      * is actually a token necessary for any real communication with the
      * bridge.
@@ -196,89 +154,12 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
      *              Null if no token has been assigned or the id
      *              isn't found.
      */
+    @Deprecated("no longer used--get the bridge and find the token that way")
     suspend fun getCurrentBridgeToken(bridgeId: String) : String? {
         val bridge = getBridgeInfo(bridgeId) ?: return null
         return bridge.token
     }
 
-
-    /**
-     * This asks the bridge for a token (name).  This is part of the
-     * Philips Hue security system.  All inquiries will need this token
-     * to succeed.
-     *
-     * @param   bridge      Info about the bridge that we're going to request
-     *                      the token from.
-     *
-     * @return  The token (name) in string form.
-     *          Null if the bridge info is wrong, the bridge doesn't respond,
-     *          or the button was hit on the bridge.
-     *
-     * @return  A Pair.  The first will either be a String or null.  If it's
-     *          a String, then it holds token and the second part of the Pair
-     *          can be ignored.
-     *          If the first is null, then the second contains information about
-     *          what sort of error it is (see []).
-     *
-     * preconditions
-     *      The user has hit the button on this bridge just a few seconds before
-     *      this request happens.  If not, then the bridge will send an error
-     *      (like "button not hit").
-     */
-    suspend fun registerAppToBridge(
-        bridge: PhilipsHueBridgeInfo
-    ) : Pair<String?, GetBridgeTokenErrorEnum> {
-
-        val returnPair = Pair<String?, GetBridgeTokenErrorEnum>(null, GetBridgeTokenErrorEnum.NO_ERROR)
-
-        // null ips not allowed
-        val bridgeIp = bridge.ip ?: ""
-        if (bridgeIp.isBlank()) {
-            return Pair(null, GetBridgeTokenErrorEnum.BAD_IP)
-        }
-
-
-        val username = constructUserName(bridgeIp)
-        val deviceType = constructDeviceType(bridgeIp)
-        Log.i(TAG, "registerAppToBridge() with username = $username, deviceType = $deviceType")
-
-        val response = synchronousPostString(
-            url = createFullAddress(
-                ip = bridgeIp,
-                suffix = "/api/"
-            ),
-
-            // fixme:  this is NOT RIGHT (just using for testing)
-            bodyStr = """
-{
-  "devicetype": "$deviceType"
-}
-                """
-        )
-
-        if (response.isSuccessful) {
-
-            // todo: parse the response (this will see if the person hit the button)
-
-            // get token
-            val token = getTokenFromBodyStr(response.body)
-            Log.i(TAG, "requestTokenFromBridge($bridgeIp) -> $token")
-
-            if (token != null) {
-                return Pair(token, GetBridgeTokenErrorEnum.NO_ERROR)
-            }
-            else {
-                Log.e(TAG, "unable to parse body in requestTokenFromBridge($bridgeIp)")
-                Log.e(TAG, "   response => \n$response")
-                return Pair(null, GetBridgeTokenErrorEnum.CANNOT_PARSE_RESPONSE_BODY)
-            }
-        }
-        else {
-            Log.e(TAG, "error: unsuccessful attempt to get token from bridge at ip $bridgeIp")
-            Log.e(TAG, "   response => \n$response")
-            return Pair(null, GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE)
-        }
-    }
 
     /**
      * Sets the given string to be the new philips hue bridge token
@@ -349,10 +230,10 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
      *
      * @param       bridgeId      Identifier for the bridge in question.
      *
-     * @return      The ip of the bridge in String form.  Null if not found.
+     * @return      The ip of the bridge in String form.  Empty if not found.
      */
-    fun getBridgeIPStr(bridgeId: String) : String? {
-        val bridge = getBridgeInfo(bridgeId) ?: return null
+    fun getBridgeIPStr(bridgeId: String) : String {
+        val bridge = getBridgeInfo(bridgeId) ?: return ""
 
         return bridge.ip
     }
@@ -475,104 +356,42 @@ class PhilipsHueBridgeUtils(private val ctx: Context) {
     //-----------------------------------
 
     /**
-     * To obtain the token for accessing a bridge, we have to tell that
-     * bridge a name for this app (username).  This function makes
-     * sure that it's done in a consistent manner.
-     *
-     * The username is a constant + the ip of that particular bridge.
-     * This makes sure that we use different user names for each
-     * bridge (just in case there's some sort of confusion).
-     *
-     * Not sure if the user name needs to be remembered or not.  I guess
-     * I'll find out soon enough!  (The token: yeah, that needs to be
-     * remembered!)
-     */
-    private fun constructUserName(bridgeIp: String) : String {
-        return PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX + bridgeIp
-    }
-
-    /**
-     * When registering this app to a philips hue bridge, it's curious
-     * about the type of device talking to it.  This returns a string
-     * for that purpose.
-     */
-    private fun constructDeviceType(bridgeIp: String) : String {
-        return PHILIPS_HUE_BRIDGE_DEVICE_TYPE
-    }
-
-    /**
      * This exists because kotlin sucks at inits.  Please don't
      * call this function except during initialization.
      *
      * This loads any data that is stored in shared prefs.  Actual
      * tests are not done.
      */
+    @Deprecated("don't use this--I'm phasing this class out")
     private fun properInit() {
 
-        // idiot test to make sure this isn't run more than once.
-        if (initialized) {
-            return
-        }
-
-        runBlocking {
-            // Load the bridge ids.
-            val bridgeIds = getAllBridgeIdsFromPrefs()
-            if (bridgeIds.isNullOrEmpty()) {
-                // initialization complete
-                initialized = true      // todo: is this really needed?
-                return@runBlocking
-            }
-
-            // use these ids to load all the data
-            for (id in bridgeIds) {
-                val ip = getBridgeIPStr(id)
-                val token = getCurrentBridgeToken(id)
-                val lastUsed = getBridgeLastUsed(id) ?: 0L
-                philipsHueBridges.add(PhilipsHueBridgeInfo(id, ip, token, lastUsed))
-            }
-
-            // done initializing
-            initialized = true
-        }
+//        // idiot test to make sure this isn't run more than once.
+//        if (initialized) {
+//            return
+//        }
+//
+//        runBlocking {
+//            // Load the bridge ids.
+//            val bridgeIds = getAllBridgeIdsFromPrefs()
+//            if (bridgeIds.isNullOrEmpty()) {
+//                // initialization complete
+//                initialized = true      // todo: is this really needed?
+//                return@runBlocking
+//            }
+//
+//            // use these ids to load all the data
+//            for (id in bridgeIds) {
+//                val ip = getBridgeIPStr(id)
+//                val token = getCurrentBridgeToken(id)
+//                val lastUsed = getBridgeLastUsed(id) ?: 0L
+//                philipsHueBridges.add(PhilipsHueBridgeInfo(id, ip, token, lastUsed))
+//            }
+//
+//            // done initializing
+//            initialized = true
+//        }
     }
 
-
-    /**
-     * This takes a string, converts it to Gson, then looks around to
-     * find the token (name) part.  This token is then returned.
-     *
-     * @param       bodyStr     The body as returned from a POST or GET
-     *                          response.
-     *
-     * @return      The token within the contents of the string.
-     *              Null if not found.
-     */
-    private fun getTokenFromBodyStr(bodyStr: String) : String? {
-
-        Log.d(TAG, "getTokenFromBodyStr() started. bodyStr = $bodyStr")
-
-        // convert to our kotlin data class
-        val bridgeResponseData = Gson().fromJson(bodyStr, PhilipsHueBridgeRegistrationResponse::class.java)
-            ?: return null      // just return null if bridgeResponse is null
-
-        // there will be just one item
-        val bridgeResponseItem = bridgeResponseData[0]
-
-        // is there an error?
-        if (bridgeResponseItem.error != null) {
-            Log.e(TAG, "Getting token from bridge error:\n   type = ${bridgeResponseItem.error.type}\n   desc = ${bridgeResponseItem.error.description}")
-            return null
-        }
-
-        // can't find a success, must be unrecoverable error
-        if (bridgeResponseItem.success == null) {
-            Log.e(TAG, "Getting token from bridge error:   Can't find success data")
-            return null
-        }
-
-        Log.v(TAG, "Getting token from bridge:   token = ${bridgeResponseItem.success.username}")
-        return bridgeResponseItem.success.username
-    }
 
     /**
      * This function is designed to be called periodically to make sure
@@ -712,13 +531,6 @@ private const val PHILIPS_HUE_BRIDGE_IP_KEY_PREFIX = "ph_bridge_ip_key"
 
 /** prefix for accessing the last-used date for a philips hue bridge (see [PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX]) */
 private const val PHILIPS_HUE_BRIDGE_LAST_USED_KEY_PREFIX = "ph_bridge_last_used_key"
-
-/**
- * Device ids (usernames) are used to get the token from bridges.  The username will
- * be the following string + the ip of this bridge.  You can construct this
- * by calling [constructUserName].
- */
-private const val PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX = "sleepfuriously_p"
 
 /**
  * When registering this app with a bridge, we need to tell it what kind of device

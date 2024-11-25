@@ -54,6 +54,8 @@
     <string name="registering_bridge_cannot_parse_response">Unable to decipher the response for the Philips Hue bridge at IP %1s.
         Is this the correct device?</string>
     <string name="wait_while_checking_bridge_ip">Please hold tight while I check that IP…</string>
+    <string name="bridge_ip_step_3_bad_state_error">This is a very strange state and should never happen (step 3 but not recognized)</string>
+    <string name="bridge_ip_step_3_problem_adding_bridge">For some reason I could not add the bridge. Sorry.</string>
 
     <!-- philips hue section -->
     <string name="ph_bridge_name">bridge: %1s</string>
@@ -78,5 +80,6 @@
     <string name="next">next</string>
     <string name="done">done</string>
     <string name="exit">exit</string>
+    <string name="back">back</string>
 
 </resources>

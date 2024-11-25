@@ -100,7 +100,7 @@ fun ShowMainScreenPhilipsHue(
 ) {
 
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
-    val activeBridges = philipsHueViewmodel.bridgeUtils.getAllActiveBridges(bridges)
+    val activeBridges = philipsHueViewmodel.bridgeModel.getAllActiveBridges()
 
     // the content
     Column(
@@ -277,8 +277,9 @@ fun ManualBridgeSetup(
                 ManualBridgeSetupStep2(modifier, philipsHueViewmodel, initBridgeState)
             }
 
+            BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE,
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
-                ManualBridgeSetupStep3(modifier, philipsHueViewmodel)
+                ManualBridgeSetupStep3(modifier, philipsHueViewmodel, initBridgeState)
             }
 
         }
@@ -616,6 +617,7 @@ private fun ManualBridgeSetupStep2(
             viewmodel.newBridge?.ip ?: "null"
         )
 
+        BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> stringResource(R.string.bridge_ip_step_3_problem_adding_bridge)
         BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> ""
     }
 
@@ -695,21 +697,47 @@ private fun ManualBridgeSetupStep2(
 @Composable
 private fun ManualBridgeSetupStep3(
     modifier: Modifier = Modifier,
-    viewmodel: PhilipsHueViewmodel
+    viewmodel: PhilipsHueViewmodel,
+    state: BridgeInitStates
 ) {
 
     BackHandler {
         viewmodel.bridgeInitGoBack()
     }
 
-    SimpleFullScreenBoxMessage(
-        backgroundModifier = modifier,
-        onClick = {
-            viewmodel.bridgeAddAllGoodAndDone()
-        },
-        msgText = stringResource(id = R.string.new_bridge_success),
-        buttonText = stringResource(R.string.ok)
+    if (state == BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE) {
+        SimpleFullScreenBoxMessage(
+            backgroundModifier = modifier,
+            onClick = {
+                viewmodel.bridgeAddAllGoodAndDone()
+            },
+            msgText = stringResource(id = R.string.new_bridge_success),
+            buttonText = stringResource(R.string.ok)
         )
+    }
+
+    else if (state == BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE) {
+        SimpleFullScreenBoxMessage(
+            backgroundModifier = modifier,
+            onClick = {
+                viewmodel.bridgeAddAllGoodAndDone()
+            },
+            msgText = stringResource(id = R.string.bridge_ip_step_3_problem_adding_bridge),
+            buttonText = stringResource(R.string.ok)
+        )
+    }
+
+    else {
+        // this state should never call this function
+        SimpleFullScreenBoxMessage(
+            backgroundModifier = modifier,
+            onClick = {
+                viewmodel.bridgeInitGoBack()
+            },
+            msgText = stringResource(R.string.bridge_ip_step_3_bad_state_error),
+            buttonText = stringResource(R.string.back)
+        )
+    }
 
 //    Column(
 //        modifier = modifier

@@ -1,22 +1,56 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 /**
+ * Information about a NEW bridge.  It's essentially the same
+ * as [PhilipsHueBridgeInfo], but without a few things that
+ * aren't needed while constructing a bridge.
+ */
+data class PhilipsHueNewBridge(
+    /** The ip of this bridge in the local network. */
+    var ip : String = "",
+    /** The token "name" used to access this bridge. */
+    var token : String = "",
+    /** When true, this bridge is in active use */
+    var active : Boolean = false,
+)
+
+/**
  * Holds info about a philips hue bridge.
+ *
+ * Note that this has two constructors: a normal one and a second that takes
+ * a [PhilipsHueNewBridge] as input.  The second uses a weird invoke operator
+ * in the companion object.  It's not intuitive, but seems to work.
+ *
+ * NOTE
+ *  When using the companion object, of course there will be no id as ids
+ *  are not part of [PhilipsHueNewBridge] data.  You'll have to put the id
+ *  in after.
  */
 data class PhilipsHueBridgeInfo(
     /** unique identifier for this bridge */
     var id : String,
-    /** The ip of this bridge in the local network.  Null means that the ip hasn't been figured out yet. */
-    var ip : String? = null,
-    /** The token "name" used to access this bridge.  Null means that no token has been created yet. */
-    var token : String? = null,
+    /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
+    var ip : String = "",
+    /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
+    var token : String = "",
     /** When was this bridge last accessed? (millis since jan 1, 1970) */
     var lastUsed: Long = 0L,
     /** When true, this bridge is in active use */
     var active : Boolean = false,
     /** All the rooms controlled by this bridge */
     val rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf()
-)
+) {
+    companion object {
+        operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
+            return PhilipsHueBridgeInfo(
+                id = "",
+                ip = newBridge.ip,
+                token = newBridge.token,
+                active = newBridge.active
+            )
+        }
+    }
+}
 
 /**
  * Describes the essential data of a room in the philips hue world.

@@ -39,7 +39,11 @@ import androidx.core.content.edit
  *              from outside the main thread.  As with any file access,
  *              this could take a while.
  */
-fun getPrefsString(ctx: Context, key: String, filename: String = PREFS_FILENAME) : String? {
+fun getPrefsString(
+    ctx: Context,
+    key: String,
+    filename: String = PREFS_FILENAME
+) : String? {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     return prefs.getString(key, null)
 }
@@ -72,11 +76,82 @@ fun savePrefsString(
 }
 
 /**
+ * Returns all string values that correspond to the list of keys.
+ * Use this to get lots of values at once--it's much more efficient
+ * than successive calls to [getPrefsString].
+ *
+ * Note:
+ *  Because of all the hits to the prefs, this needs to be called off
+ *  the main thread.
+ *
+ *  @param  keys    A Set of keys to access all the values in a single
+ *                  prefs file.
+ *
+ *  @return     - A Set of Pairs, where the First is the key and the
+ *              Second is the corresponding value.
+ *              - If a key does not have a corresponding value, then its
+ *              value will be null.
+ */
+suspend fun getLotsOfPrefsStrings(
+    ctx: Context,
+    keys: Set<String>,
+    filename: String = PREFS_FILENAME
+) : Set<Pair<String, String?>> {
+
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
+    val retVals = mutableSetOf<Pair<String, String?>>()
+
+    keys.forEach() { key ->
+        val pair = Pair<String, String?>(
+            key,
+            prefs.getString(key, null)
+        )
+        retVals.add(pair)
+    }
+
+    return retVals
+}
+
+
+/**
+ * The opposite of [getLotsOfPrefsStrings], this saves a whole
+ * bunch of key-value pairs at the same time.  It's much more efficient
+ * than repeatedly calling [savePrefsString] over and over.
+ *
+ * Of course this needs to be called off the main thread as it can take
+ * a while.
+ *
+ * @param   setOfPairs      A Set of Pair (like the name implies).  The
+ *                          First of the pair is the key, and the Second
+ *                          is the value.  Note that null is not allowed
+ *                          for either.
+ */
+suspend fun saveLotsOfPrefsStrings(
+    ctx: Context,
+    setOfPairs: Set<Pair<String, String>>,
+    filename: String = PREFS_FILENAME
+) {
+
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
+    prefs.edit(true) {
+        setOfPairs.forEach() { pair ->
+            putString(pair.first, pair.second)
+        }
+    }
+}
+
+
+/**
  * Retrieves a number from prefs with the given key.
  *
  * Returns [defaultValue] if not found.
  */
-fun getPrefsInt(ctx: Context, key: String, defaultValue: Int, filename: String = PREFS_FILENAME) : Int {
+fun getPrefsInt(
+    ctx: Context,
+    key: String,
+    defaultValue: Int,
+    filename: String = PREFS_FILENAME
+) : Int {
     val num: Int
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     try {
@@ -117,6 +192,28 @@ fun savePrefsInt(
 }
 
 /**
+ * Same as [getPrefsInt] but for longs.
+ */
+fun getPrefsLong(
+    ctx: Context,
+    key: String,
+    defaultValue: Long,
+    filename: String = PREFS_FILENAME
+) : Long {
+    val num: Long
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
+    try {
+        num = prefs.getLong(key, defaultValue)
+    }
+    catch (e: ClassCastException) {
+        Log.e(TAG, "Hey, I found something besides an Long in getPrefsLong(key = $key)!")
+        e.printStackTrace()
+        return defaultValue
+    }
+    return num
+}
+
+/**
  * Same as [savePrefsInt] but for longs.
  */
 fun savePrefsLong(
@@ -145,7 +242,7 @@ fun getPrefsBool(
     filename: String = PREFS_FILENAME
 ) : Boolean {
     val bool: Boolean
-    val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     try {
         bool = prefs.getBoolean(key, defaultBool)
     }
@@ -177,7 +274,7 @@ fun savePrefsBoolean(
     synchronize : Boolean = false,
     filename: String = PREFS_FILENAME
 ) {
-    val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
         putBoolean(key, bool)
     }
@@ -190,8 +287,12 @@ fun savePrefsBoolean(
  *
  * Note that the returned set is NOT mutable.
  */
-fun getPrefsSet(ctx: Context, key: String, filename: String = PREFS_FILENAME) : Set<String>? {
-    val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
+fun getPrefsSet(
+    ctx: Context,
+    key: String,
+    filename: String = PREFS_FILENAME
+) : Set<String>? {
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     try {
         val emptySet = setOf<String>()
         val set = prefs.getStringSet(key, emptySet)
@@ -214,10 +315,11 @@ fun getPrefsSet(ctx: Context, key: String, filename: String = PREFS_FILENAME) : 
 fun savePrefsSet(
     ctx: Context,
     key: String,
+    filename: String = PREFS_FILENAME,
     daSet: Set<String>,
     synchronize : Boolean = false
 ) {
-    val prefs = ctx.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
         putStringSet(key, daSet)
     }

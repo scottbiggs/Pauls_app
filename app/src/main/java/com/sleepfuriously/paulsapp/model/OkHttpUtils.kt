@@ -109,16 +109,19 @@ object OkHttpUtils {
  */
 fun isValidBasicIp(str: String) : Boolean {
     if (str.isBlank()) {
+        Log.d(TAG, "isValidBasicIp($str) is blank--that's a hard No!")
         return false
     }
 
     // only allow numbers and dots
     if (str.contains(Regex("[^0-9.]")) == true) {
+        Log.d(TAG, "isValidBasicIp($str) contains only dots--nope!")
         return false
     }
 
     // there must be exactly 3 periods
     if (str.count { ".".contains(it) } != 3) {
+        Log.d(TAG, "isValidBasicIp($str) only has 3 periods, nah!")
         return false
     }
 
@@ -127,6 +130,7 @@ fun isValidBasicIp(str: String) : Boolean {
 
     // there should be 4 items
     if (numList.size != 4) {
+        Log.d(TAG, "isValidBasicIp($str) should have 4 items, try again!")
         return false
     }
 
@@ -134,10 +138,12 @@ fun isValidBasicIp(str: String) : Boolean {
     // Also, each should be a number:  0 <= n <= 255
     numList.forEach { s ->
         if (s.isEmpty()) {
+            Log.d(TAG, "isValidBasicIp($str) an item is empty, really??")
             return false
         }
         val n = s.toInt()
         if ((n < 0) || (n > 255)) {
+            Log.d(TAG, "isValidBasicIp($str) an item can't be converted to an Int!")
             return false
         }
     }
@@ -182,7 +188,7 @@ data class MyResponse(
          *  Unlike the normal constructor, this needs to be called off the
          *  main thread as it accesses [Response] data.
          */
-        operator fun invoke(response: Response): MyResponse {
+        operator fun invoke(response: Response) : MyResponse {
 
             // add the headers one-by-one to header list
             val headerList = mutableListOf<Pair<String, String>>()

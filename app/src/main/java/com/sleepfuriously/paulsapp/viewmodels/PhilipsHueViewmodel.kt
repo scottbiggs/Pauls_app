@@ -9,12 +9,14 @@ import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeUtils
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Viewmodel for all the Philips Hue devices.
@@ -65,10 +67,10 @@ class PhilipsHueViewmodel : ViewModel() {
     var waitingForResponse = _waitingForResponse.asStateFlow()
 
     /** access to the philips hue bridge and all that stuff that goes with it */
-    lateinit var bridgeUtils : PhilipsHueBridgeUtils
+    lateinit var bridgeModel : PhilipsHueModel
 
     /** This variable holds a new bridge.  Once it's filled in, it'll be added to the list */
-    var newBridge: PhilipsHueBridgeInfo? = null
+    var newBridge: PhilipsHueNewBridge? = null
         private set
 
     //-------------------------
@@ -157,22 +159,59 @@ class PhilipsHueViewmodel : ViewModel() {
      * @param   newIp           A new IP string.  This function will check
      *                          for proper formatting.
      *
+     * @param   synchronized    When true this function will not return until
+     *                          the data is finished saving in long-term memory.
+     *                          A coroutine outside of the main thread will be
+     *                          started to accomplish this task.
+     *                          Defaults to false (returns immediately), which
+     *                          may create a race condition if you do a lot of
+     *                          saves in a row.
+     *
      * @return      True if all went well.
      *              False if the bridge could not be found.  Nothing is done.
      *
      * side effects:
      *      The bridge will be permanently changed to hold the new id
      */
-    private fun setPhilipsHueIp(bridgeId: String, newIp: String) : Boolean {
+    private fun setPhilipsHueIp(
+        bridgeId: String,
+        newIp: String,
+        synchronized: Boolean = false
+    ) : Boolean {
 
-        if (isValidBasicIp(newIp)) {
-            bridgeUtils.saveBridgeIpStr(bridgeId, newIp)
-            return true
+        var result = true
+
+        // kind of a complicated way to get the result from a coroutine, sigh
+        if (synchronized) {
+            viewModelScope.launch {
+
+                // make sure we're off the main thread
+                result = withContext(Dispatchers.IO) {
+                    if (isValidBasicIp(newIp)) {
+                        bridgeModel.saveBridgeIp(bridgeId, newIp)
+                        true
+                    }
+                    else {
+                        Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
+                        false
+                    }
+                }
+            }
         }
+
         else {
-            Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
-            return false
+            // no coroutines needed
+            if (isValidBasicIp(newIp)) {
+                bridgeModel.saveBridgeIp(bridgeId, newIp)
+                result = true
+            }
+            else {
+                Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
+                result = false
+            }
         }
+
+        return result
     }
 
 
@@ -211,6 +250,10 @@ class PhilipsHueViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
             }
 
+            BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> {
+                _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
+            }
+
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
             }
@@ -228,8 +271,8 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun beginAddPhilipsHueBridge() {
         _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
-        newBridge = PhilipsHueBridgeInfo(id = bridgeUtils.getNewId())
-        Log.d(TAG, "newBridge is created, id = ${newBridge?.id}")
+        newBridge = PhilipsHueNewBridge()
+        Log.d(TAG, "newBridge is created. Ready to start adding data to it.")
     }
 
     /**
@@ -267,6 +310,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // check format
             if (isValidBasicIp(newIp) == false) {
+                Log.e(TAG, "invalid ip format in addPhilipsHueBridgeIp($newIp)")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT
                 _waitingForResponse.value = false
                 return@launch
@@ -278,7 +322,8 @@ class PhilipsHueViewmodel : ViewModel() {
             newBridge!!.ip = newIp
 
             // is there actually a bridge there?
-            if (bridgeUtils.doesBridgeRespondToIp(newIp) == false) {
+            if (bridgeModel.doesBridgeRespondToIp(newIp) == false) {
+                Log.e(TAG, "bridge does not respond to ip in addPhilipsHueBridgeIp($newIp)")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP
                 _waitingForResponse.value = false
                 return@launch
@@ -322,7 +367,8 @@ class PhilipsHueViewmodel : ViewModel() {
             BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
             BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
             BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
-            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> {
+            BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE,
+            BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> {
                 Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 2")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
             }
@@ -354,13 +400,14 @@ class PhilipsHueViewmodel : ViewModel() {
         val bridge = newBridge ?: return        // yah, redundant.  But that's kotlin for ya!
 
         viewModelScope.launch(Dispatchers.IO) {
-            val registerResponse = bridgeUtils.registerAppToBridge(bridge)
+            val registerResponse = bridgeModel.registerAppToBridge(bridge.ip)
             val token = registerResponse.first
+            val err = registerResponse.second
 
-            if (token == null) {
-                Log.d(TAG, "bridgeButtonPushed(), null was returned from registerAppToBridge()")
+            if (token.isBlank()) {
+                Log.d(TAG, "bridgeButtonPushed(), error returned from registerAppToBridge()")
 
-                when (registerResponse.second) {
+                when (err) {
                     GetBridgeTokenErrorEnum.NO_ERROR,
                     GetBridgeTokenErrorEnum.BAD_IP -> {
                         Log.e(TAG, "Error state ${registerResponse.second} should not occur at this point in bridge registration.")
@@ -399,28 +446,30 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * After receiving the notification that the bridge was successfully added,
+     * After receiving the notification that the bridge was successfully registered,
      * the new bridge needs to be added to the bridge list (and saved).  The
      * UI should call this to reset everything to [BridgeInitStates.NOT_INITIALIZING].
      */
     fun bridgeAddAllGoodAndDone() {
 
-        // Need to get an id for this new bridge and set some other data
-        newBridge!!.id = bridgeUtils.getNewId()     // yes, throw an exception if newBridge is null!
-        newBridge!!.active = true
-        newBridge!!.lastUsed = System.currentTimeMillis()
-//        newBridge!!.rooms =       todo
+        viewModelScope.launch(Dispatchers.IO) {
 
-        // add this to our Set of bridges
-        _philipsHueBridges.value.add(newBridge!!)
+            // Add this new bridge to our permanent data (and the Model).
+            val newBridgeId = bridgeModel.addBridge(newBridge!!)
 
-        // and don't forget to save it!
-        bridgeUtils.
+            // Add the new bridge to our Viewmodel
+            val bridge = bridgeModel.getBridge(newBridgeId)
+            if (bridge == null) {
+                Log.e(TAG, "Error adding new bridge in bridgeAddAllGoodAndDone(). Id = $newBridgeId.  Aborting!!!")
+                _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
+                return@launch
+            }
+            _philipsHueBridges.value.add(bridge)
 
-
-        // lastly signal that we're done with the new bridge stuff
-        newBridge = null
-        _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+            // lastly signal that we're done with the new bridge stuff
+            newBridge = null
+            _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+        }
     }
 
 
@@ -437,7 +486,7 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     /**
-     * Checks the status of the Philips Hue bridge.  For each bridge that
+     * Checks the status of the Philips Hue bridges.  For each bridge that
      * is known (already saved):
      *  1. Do we have the philips hue IP?
      *
@@ -453,33 +502,33 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     private suspend fun checkPhilipsHue(ctx: Context) {
 
-        // Get the bridge utils started.  This will go through
+        // Get the bridge model started.  This will go through
         // its test routines during initialization.
         _philipsHueTestStatus.value = TestStatus.TESTING
         _iotTestingErrorMsg.value = ""
-        bridgeUtils = PhilipsHueBridgeUtils(ctx)
+        bridgeModel = PhilipsHueModel(ctx)
 
         // Get all the bridges.
-        _philipsHueBridges.value = bridgeUtils.getAllActiveBridges()
+        _philipsHueBridges.value = bridgeModel.getAllBridges()
         if (_philipsHueBridges.value.isEmpty()) {
-            // nothing to do if there are no bridges
+            // nothing to do if there are no bridges. signal done w/ no problems.
+            _philipsHueTestStatus.value = TestStatus.TEST_GOOD
             return
         }
-
 
         // check each bridge one by one to see if its info is current
         // and active.
         for (bridge in _philipsHueBridges.value) {
 
             // does this bridge have an ip?
-            val ip = bridgeUtils.getBridgeIPStr(bridge.id)
-            if (ip.isNullOrBlank()) {
+            val ip = bridge.ip ?: continue
+            if (ip.isBlank()) {
                 bridge.active = false
                 continue
             }
 
             // check bridge is responding
-            if (bridgeUtils.doesBridgeRespondToIp(ip) == false) {
+            if (bridgeModel.doesBridgeRespondToIp(ip) == false) {
                 bridge.active = false
                 continue
             }
@@ -489,13 +538,14 @@ class PhilipsHueViewmodel : ViewModel() {
             bridge.active = true
 
             // Do we have a token?
-            val token = bridgeUtils.getCurrentBridgeToken(bridge.id)
-            if (token.isNullOrBlank()) {
+            val token = bridge.token
+            if (token.isBlank()) {
+                // no token, done with this bridge
                 continue
             }
 
             // check that token works
-            val tokenWorks = bridgeUtils.testBridgeToken(bridge.id, token)
+            val tokenWorks = bridgeModel.testBridgeToken(bridge.ip, token)
             if (tokenWorks == false) {
                 continue
             }
@@ -564,7 +614,10 @@ enum class BridgeInitStates {
     /** The bridge didn't respond or responded in a completely unintelligiable way (not RESTful) */
     STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE,
 
-    STAGE_3_ALL_GOOD_AND_DONE
+    STAGE_3_ALL_GOOD_AND_DONE,
+
+    /** An error occurred when adding the new bridge to our list of bridges */
+    STAGE_3_ERROR_CANNOT_ADD_BRIDGE
 }
 
-private const val TAG = "PhilipsHueViewodel"
+private const val TAG = "PhilipsHueViewmodel"
