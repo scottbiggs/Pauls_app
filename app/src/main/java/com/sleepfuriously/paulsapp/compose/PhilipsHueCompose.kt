@@ -582,6 +582,11 @@ private fun ManualBridgeSetupStep1_Portrait(
 } // ManualBridgeSetupStep1_Portrait
 
 
+/**
+ * This part of the manual bridge setup is where the user needs to hit the
+ * big button on the bridge.  Once they do, the user needs to hit the
+ * ok button on this screen.
+ */
 @Composable
 private fun ManualBridgeSetupStep2(
     modifier: Modifier = Modifier,
@@ -694,6 +699,10 @@ private fun ManualBridgeSetupStep2(
 } // ManualBridgeSetupStep2
 
 
+/**
+ * UI part 3 of the manual bridge setup.  This is the result after the user
+ * has hit the button on the bridge.
+ */
 @Composable
 private fun ManualBridgeSetupStep3(
     modifier: Modifier = Modifier,

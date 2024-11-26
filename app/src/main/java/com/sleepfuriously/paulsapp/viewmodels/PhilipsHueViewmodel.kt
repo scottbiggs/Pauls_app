@@ -438,7 +438,9 @@ class PhilipsHueViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE
             }
             else {
-                // yay, it worked!  Add the token to the new bridge and set the success state
+                // yay, it worked!  Add the token to the new bridge and set the success state.
+                // The adding of the data will wait until bridgeAddAllGoodAndDone() is called.
+                Log.d(TAG, "Successfully found the token in bridgeButtonPushed()")
                 newBridge!!.token = token
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
             }
@@ -451,6 +453,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * UI should call this to reset everything to [BridgeInitStates.NOT_INITIALIZING].
      */
     fun bridgeAddAllGoodAndDone() {
+
+        Log.d(TAG, "bridgeAllGoodAndDone() begin")
 
         viewModelScope.launch(Dispatchers.IO) {
 

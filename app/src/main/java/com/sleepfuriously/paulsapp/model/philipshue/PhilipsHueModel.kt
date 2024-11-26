@@ -462,7 +462,7 @@ class PhilipsHueModel(private val ctx: Context) {
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /** holds all the bridges that this app know about */
-    private val bridges = mutableSetOf<PhilipsHueBridgeInfo>()
+    private lateinit var bridges : MutableSet<PhilipsHueBridgeInfo>
 
     /** This will be true after initialization. Needed to prevent accidentally double initialization. */
     private var initialized = false
@@ -587,6 +587,8 @@ class PhilipsHueModel(private val ctx: Context) {
             return
         }
 
+        bridges = mutableSetOf()
+
         // Load the bridges
         runBlocking(Dispatchers.IO) {
             // start with the ids
@@ -615,8 +617,8 @@ class PhilipsHueModel(private val ctx: Context) {
                 bridges.add(bridge)
             }
 
-            // This will tell us which bridges are active
-            pollBridgesActive()
+            // todo: This will tell us which bridges are active
+//            pollBridgesActive()
 
             // done initializing
             initialized = true
@@ -754,12 +756,6 @@ class PhilipsHueModel(private val ctx: Context) {
             idSet.add(bridge.id)
         }
 
-        // check for uniqueness
-        if (idSet.contains(newBridgeId)) {
-            Log.e(TAG, "saveBridgeId($newBridgeId) is not unique, aborting!")
-            return false
-        }
-
         // add the new id
         idSet.add(newBridgeId)
 
@@ -890,7 +886,7 @@ class PhilipsHueModel(private val ctx: Context) {
         val returnVal = withContext(Dispatchers.IO) {
 
             if (saveBridgeId(bridge.id) == false) {
-                Log.e(TAG, "Can't find bridge id in saveBridge($bridge) - aborting!")
+                Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
                 return@withContext false
             }
 
