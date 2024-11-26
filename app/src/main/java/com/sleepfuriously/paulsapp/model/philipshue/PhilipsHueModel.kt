@@ -324,7 +324,8 @@ class PhilipsHueModel(private val ctx: Context) {
 
         try {
             val fullIp = createFullAddress(
-                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+//                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+                prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
                 ip = ip,
                 suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
             )
@@ -434,7 +435,8 @@ class PhilipsHueModel(private val ctx: Context) {
 
         try {
             val fullIp = createFullAddress(
-                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+//                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+                prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
                 ip = bridgeIp,
                 suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
             )
@@ -527,7 +529,8 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     private fun createFullAddress(
         ip: String,
-        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+//        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
         suffix: String = "",
     ) : String {
 
@@ -810,7 +813,8 @@ class PhilipsHueModel(private val ctx: Context) {
         }
 
         // strip any prefix from this ip and save the info
-        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX)
+//        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX)
+        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX)
         bridge.ip = justIp                      // local
 
         val ipKey = assembleIpKey(bridgeId)
