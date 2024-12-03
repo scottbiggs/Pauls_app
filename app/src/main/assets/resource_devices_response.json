@@ -1,0 +1,187 @@
+{
+  "errors": [],
+  "data": [
+    {
+      "id": "4b9def9b-e185-4a84-93d9-b13d6c65036f",
+      "id_v1": "/sensors/2",
+      "product_data": {
+        "model_id": "ROM001",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue Smart button",
+        "product_archetype": "unknown_archetype",
+        "certified": true,
+        "software_version": "2.47.8",
+        "hardware_platform_type": "100b-116"
+      },
+      "metadata": {
+        "name": "Hue Smart button 1",
+        "archetype": "unknown_archetype"
+      },
+      "services": [
+        {
+          "rid": "21b5a65b-895c-4027-96e8-bd753c441ff3",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "41f7b783-131d-4784-b565-1abc9dc6bb40",
+          "rtype": "button"
+        },
+        {
+          "rid": "9a44b84e-bfd2-40b8-b110-e7e0f21059c5",
+          "rtype": "device_power"
+        },
+        {
+          "rid": "bbb0fa81-6430-47e5-bac6-92acca5d1316",
+          "rtype": "device_software_update"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "8afed737-b415-4cf9-848f-a22b08a3c929",
+      "product_data": {
+        "model_id": "BSB002",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue Bridge",
+        "product_archetype": "bridge_v2",
+        "certified": true,
+        "software_version": "1.67.1967054020"
+      },
+      "metadata": {
+        "name": "Scott Bridge #1",
+        "archetype": "bridge_v2"
+      },
+      "identify": {},
+      "services": [
+        {
+          "rid": "96cc8d45-ead6-4a88-8c2b-598923846c66",
+          "rtype": "bridge"
+        },
+        {
+          "rid": "13f8b094-c601-44ab-81c0-ec2dbe634bf9",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "ccf751b9-139c-4d4a-a17c-4daec83e0eeb",
+          "rtype": "entertainment"
+        },
+        {
+          "rid": "7b1976b6-7a51-4fff-9200-9aec64e2252b",
+          "rtype": "zigbee_device_discovery"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "b23dc287-34e7-480d-a232-bea15a5a3557",
+      "id_v1": "/lights/2",
+      "product_data": {
+        "model_id": "LWA003",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue white lamp",
+        "product_archetype": "sultan_bulb",
+        "certified": true,
+        "software_version": "1.122.2",
+        "hardware_platform_type": "100b-114"
+      },
+      "metadata": {
+        "name": "Den ceiling 1",
+        "archetype": "ceiling_round"
+      },
+      "identify": {},
+      "services": [
+        {
+          "rid": "37b82165-09a2-4c8b-97d1-6834a2550ce9",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "5d1e2808-48f1-47b9-b31f-5ca4eb675172",
+          "rtype": "light"
+        },
+        {
+          "rid": "8ae13e82-5a02-4d07-8e6d-97847623607e",
+          "rtype": "taurus_7455"
+        },
+        {
+          "rid": "ccf495b2-3bce-4406-82a5-a776b9861d9f",
+          "rtype": "device_software_update"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "bcaea8c1-c476-4eb1-a641-a6129145517c",
+      "id_v1": "/lights/3",
+      "product_data": {
+        "model_id": "LWA003",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue white lamp",
+        "product_archetype": "sultan_bulb",
+        "certified": true,
+        "software_version": "1.122.2",
+        "hardware_platform_type": "100b-114"
+      },
+      "metadata": {
+        "name": "Den ceiling 2",
+        "archetype": "ceiling_round"
+      },
+      "identify": {},
+      "services": [
+        {
+          "rid": "957e1395-a0ef-4a3b-b8ab-6751bc790edf",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "0c730377-978e-424e-a9bb-db6c35e27f46",
+          "rtype": "light"
+        },
+        {
+          "rid": "17a595b0-0819-4a49-82bb-3e0a09235e9a",
+          "rtype": "taurus_7455"
+        },
+        {
+          "rid": "ad1464dc-93a2-472a-9dec-c86c82e4c670",
+          "rtype": "device_software_update"
+        }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "ef1681c2-6c08-4422-b53a-ba8af33ccf3e",
+      "id_v1": "/lights/1",
+      "product_data": {
+        "model_id": "LWA003",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue white lamp",
+        "product_archetype": "sultan_bulb",
+        "certified": true,
+        "software_version": "1.122.2",
+        "hardware_platform_type": "100b-114"
+      },
+      "metadata": {
+        "name": "Den corner",
+        "archetype": "floor_shade"
+      },
+      "identify": {},
+      "services": [
+        {
+          "rid": "6aa624b4-7f59-4ba9-bb29-7193e78cf828",
+          "rtype": "zigbee_connectivity"
+        },
+        {
+          "rid": "df14d251-fa7c-4e35-b5cc-981cd77e0c02",
+          "rtype": "light"
+        },
+        {
+          "rid": "d79f1150-2b4e-470d-9253-ae4e04b6778a",
+          "rtype": "taurus_7455"
+        },
+        {
+          "rid": "e7c8901c-db20-4082-9bdd-2e030315fcf7",
+          "rtype": "device_software_update"
+        }
+      ],
+      "type": "device"
+    }
+  ]
+}

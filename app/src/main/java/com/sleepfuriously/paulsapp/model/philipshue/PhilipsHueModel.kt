@@ -1,14 +1,19 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.provider.Settings.Secure
 import android.util.Log
 import androidx.collection.mutableIntSetOf
 import com.google.gson.Gson
+import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.OkHttpUtils
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGetRequest
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPostString
 import com.sleepfuriously.paulsapp.model.getPrefsSet
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +98,17 @@ import java.io.IOException
  *  Consider initializing this class within a coroutine.
  */
 class PhilipsHueModel(private val ctx: Context) {
+
+    //-------------------------------------
+    //  data
+    //-------------------------------------
+
+    /** the class' reference to the gson library */
+    private val gson = Gson()
+
+    //-------------------------------------
+    //  functions
+    //-------------------------------------
 
     init {
         properInit()
@@ -213,6 +229,33 @@ class PhilipsHueModel(private val ctx: Context) {
         return  bridges.find { bridge ->
             bridge.id == bridgeId
         }
+    }
+
+
+    /**
+     * Gets a Set of all the lights that the bridge knows about.
+     * Returns an empty set on error or no lights.
+     */
+    suspend fun getLights(bridgeId: String) : Set<PhilipsHueLightInfo> {
+        val lights = mutableSetOf<PhilipsHueLightInfo>()
+
+        val bridge = getBridge(bridgeId)
+        if (bridge == null) {
+            Log.e(TAG, "trying to find the lights with bad id in getLights($bridgeId). aborting!")
+            return lights
+        }
+
+        val fullAddress = createFullAddress(
+            ip = bridge.ip,
+            suffix = SUFFIX_API + bridge.token + SUFFIX_GET_LIGHTS
+        )
+
+        val responseStr = synchronousPostString(
+            fullAddress,
+            bodyStr = generateGetTokenBody()
+        )
+
+        TODO()
     }
 
 
@@ -374,25 +417,12 @@ class PhilipsHueModel(private val ctx: Context) {
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
 
-        val returnPair = Pair<String?, GetBridgeTokenErrorEnum>(null, GetBridgeTokenErrorEnum.NO_ERROR)
-
-
-        // fixme: is the username even needed?
-        val username = constructUserName(bridgeIp)
-        val deviceType = constructDeviceType(bridgeIp)
-        Log.i(TAG, "registerAppToBridge() - username = $username, deviceType = $deviceType")
-
         val fullAddress = createFullAddress(ip = bridgeIp, suffix = "/api/")
         Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
 
         val response = synchronousPostString(
             fullAddress,
-            // fixme:  this is NOT RIGHT (just using for testing)
-            bodyStr = """
-{
-  "devicetype": "$deviceType"
-}
-                """
+            bodyStr = generateGetTokenBody()
         )
 
         if (response.isSuccessful) {
@@ -525,13 +555,13 @@ class PhilipsHueModel(private val ctx: Context) {
      *
      * @param   suffix  Anything that goes AFTER the ip.  This is the directory
      *                  or parameters or whatever.  Remember that this should start
-     *                  with a backslash ('/').  Defaults to "".
+     *                  with a backslash ('/').  Defaults to "/api", which is the basics.
      */
     private fun createFullAddress(
         ip: String,
 //        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
         prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
-        suffix: String = "",
+        suffix: String = "/api",
     ) : String {
 
         val fullAddress = "${prefix}$ip${suffix}"
@@ -565,6 +595,35 @@ class PhilipsHueModel(private val ctx: Context) {
         return PHILIPS_HUE_BRIDGE_DEVICE_TYPE
     }
 
+    /**
+     * Use this to generate the body for when trying to get a new
+     * token (username) from the bridge.
+     *
+     * @return  The json we're constructing will look something like this:
+     *      {"devicetype":"appName#instanceName", "generateclientkey":true}
+     *
+     * @param   appName         The name of the app (defaults to Pauls App)
+     *
+     * @param   instanceName    The name of the instance of this app.
+     *                          Since mulitple copies of this app may be
+     *                          accessing the same bridge, this needs to be
+     *                          a unique number.  Default should generate a
+     *                          very good one.
+     */
+    @SuppressLint("HardwareIds")
+    private fun generateGetTokenBody(
+        appName: String? = null,
+        instanceName: String? = null
+    ) : String {
+        val name = appName ?: ctx.getString(R.string.app_name)
+
+        // This tries to use the ANDROID_ID.  If it's null, then I just
+        // throw in a JellyBean (should only happen on jelly bean devices, hehe).
+        val instance = instanceName
+            ?: Secure.getString(ctx.contentResolver, Secure.ANDROID_ID)
+            ?: "jellybean"
+        return """{"devicetype": "$name#$instance", "generateclientkey":true}"""
+    }
 
     //~~~~~~~~~~~
     //  read
@@ -617,8 +676,8 @@ class PhilipsHueModel(private val ctx: Context) {
                 bridges.add(bridge)
             }
 
-            // todo: This will tell us which bridges are active
-//            pollBridgesActive()
+            // This will tell us which bridges are active
+//            pollBridgesActive()       fixme: uncomment once polling is done
 
             // done initializing
             initialized = true
@@ -700,28 +759,57 @@ class PhilipsHueModel(private val ctx: Context) {
         Log.d(TAG, "getTokenFromBodyStr() started. bodyStr = $bodyStr")
 
         // convert to our kotlin data class
-        val bridgeResponseData = Gson().fromJson(bodyStr, PhilipsHueBridgeRegistrationResponse::class.java)
+        val bridgeResponseData = Gson().fromJson(bodyStr, PHBridgePostTokenResponse::class.java)
             ?: return null      // just return null if bridgeResponse is null
 
-        // there will be just one item
-        val bridgeResponseItem = bridgeResponseData[0]
+        if (bridgeResponseData[0].success != null) {
+            // looks like there was a success
+            val success = bridgeResponseData[0].success!!
+            val token = success.username
+            val clientKey = success.clientkey
+            Log.d(TAG, "getTokenFromBodyStr() successful. token = $token, clientKey = $clientKey")
 
-        // is there an error?
-        if (bridgeResponseItem.error != null) {
-            Log.e(TAG, "Getting token from bridge error:\n   type = ${bridgeResponseItem.error.type}\n   desc = ${bridgeResponseItem.error.description}")
+            if (token.isEmpty() || clientKey.isEmpty()) {
+                Log.e(TAG, "getTokenFromBodyStr()--thought we were successful, but token or clientKey is empty!")
+                return null
+            }
+            return token
+        }
+        else {
+            Log.e(TAG, "Error in getTokenFromBodyStr()! Unable to parse bodyStr = $bodyStr")
             return null
         }
-
-        // can't find a success, must be unrecoverable error
-        if (bridgeResponseItem.success == null) {
-            Log.e(TAG, "Getting token from bridge error:   Can't find success data")
-            return null
-        }
-
-        Log.v(TAG, "Getting token from bridge:   token = ${bridgeResponseItem.success.username}")
-        return bridgeResponseItem.success.username
     }
 
+    /**
+     * Finds out if a bridge currently is active and responds to its token.
+     *
+     * @param       bridgeId        Id of the bridge.  Does not check to see
+     *                              if everything is right.
+     *
+     * @return      True if the bridge is working and responds positively.
+     *              False otherwise.
+     */
+    private suspend fun doesBridgeRespondToToken(bridgeId: String) : Boolean {
+
+        val bridge = getBridge(bridgeId)
+        if (bridge == null) {
+            Log.e(TAG, "bridge is null in doesBridgeRespondToToken($bridgeId). aborting!")
+            return false
+        }
+
+        // try getting the bridge's general info to see if the token works
+        val fullAddress = createFullAddress(
+            ip = bridge.ip,
+            suffix = SUFFIX_API + bridge.token
+        )
+
+        val responseStr = synchronousGetRequest(fullAddress)
+
+        // parse
+//        val bridgeResponse = gson.fromJson(responseStr, )
+        TODO()
+    }
 
     //~~~~~~~~~~~
     //  update
@@ -936,7 +1024,16 @@ class PhilipsHueModel(private val ctx: Context) {
      * @return      False only if an error occurred.
      */
     private suspend fun pollBridgesActive() : Boolean {
-        TODO()
+//        bridges.forEach { bridge ->
+//            if ()
+//        }
+
+
+        // fixme        I'm just turning them all as active
+        bridges.forEach { bridge ->
+            bridge.active = true
+        }
+        return true
     }
 
     /**
@@ -951,6 +1048,9 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     private suspend fun pollBridgeDataChanged(bridgeId: String) : Boolean {
         TODO()
+        bridges.forEach { bridge ->
+
+        }
     }
 
 
@@ -1021,6 +1121,16 @@ private const val PHILIPS_HUE_BRIDGE_DEVICE_TYPE = "sleepfuriously android clien
  */
 private const val PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX = "sleepfuriously_p"
 
+//----------------
+//  suffixes
+//
+
+/** This should go AFTER the ip and BEFORE the token */
+private const val SUFFIX_API = "/api/"
+
+
+/** Used to get light information from a bridge. Needs to go AFTER the token */
+private const val SUFFIX_GET_LIGHTS = "/lights"
 
 //----------------
 //  prefs
