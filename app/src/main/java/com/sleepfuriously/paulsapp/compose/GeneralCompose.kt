@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
@@ -155,7 +156,7 @@ fun TextFieldAndButton(
                 }
 
                 FilledIconButton (onClick = { onClick.invoke(textFieldText) }) {
-                    Icon(Icons.Filled.ArrowForward, contentDescription = buttonLabel)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = buttonLabel)
                 }
             }
         },
