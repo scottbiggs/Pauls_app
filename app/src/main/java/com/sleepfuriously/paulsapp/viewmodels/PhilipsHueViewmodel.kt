@@ -473,6 +473,9 @@ class PhilipsHueViewmodel : ViewModel() {
             // lastly signal that we're done with the new bridge stuff
             newBridge = null
             _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+
+            // fixme:  what are we NOT doing here that we're doing during initialization?
+            //  the new bridge is not showing up (no recomposition?)
         }
     }
 

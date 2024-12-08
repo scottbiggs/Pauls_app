@@ -218,6 +218,194 @@ fun ShowMainScreenPhilipsHue(
 
 }
 
+
+@Composable
+private fun ShowMainPhilipsHueAddBridgeFab(
+    modifier: Modifier = Modifier,
+    viewmodel: PhilipsHueViewmodel,
+    numActiveBridges: Int
+) {
+    // Add button to add a new bridge (if there are no active bridges, then
+    // show the extended FAB)
+    if (numActiveBridges == 0) {
+        ExtendedFloatingActionButton(
+            modifier = modifier
+                .padding(top = 26.dp, end = 38.dp),
+            onClick = { viewmodel.beginAddPhilipsHueBridge() },
+            elevation = FloatingActionButtonDefaults.elevation(8.dp),
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(id = R.string.add_button_content_desc)
+                )
+            },
+            text = { Text(stringResource(id = R.string.ph_add_button)) }
+        )
+    } else {
+        FloatingActionButton(
+            modifier = modifier
+                .padding(top = 16.dp, end = 38.dp),
+            onClick = { viewmodel.beginAddPhilipsHueBridge() },
+            elevation = FloatingActionButtonDefaults.elevation(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(id = R.string.add_button_content_desc)
+            )
+        }
+    }
+}
+
+/**
+ * UI for a single room.
+ *
+ * @param   roomName        The name to display for this room
+ *
+ * @param   illumination    How much is this room currently illumniated.
+ *                          0 = off all the way to 1 = full on.
+ *
+ * @param   roomChangedFunction     Function to call when the illumination is
+ *                                  changed by the user.  It takes the new
+ *                                  illumination value and a boolean for if the
+ *                                  switch is on/off.
+ */
+@Composable
+private fun DisplayPhilipsHueRoom(
+    modifier: Modifier = Modifier,
+    roomName: String,
+    illumination: Float,
+    lightSwitchOn: Boolean,
+    roomChangedFunction: (newIllumination: Float, switchOn: Boolean) -> Unit,
+) {
+
+    // variables for the widgets
+    var sliderPosition by remember { mutableFloatStateOf(illumination) }
+    var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
+
+    // variables for displaying the lightbulb
+    var lightImage by remember { mutableStateOf(getProperLightImage(sliderPosition)) }
+    var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
+
+    Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
+
+    Column(modifier = modifier
+        .fillMaxSize()
+        .padding(horizontal = 10.dp, vertical = 4.dp)
+        .clip(RoundedCornerShape(10.dp))
+        .border(
+            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+            RoundedCornerShape(12.dp)
+        )
+
+    ) {
+        Text(
+            text = roomName,
+            modifier = modifier
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+        )
+
+        Row (
+            modifier = modifier
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Switch(
+                modifier = modifier
+                    .padding(start = 8.dp, bottom = 8.dp)
+                    .rotate(-90f),
+                checked = roomLightsSwitchOn,
+                onCheckedChange = { newSliderState ->
+                    roomLightsSwitchOn = newSliderState
+                    if (roomLightsSwitchOn) {
+                        lightImage = getProperLightImage(sliderPosition)
+                        lightColor = getLightColor(sliderPosition)
+                    }
+                    else {
+                        lightImage = getProperLightImage(0f)
+                        lightColor = getLightColor(0f)
+                    }
+                    roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
+                }
+            )
+
+            // This pushes the switch to the far left and the lightbulb to
+            // the far right.
+            Spacer(modifier = modifier.weight(1f))
+
+            DrawLightBulb(lightImage, lightColor)
+        }
+
+        Slider(
+            value = sliderPosition,
+            enabled = roomLightsSwitchOn,
+            onValueChange = {
+                sliderPosition = it
+                lightImage = getProperLightImage(sliderPosition)
+                lightColor = getLightColor(sliderPosition)
+                roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
+            },
+            modifier = modifier
+                .padding(vertical = 4.dp, horizontal = 18.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(veryDarkCoolGray)
+        )
+        Text(
+            text = stringResource(id = R.string.brightness, (sliderPosition * 100).roundToInt()),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
+                .align(Alignment.CenterHorizontally)
+        )
+    }
+}
+
+@Composable
+private fun DrawLightBulb(imageId : Int, colorTint: Color) {
+    Image(
+        modifier = Modifier
+            .width(140.dp),
+        contentScale = ContentScale.Fit,
+        painter = painterResource(imageId),
+        colorFilter = ColorFilter.tint(colorTint),
+        contentDescription = stringResource(id = R.string.lightbulb_content_desc)
+    )
+}
+
+private fun getProperLightImage(illumination: Float) : Int {
+    val lightImage =
+        if (illumination < 0.25f) {
+            R.drawable.bare_bulb_white_04
+        }
+        else if (illumination < 0.5f) {
+            R.drawable.bare_bulb_white_03
+        }
+        else if (illumination < 0.75f) {
+            R.drawable.bare_bulb_white_02
+        }
+        else {
+            R.drawable.bare_bulb_white_01
+        }
+    return lightImage
+}
+
+private fun getLightColor(illumination: Float) : Color {
+    val color =
+        if (illumination < 0.25f) {
+            coolGray
+        }
+        else if (illumination < 0.5f) {
+            lightCoolGray
+        }
+        else if (illumination < 0.75f) {
+            veryLightCoolGray
+        }
+        else {
+            Color.White
+        }
+    return color
+}
+
+
 //---------------------------------
 //  bridge init
 //---------------------------------
@@ -793,193 +981,6 @@ private fun ManualInitWaiting(
             Text(stringResource(R.string.wait_while_checking_bridge_ip))
         }
     }
-}
-
-
-@Composable
-private fun ShowMainPhilipsHueAddBridgeFab(
-    modifier: Modifier = Modifier,
-    viewmodel: PhilipsHueViewmodel,
-    numActiveBridges: Int
-) {
-    // Add button to add a new bridge (if there are no active bridges, then
-    // show the extended FAB)
-    if (numActiveBridges == 0) {
-        ExtendedFloatingActionButton(
-            modifier = modifier
-                .padding(top = 26.dp, end = 38.dp),
-            onClick = { viewmodel.beginAddPhilipsHueBridge() },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(id = R.string.add_button_content_desc)
-                )
-            },
-            text = { Text(stringResource(id = R.string.ph_add_button)) }
-        )
-    } else {
-        FloatingActionButton(
-            modifier = modifier
-                .padding(top = 16.dp, end = 38.dp),
-            onClick = { viewmodel.beginAddPhilipsHueBridge() },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = stringResource(id = R.string.add_button_content_desc)
-            )
-        }
-    }
-}
-
-/**
- * UI for a single room.
- *
- * @param   roomName        The name to display for this room
- *
- * @param   illumination    How much is this room currently illumniated.
- *                          0 = off all the way to 1 = full on.
- *
- * @param   roomChangedFunction     Function to call when the illumination is
- *                                  changed by the user.  It takes the new
- *                                  illumination value and a boolean for if the
- *                                  switch is on/off.
- */
-@Composable
-private fun DisplayPhilipsHueRoom(
-    modifier: Modifier = Modifier,
-    roomName: String,
-    illumination: Float,
-    lightSwitchOn: Boolean,
-    roomChangedFunction: (newIllumination: Float, switchOn: Boolean) -> Unit,
-) {
-
-    // variables for the widgets
-    var sliderPosition by remember { mutableFloatStateOf(illumination) }
-    var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
-
-    // variables for displaying the lightbulb
-    var lightImage by remember { mutableStateOf(getProperLightImage(sliderPosition)) }
-    var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
-
-    Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
-
-    Column(modifier = modifier
-        .fillMaxSize()
-        .padding(horizontal = 10.dp, vertical = 4.dp)
-        .clip(RoundedCornerShape(10.dp))
-        .border(
-            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
-            RoundedCornerShape(12.dp)
-        )
-
-    ) {
-        Text(
-            text = roomName,
-            modifier = modifier
-                .padding(vertical = 4.dp, horizontal = 8.dp)
-        )
-
-        Row (
-            modifier = modifier
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Switch(
-                modifier = modifier
-                    .padding(start = 8.dp, bottom = 8.dp)
-                    .rotate(-90f),
-                checked = roomLightsSwitchOn,
-                onCheckedChange = { newSliderState ->
-                    roomLightsSwitchOn = newSliderState
-                    if (roomLightsSwitchOn) {
-                        lightImage = getProperLightImage(sliderPosition)
-                        lightColor = getLightColor(sliderPosition)
-                    }
-                    else {
-                        lightImage = getProperLightImage(0f)
-                        lightColor = getLightColor(0f)
-                    }
-                    roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
-                }
-            )
-
-            // This pushes the switch to the far left and the lightbulb to
-            // the far right.
-            Spacer(modifier = modifier.weight(1f))
-
-            DrawLightBulb(lightImage, lightColor)
-        }
-
-        Slider(
-            value = sliderPosition,
-            enabled = roomLightsSwitchOn,
-            onValueChange = {
-                sliderPosition = it
-                lightImage = getProperLightImage(sliderPosition)
-                lightColor = getLightColor(sliderPosition)
-                roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
-            },
-            modifier = modifier
-                .padding(vertical = 4.dp, horizontal = 18.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(veryDarkCoolGray)
-        )
-        Text(
-            text = stringResource(id = R.string.brightness, (sliderPosition * 100).roundToInt()),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
-                .align(Alignment.CenterHorizontally)
-        )
-    }
-}
-
-@Composable
-private fun DrawLightBulb(imageId : Int, colorTint: Color) {
-    Image(
-        modifier = Modifier
-            .width(140.dp),
-        contentScale = ContentScale.Fit,
-        painter = painterResource(imageId),
-        colorFilter = ColorFilter.tint(colorTint),
-        contentDescription = stringResource(id = R.string.lightbulb_content_desc)
-    )
-}
-
-private fun getProperLightImage(illumination: Float) : Int {
-    val lightImage =
-        if (illumination < 0.25f) {
-            R.drawable.bare_bulb_white_04
-        }
-        else if (illumination < 0.5f) {
-            R.drawable.bare_bulb_white_03
-        }
-        else if (illumination < 0.75f) {
-            R.drawable.bare_bulb_white_02
-        }
-        else {
-            R.drawable.bare_bulb_white_01
-        }
-    return lightImage
-}
-
-private fun getLightColor(illumination: Float) : Color {
-    val color =
-        if (illumination < 0.25f) {
-            coolGray
-        }
-        else if (illumination < 0.5f) {
-            lightCoolGray
-        }
-        else if (illumination < 0.75f) {
-            veryLightCoolGray
-        }
-        else {
-            Color.White
-        }
-    return color
 }
 
 //---------------------------------
