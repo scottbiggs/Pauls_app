@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -53,7 +54,7 @@ class PhilipsHueViewmodel : ViewModel() {
     var addNewBridgeState = _addNewBridgeState.asStateFlow()
 
 
-    private val _philipsHueBridges = MutableStateFlow(mutableSetOf<PhilipsHueBridgeInfo>())
+    private val _philipsHueBridges = MutableStateFlow(setOf<PhilipsHueBridgeInfo>())
     /** Holds the list of all bridges */
     var philipsHueBridges = _philipsHueBridges.asStateFlow()
 
@@ -69,8 +70,8 @@ class PhilipsHueViewmodel : ViewModel() {
     /** access to the philips hue bridge and all that stuff that goes with it */
     lateinit var bridgeModel : PhilipsHueModel
 
-    /** This variable holds a new bridge.  Once it's filled in, it'll be added to the list */
-    var newBridge: PhilipsHueNewBridge? = null
+    /** This variable holds a new bridge while working on it.  Once filled in, it'll be added to the list */
+    var workingNewBridge: PhilipsHueNewBridge? = null
         private set
 
     //-------------------------
@@ -271,7 +272,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun beginAddPhilipsHueBridge() {
         _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
-        newBridge = PhilipsHueNewBridge()
+        workingNewBridge = PhilipsHueNewBridge()
         Log.d(TAG, "newBridge is created. Ready to start adding data to it.")
     }
 
@@ -281,8 +282,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * bridge or no ip has been set, then an empty string is returned.
      */
     fun getNewBridgeIp() : String {
-        Log.d(TAG, "getNewBridgeIp() -> ${newBridge?.ip}")
-        return newBridge?.ip ?: ""
+        Log.d(TAG, "getNewBridgeIp() -> ${workingNewBridge?.ip}")
+        return workingNewBridge?.ip ?: ""
     }
 
     /**
@@ -319,7 +320,7 @@ class PhilipsHueViewmodel : ViewModel() {
             // At this point, we might as well save the ip to this new bridge.
             // The user may need to modify it later.
             Log.d(TAG, "newbridge.ip set to $newIp")
-            newBridge!!.ip = newIp
+            workingNewBridge!!.ip = newIp
 
             // is there actually a bridge there?
             if (bridgeModel.doesBridgeRespondToIp(newIp) == false) {
@@ -356,7 +357,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
                 // also reset the bridge ip as it was messed up to begin with
                 Log.d(TAG, "newbridge.ip attempted to set to BLANK")
-                newBridge?.ip = ""
+                workingNewBridge?.ip = ""
             }
 
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
@@ -393,11 +394,11 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun bridgeButtonPushed() {
 
-        if (newBridge == null) {
+        if (workingNewBridge == null) {
             Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
             return
         }
-        val bridge = newBridge ?: return        // yah, redundant.  But that's kotlin for ya!
+        val bridge = workingNewBridge ?: return        // yah, redundant.  But that's kotlin for ya!
 
         viewModelScope.launch(Dispatchers.IO) {
             val registerResponse = bridgeModel.registerAppToBridge(bridge.ip)
@@ -441,7 +442,7 @@ class PhilipsHueViewmodel : ViewModel() {
                 // yay, it worked!  Add the token to the new bridge and set the success state.
                 // The adding of the data will wait until bridgeAddAllGoodAndDone() is called.
                 Log.d(TAG, "Successfully found the token in bridgeButtonPushed()")
-                newBridge!!.token = token
+                workingNewBridge!!.token = token
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
             }
         }
@@ -459,19 +460,22 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
 
             // Add this new bridge to our permanent data (and the Model).
-            val newBridgeId = bridgeModel.addBridge(newBridge!!)
+            val newBridgeId = bridgeModel.addBridge(workingNewBridge!!)
 
             // Add the new bridge to our Viewmodel
-            val bridge = bridgeModel.getBridge(newBridgeId)
-            if (bridge == null) {
+            val newBridge = bridgeModel.getBridge(newBridgeId)
+            if (newBridge == null) {
                 Log.e(TAG, "Error adding new bridge in bridgeAddAllGoodAndDone(). Id = $newBridgeId.  Aborting!!!")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
                 return@launch
             }
-            _philipsHueBridges.value.add(bridge)
+
+            // Crazy maneuvers to update the bridges set and maintain the Flow.
+            // Essentially I'm copying the Set with one additional item into a new variable.
+            _philipsHueBridges.update { it + newBridge }
 
             // lastly signal that we're done with the new bridge stuff
-            newBridge = null
+            workingNewBridge = null
             _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
 
             // fixme:  what are we NOT doing here that we're doing during initialization?

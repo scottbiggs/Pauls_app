@@ -607,7 +607,7 @@ private fun ManualBridgeSetupStep1_landscape(
     if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.newBridge?.ip ?: ""),
+            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.workingNewBridge?.ip ?: ""),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
@@ -768,7 +768,7 @@ private fun ManualBridgeSetupStep1_Portrait(
     if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.newBridge?.ip ?: ""),
+            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.workingNewBridge?.ip ?: ""),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
@@ -803,18 +803,18 @@ private fun ManualBridgeSetupStep2(
         BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON -> ""
         BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> stringResource(
             R.string.registering_bridge_button_not_pressed,
-            viewmodel.newBridge?.ip ?: "null"
+            viewmodel.workingNewBridge?.ip ?: "null"
         )
 
         BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE -> stringResource(
             R.string.registering_bridge_unsuccessful,
-            viewmodel.newBridge?.ip ?: "null"
+            viewmodel.workingNewBridge?.ip ?: "null"
         )
 
         BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE -> stringResource(R.string.registering_bridge_cannot_parse_response)
         BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED -> stringResource(
             R.string.registering_bridge_button_not_pressed,
-            viewmodel.newBridge?.ip ?: "null"
+            viewmodel.workingNewBridge?.ip ?: "null"
         )
 
         BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> stringResource(R.string.bridge_ip_step_3_problem_adding_bridge)
@@ -842,7 +842,7 @@ private fun ManualBridgeSetupStep2(
             )
 
             // success message
-            val ipStr = viewmodel.newBridge?.ip
+            val ipStr = viewmodel.workingNewBridge?.ip
             Text(
                 stringResource(R.string.connect_bridge_ip_success, ipStr ?: "error"),
                 modifier = Modifier
@@ -942,26 +942,6 @@ private fun ManualBridgeSetupStep3(
             buttonText = stringResource(R.string.back)
         )
     }
-
-//    Column(
-//        modifier = modifier
-//            .fillMaxSize()
-//            .safeContentPadding()      // takes the insets into account (nav bars, etc)
-//            .padding(8.dp),
-//        horizontalAlignment = Alignment.CenterHorizontally
-//    ) {
-//        Text(
-//            text = stringResource(id = R.string.new_bridge_success),
-//            style = MaterialTheme.typography.headlineMedium,
-//        )
-//
-//        Button(
-//            onClick = {
-//                viewmodel.bridgeAddAllGoodAndDone()
-//            }
-//        ) { Text(stringResource(R.string.ok)) }
-//
-//    }
 
 }
 
