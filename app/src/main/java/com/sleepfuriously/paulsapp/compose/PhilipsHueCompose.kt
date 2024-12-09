@@ -100,7 +100,6 @@ fun ShowMainScreenPhilipsHue(
 ) {
 
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
-    val activeBridges = philipsHueViewmodel.bridgeModel.getAllActiveBridges()
 
     // the content
     Column(
@@ -127,69 +126,45 @@ fun ShowMainScreenPhilipsHue(
         ) {
             // Grouping the grids into bridges.  The first row will be the name
             // of the bridge.
-            activeBridges.forEach { bridge ->
+            bridges.forEach { bridge ->
 
-                // only draw bridges that are active
-                if (bridge.active) {
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
+                    DrawBridgeSeparator()
+                }
+
+
+                // The first item (which has the name of the bridge)
+                // will take the entire row of a grid.
+                item(
+                    span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+                ) {
+                    DrawBridgeTitle(text = stringResource(id = R.string.ph_bridge_name, bridge.id))
+                }
+
+                if (bridge.rooms.size == 0) {
+                    // no rooms to display
                     item(span = { GridItemSpan(this.maxLineSpan) }) {
-                        // a gradient to separate the bridges
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 32.dp)
-                                .height(28.dp)
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            coolGray,
-                                            Color(red = 0, green = 0, blue = 0, alpha = 0)
-                                        )
-                                    )
-                                )
-                        )
-                    }
-
-
-                    // The first item (which has the name of the bridge)
-                    // will take the entire row of a grid.
-                    item(
-                        span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
-                    ) {
                         Text(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
-                            text = stringResource(id = R.string.ph_bridge_name, bridge.id),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = yellowVeryLight
+                                .padding(start = 8.dp, end = 8.dp),
+                            text = noRoomsFound,
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center
                         )
                     }
-
-                    if (bridge.rooms.size == 0) {
-                        // no rooms to display
-                        item(span = { GridItemSpan(this.maxLineSpan) }) {
-                            Text(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 8.dp, end = 8.dp),
-                                text = noRoomsFound,
-                                style = MaterialTheme.typography.labelLarge,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        // yes, there are rooms to display
-                        bridge.rooms.forEach { room ->
-                            item {
-                                DisplayPhilipsHueRoom(
-                                    roomName = room.id,
-                                    illumination = room.getAverageIllumination()
-                                        .toFloat() / MAX_BRIGHTNESS.toFloat(),
-                                    lightSwitchOn = room.on,
-                                ) { newIllumination, switchOn ->
-                                    // todo call the illumination change in the viewmodel
-                                    //  and make it display (var by remember in a slider?)
-                                }
+                } else {
+                    // yes, there are rooms to display
+                    bridge.rooms.forEach { room ->
+                        item {
+                            DisplayPhilipsHueRoom(
+                                roomName = room.id,
+                                illumination = room.getAverageIllumination()
+                                    .toFloat() / MAX_BRIGHTNESS.toFloat(),
+                                lightSwitchOn = room.on,
+                            ) { newIllumination, switchOn ->
+                                // todo call the illumination change in the viewmodel
+                                //  and make it display (var by remember in a slider?)
                             }
                         }
                     }
@@ -210,7 +185,7 @@ fun ShowMainScreenPhilipsHue(
                 .padding(bottom = 18.dp)
                 .align(Alignment.BottomEnd),    // only works if parent is Box
             viewmodel = philipsHueViewmodel,
-            numActiveBridges = activeBridges.size
+            numActiveBridges = philipsHueViewmodel.bridgeModel.getAllActiveBridges().size
         )
     }
 
@@ -218,6 +193,38 @@ fun ShowMainScreenPhilipsHue(
 
 }
 
+/**
+ * A nice separator between bridges.
+ */
+@Composable
+private fun DrawBridgeSeparator() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp)
+            .height(28.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        coolGray,
+                        Color(red = 0, green = 0, blue = 0, alpha = 0)
+                    )
+                )
+            )
+    )
+}
+
+@Composable
+private fun DrawBridgeTitle(text: String) {
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
+        text = text,
+        style = MaterialTheme.typography.headlineSmall,
+        color = yellowVeryLight
+    )
+}
 
 @Composable
 private fun ShowMainPhilipsHueAddBridgeFab(
