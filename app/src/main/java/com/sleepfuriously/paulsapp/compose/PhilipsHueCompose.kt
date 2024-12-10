@@ -1,11 +1,8 @@
 package com.sleepfuriously.paulsapp.compose
 
-import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,31 +11,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -54,15 +53,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
-import com.sleepfuriously.paulsapp.MainActivity
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
@@ -124,12 +120,17 @@ fun ShowMainScreenPhilipsHue(
             verticalArrangement = Arrangement.Top,
             horizontalArrangement = Arrangement.Start
         ) {
-            // Grouping the grids into bridges.  The first row will be the name
-            // of the bridge.
+            // Each bridge will consist of:
+            //  - separator
+            //  - title (name of the bridge)
+            //  - drop-down menu:
+            //      - bridge info
+            //      - delete bridge
+            //  - grid of all the rooms on the bridge
             bridges.forEach { bridge ->
 
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    DrawBridgeSeparator()
+                    DrawBridgeSeparator(bridge.id, philipsHueViewmodel)
                 }
 
 
@@ -197,7 +198,20 @@ fun ShowMainScreenPhilipsHue(
  * A nice separator between bridges.
  */
 @Composable
-private fun DrawBridgeSeparator() {
+private fun DrawBridgeSeparator(
+    bridgeId: String,
+    viewmodel: PhilipsHueViewmodel
+) {
+
+    val ctx = LocalContext.current
+    var isDropDownExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
+    Log.d(TAG, "begin DrawBridgeSeparator() - showInfoDialog = $showInfoDialog")
+
+
+    // The separator
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -212,6 +226,205 @@ private fun DrawBridgeSeparator() {
                 )
             )
     )
+
+    // A second identical box is needed to make the drop-down
+    // menu appear on the top right.  This also includes the
+    // drop-down button which is drawn over the above Box.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp)
+            .height(28.dp)
+            .wrapContentSize(Alignment.TopEnd)
+    ) {
+
+        // We'll use an IconButton for extra commands related to
+        // this bridge
+        IconButton(
+            modifier = Modifier
+                .padding(vertical = 2.dp, horizontal = 8.dp)
+                .align(Alignment.CenterEnd),
+            onClick = { isDropDownExpanded = !isDropDownExpanded }
+        ) {
+            // on the far right, draw an icon
+            Image(
+                contentScale = ContentScale.Fit,
+                painter = painterResource(R.drawable.baseline_more_vert_24),
+                contentDescription = stringResource(id = R.string.drop_down_menu_desc),
+            )
+        }
+
+        DropdownMenu(
+            modifier = Modifier
+                .align(Alignment.TopEnd),
+            expanded = isDropDownExpanded,
+            onDismissRequest = {
+                isDropDownExpanded = false
+            }
+        ) {
+            // show bridge info
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.show_bridge_info)) },
+                onClick = {
+                    isDropDownExpanded = false
+                    showInfoDialog = true
+                }
+            )
+
+            // delete bridge
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.remove_bridge)) },
+                onClick = {
+                    isDropDownExpanded = false
+                    showDeleteDialog = true
+                    Log.d(TAG, "selected info menu item - showInfoDialog = $showInfoDialog")
+                }
+            )
+        }
+
+        // delete confirmation dialog
+        if (showDeleteDialog) {
+            MyYesNoDialog(
+                onDismiss = {
+                    showDeleteDialog = false
+                    },
+                onConfirm = {
+                    showDeleteDialog = false
+                    Toast.makeText(ctx, "Todo: delete this bridge", Toast.LENGTH_LONG).show()
+                    },
+                titleText = stringResource(R.string.delete_bridge_confirm_title),
+                bodyText = stringResource(R.string.delete_bridge_confirm_body),
+            )
+        }
+
+        // Display all the info we know about this bridge
+        if (showInfoDialog) {
+            Log.d(TAG, "showing info dialog - showInfoDialog = $showInfoDialog")
+            ShowBridgeInfoDialog(
+                bridgeId,
+                viewmodel,
+                onClick = {
+                    showInfoDialog = false
+                    Log.d(TAG, "click! - showInfoDialog = $showInfoDialog")
+                })
+        }
+    }
+}
+
+@Composable
+private fun ShowBridgeInfoDialog(
+    bridgeId: String,
+    viewmodel: PhilipsHueViewmodel,
+    onClick: () -> Unit
+) {
+
+    val bridge = remember { viewmodel.getBridgeInfo(bridgeId) }
+
+    AlertDialog(
+        onDismissRequest = onClick,
+        title = {
+            Text(stringResource(R.string.show_bridge_info_title))
+        },
+        text = {
+            // This is the meat of the function.  All the data goes here.
+            LazyColumn {
+                // id
+                item {
+                    DrawBridgeInfoLine(
+                        stringResource(R.string.id),
+                        bridge?.id ?: stringResource(R.string.no_bridge_id)
+                    )
+                }
+
+                // ip
+                item {
+                    DrawBridgeInfoLine(
+                        stringResource(R.string.ip),
+                        bridge?.ip ?: stringResource(R.string.no_bridge_id)
+                    )
+                }
+
+                // active
+                item {
+                    DrawBridgeInfoLine(
+                        stringResource(R.string.active),
+                        bridge?.active?.toString() ?: stringResource(R.string.not_applicable)
+                    )
+                }
+
+                // token
+                item {
+                    DrawBridgeInfoLine(
+                        stringResource(R.string.token),
+                        bridge?.token ?: stringResource(R.string.not_applicable)
+                    )
+                }
+
+                // last used
+                item {
+                    DrawBridgeInfoLine(
+                        stringResource(R.string.bridge_last_used),
+                        bridge?.lastUsed?.toString() ?: stringResource(R.string.not_applicable)
+                    )
+                }
+
+                // rooms
+                if (bridge?.rooms != null) {
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.bridge_info_room),
+                            bridge.rooms.size.toString()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onClick
+            ) { Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.primary) }
+        },
+        dismissButton = { }
+    )
+
+}
+
+/**
+ * Draws the given two texts in a Row suitable for displaying in the Bridge
+ * Info screen.
+ *
+ * @param   title       The first part.  It'll be bigger and bolder.
+ *                      Just a word or two.
+ *
+ * @param   body        The right part.  Should be the main data.
+ *
+ * @param   width       Width of the title section.  Default should be good for
+ *                      a nice sized word.
+ */
+@Composable
+private fun DrawBridgeInfoLine(
+    title: String,
+    body: String,
+    width: Int = 90
+) {
+    Row {
+        Text(
+            text = title,
+            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .width(width.dp)
+                .alignByBaseline()
+                .padding(end = 8.dp)
+        )
+        Text(
+            text = body,
+            modifier = Modifier
+                .alignByBaseline()
+        )
+    }
+
 }
 
 @Composable

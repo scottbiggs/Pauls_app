@@ -64,6 +64,19 @@
     <string name="lightbulb_content_desc">dimming light bulb</string>
     <string name="no_rooms_for_bridge">This bridge has no rooms</string>
     <string name="brightness">brightness = %1d%%</string>
+    <string name="drop_down_menu_desc">drop down menu</string>
+    <string name="show_bridge_info">info</string>
+    <string name="show_bridge_info_title">Bridge Info</string>
+    <string name="bridge_last_used">Last Used</string>
+    <string name="bridge_info_room">Rooms</string>
+
+    <string name="remove_bridge">delete bridge</string>
+    <string name="delete_bridge_confirm_title">Delete Bridge</string>
+    <string name="delete_bridge_confirm_body">This action will remove the bridge from this application.  Tap \'confirm\' to continue with deletion.</string>
+    <string name="no_bridge_id">No ID</string>
+    <string name="no_bridge_ip">No IP available for this bridge.</string>
+
+    <string name="bridge_id">ID:</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
@@ -81,5 +94,12 @@
     <string name="done">done</string>
     <string name="exit">exit</string>
     <string name="back">back</string>
+    <string name="dismiss">dismiss</string>
+    <string name="confirm">confirm</string>
+    <string name="ip">IP</string>
+    <string name="id">ID</string>
+    <string name="active">Active</string>
+    <string name="not_applicable">N/A</string>
+    <string name="token">username</string>
 
 </resources>

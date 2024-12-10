@@ -215,6 +215,18 @@ class PhilipsHueViewmodel : ViewModel() {
         return result
     }
 
+    /**
+     * Passes along a copy of the bridge info.  Could be useful for
+     * displaying data to the user.
+     *
+     * @param   bridgeId        The id of the bridge.
+     *
+     * @return  All that we know about this bridge.  Returns null
+     *          if the id doesn't make sense or some other error.
+     */
+    fun getBridgeInfo(bridgeId: String) : PhilipsHueBridgeInfo? {
+        return bridgeModel.getBridge(bridgeId)
+    }
 
     //-------------------------
     //  add bridge functions
