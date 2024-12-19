@@ -132,7 +132,6 @@ fun ShowMainScreenPhilipsHue(
             philipsHueViewmodel.philipsHueBridgesCompose.forEach { bridge ->
 
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
-//                    DrawBridgeSeparator(bridge.id, bridges, philipsHueViewmodel)
                     DrawBridgeSeparator(bridge.id, philipsHueViewmodel)
                 }
 
@@ -189,7 +188,6 @@ fun ShowMainScreenPhilipsHue(
                 .padding(bottom = 18.dp)
                 .align(Alignment.BottomEnd),    // only works if parent is Box
             viewmodel = philipsHueViewmodel,
-            numActiveBridges = philipsHueViewmodel.bridgeModel.getAllActiveBridges().size
         )
     }
 
@@ -228,7 +226,6 @@ private fun DrawBridgeSeparator(
         modifier = modifier,
         viewmodel = viewmodel,
         bridgeId = bridgeId,
-//        bridges = bridges
     )
 }
 
@@ -237,7 +234,6 @@ private fun DotDotDotBridgeMenu(
     modifier : Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
     bridgeId: String,
-//    bridges: Set<PhilipsHueBridgeInfo>
 ) {
     val ctx = LocalContext.current
     var isDropDownExpanded by remember { mutableStateOf(false) }
@@ -465,12 +461,11 @@ private fun DrawBridgeTitle(text: String) {
 @Composable
 private fun ShowMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
-    viewmodel: PhilipsHueViewmodel,
-    numActiveBridges: Int
+    viewmodel: PhilipsHueViewmodel
 ) {
     // Add button to add a new bridge (if there are no active bridges, then
     // show the extended FAB)
-    if (numActiveBridges == 0) {
+    if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
         ExtendedFloatingActionButton(
             modifier = modifier
                 .padding(top = 26.dp, end = 38.dp),

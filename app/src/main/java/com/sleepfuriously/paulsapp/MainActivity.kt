@@ -129,10 +129,6 @@ class MainActivity : ComponentActivity() {
                     val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
                     val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
-                    /** yup, this is pretty important--all the bridges */
-//                    val philipsHueBridges by philipsHueViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
-
-
                     // Before anything, do we need to exit?
                     if (philipsHueFinishNow) {
                         finish()
@@ -153,8 +149,6 @@ class MainActivity : ComponentActivity() {
                             wifiWorking = wifiWorking ?: false,
                             philipsHueTest = philipsHueTestStatus,
                             viewmodel = philipsHueViewmodel
-//                            philipsHueBridges = philipsHueBridges
-//                            philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
                         )
                     }
 
@@ -185,8 +179,6 @@ class MainActivity : ComponentActivity() {
                         FourPanes(
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
-//                            bridges = philipsHueBridges
-//                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
                         )
                     }
 
@@ -214,7 +206,6 @@ class MainActivity : ComponentActivity() {
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
         modifier : Modifier = Modifier,
-//        bridges: Set<PhilipsHueBridgeInfo>
     ) {
 
         Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
@@ -450,7 +441,6 @@ class MainActivity : ComponentActivity() {
         wifiWorking: Boolean?,
         philipsHueTest: TestStatus,
         viewmodel: PhilipsHueViewmodel,
-//        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
     ) {
         Log.d(TAG, "TestSetupScreen()")
 
