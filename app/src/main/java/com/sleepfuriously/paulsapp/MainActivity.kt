@@ -53,10 +53,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sleepfuriously.paulsapp.compose.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
     //----------------------------
 
     /** access to the view model */
-    private lateinit var viewmodel: MainViewmodel
+//    private lateinit var viewmodel: MainViewmodel
 
     /** accessor for philps hue viewmodel */
     private lateinit var philipsHueViewmodel: PhilipsHueViewmodel
@@ -105,17 +105,17 @@ class MainActivity : ComponentActivity() {
         // Draw under system bars
         enableEdgeToEdge()
 
-        viewmodel  = MainViewmodel()
-        philipsHueViewmodel = PhilipsHueViewmodel()
-
         // surest way to hide the action bar
         actionBar?.hide()
 
-        // start initializations and splash screen
-        philipsHueViewmodel.checkIoT(this)
-        showSplashScreen()
 
         setContent {
+
+            philipsHueViewmodel = viewModel<PhilipsHueViewmodel>(this)
+            // start initializations and splash screen
+            philipsHueViewmodel.checkIoT(this)
+//                    showSplashScreen()
+
             PaulsAppTheme {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
                     val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
                     /** yup, this is pretty important--all the bridges */
-                    val philipsHueBridges by philipsHueViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
+//                    val philipsHueBridges by philipsHueViewmodel.philipsHueBridges.collectAsStateWithLifecycle()
 
 
                     // Before anything, do we need to exit?
@@ -152,7 +152,9 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding),
                             wifiWorking = wifiWorking ?: false,
                             philipsHueTest = philipsHueTestStatus,
-                            philipsHueBridges = philipsHueBridges
+                            viewmodel = philipsHueViewmodel
+//                            philipsHueBridges = philipsHueBridges
+//                            philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
                         )
                     }
 
@@ -183,8 +185,8 @@ class MainActivity : ComponentActivity() {
                         FourPanes(
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
-                            viewModel = viewmodel,
-                            bridges = philipsHueBridges
+//                            bridges = philipsHueBridges
+//                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
                         )
                     }
 
@@ -211,12 +213,11 @@ class MainActivity : ComponentActivity() {
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
-        viewModel: MainViewmodel,
         modifier : Modifier = Modifier,
-        bridges: Set<PhilipsHueBridgeInfo>
+//        bridges: Set<PhilipsHueBridgeInfo>
     ) {
 
-        Log.d(TAG, "FourPanes() start.  bridges = $bridges")
+        Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -294,7 +295,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel, bridges)
+                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel)
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
@@ -448,7 +449,8 @@ class MainActivity : ComponentActivity() {
         modifier : Modifier = Modifier,
         wifiWorking: Boolean?,
         philipsHueTest: TestStatus,
-        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
+        viewmodel: PhilipsHueViewmodel,
+//        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
     ) {
         Log.d(TAG, "TestSetupScreen()")
 
@@ -461,7 +463,7 @@ class MainActivity : ComponentActivity() {
 
             // list known bridges
             Text("here the known bridges:")
-            philipsHueBridges.forEach() { bridge ->
+            viewmodel.philipsHueBridgesCompose.forEach { bridge ->
                 Text("   bridge ${bridge.id}: ip = ${bridge.ip}, token = ${bridge.token}, lastUsed = ${bridge.lastUsed}, active = ${bridge.active}")
             }
 

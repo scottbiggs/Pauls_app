@@ -76,6 +76,32 @@ fun savePrefsString(
 }
 
 /**
+ * Removes a pref accessed by the given key.
+ * If the pref doesn't exist, then nothing is done.
+ * Doesn't care what the type is.
+ *
+ * @param   synchronize     When true, the value will be removed immediately.
+ *                          This takes a little bit of time, so I recommend
+ *                          using this param when calling outside the main thread.
+ *                          The only time to use it if there are lots of reads
+ *                          and writes at nearly the same time (perhaps in different
+ *                          threads).  Honestly it's generally not needed.
+ *                          Default is false, which is very fast and doesn't need
+ *                          any special treatment.
+ */
+fun deletePref(
+    ctx: Context,
+    key: String,
+    synchronize : Boolean = false,
+    filename: String = PREFS_FILENAME
+) {
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
+    prefs.edit(synchronize) {
+        remove(key)
+    }
+}
+
+/**
  * Returns all string values that correspond to the list of keys.
  * Use this to get lots of values at once--it's much more efficient
  * than successive calls to [getPrefsString].
@@ -190,6 +216,7 @@ fun savePrefsInt(
         putInt(key, num)
     }
 }
+
 
 /**
  * Same as [getPrefsInt] but for longs.

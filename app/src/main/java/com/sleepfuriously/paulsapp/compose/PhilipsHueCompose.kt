@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -91,9 +92,10 @@ import kotlin.math.roundToInt
 @Composable
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
-    philipsHueViewmodel: PhilipsHueViewmodel,
-    bridges: Set<PhilipsHueBridgeInfo>,
+    philipsHueViewmodel: PhilipsHueViewmodel
+//    bridges: Set<PhilipsHueBridgeInfo>,
 ) {
+    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
 
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
@@ -127,9 +129,10 @@ fun ShowMainScreenPhilipsHue(
             //      - bridge info
             //      - delete bridge
             //  - grid of all the rooms on the bridge
-            bridges.forEach { bridge ->
+            philipsHueViewmodel.philipsHueBridgesCompose.forEach { bridge ->
 
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
+//                    DrawBridgeSeparator(bridge.id, bridges, philipsHueViewmodel)
                     DrawBridgeSeparator(bridge.id, philipsHueViewmodel)
                 }
 
@@ -200,23 +203,17 @@ fun ShowMainScreenPhilipsHue(
 @Composable
 private fun DrawBridgeSeparator(
     bridgeId: String,
+//    bridges: Set<PhilipsHueBridgeInfo>,
     viewmodel: PhilipsHueViewmodel
 ) {
-
-    val ctx = LocalContext.current
-    var isDropDownExpanded by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showInfoDialog by remember { mutableStateOf(false) }
-
-    Log.d(TAG, "begin DrawBridgeSeparator() - showInfoDialog = $showInfoDialog")
-
-
-    // The separator
-    Box(
-        modifier = Modifier
+    var modifier = remember {
+        Modifier
             .fillMaxWidth()
             .padding(top = 32.dp)
             .height(28.dp)
+    }
+    Box(
+        modifier = modifier
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
@@ -227,16 +224,30 @@ private fun DrawBridgeSeparator(
             )
     )
 
+    DotDotDotBridgeMenu(
+        modifier = modifier,
+        viewmodel = viewmodel,
+        bridgeId = bridgeId,
+//        bridges = bridges
+    )
+}
+
+@Composable
+private fun DotDotDotBridgeMenu(
+    modifier : Modifier = Modifier,
+    viewmodel: PhilipsHueViewmodel,
+    bridgeId: String,
+//    bridges: Set<PhilipsHueBridgeInfo>
+) {
+    val ctx = LocalContext.current
+    var isDropDownExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
     // A second identical box is needed to make the drop-down
     // menu appear on the top right.  This also includes the
     // drop-down button which is drawn over the above Box.
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp)
-            .height(28.dp)
-            .wrapContentSize(Alignment.TopEnd)
-    ) {
+    Box(modifier = modifier.wrapContentSize(Alignment.TopEnd)) {
 
         // We'll use an IconButton for extra commands related to
         // this bridge
@@ -280,6 +291,16 @@ private fun DrawBridgeSeparator(
                     Log.d(TAG, "selected info menu item - showInfoDialog = $showInfoDialog")
                 }
             )
+
+            // add test bridge
+            DropdownMenuItem(
+                text = { Text("add test bridge") },
+                onClick = {
+                    isDropDownExpanded = false
+                    viewmodel.addBridgeTest()
+                    Toast.makeText(ctx, "Just added a fake bridge!", Toast.LENGTH_LONG).show()
+                }
+            )
         }
 
         // delete confirmation dialog
@@ -287,11 +308,11 @@ private fun DrawBridgeSeparator(
             MyYesNoDialog(
                 onDismiss = {
                     showDeleteDialog = false
-                    },
+                },
                 onConfirm = {
                     showDeleteDialog = false
-                    Toast.makeText(ctx, "Todo: delete this bridge", Toast.LENGTH_LONG).show()
-                    },
+                    viewmodel.deleteBridge(bridgeId)    // this spurns a new coroutine and returns immediately
+                },
                 titleText = stringResource(R.string.delete_bridge_confirm_title),
                 bodyText = stringResource(R.string.delete_bridge_confirm_body),
             )
@@ -326,55 +347,57 @@ private fun ShowBridgeInfoDialog(
             Text(stringResource(R.string.show_bridge_info_title))
         },
         text = {
-            // This is the meat of the function.  All the data goes here.
-            LazyColumn {
-                // id
-                item {
-                    DrawBridgeInfoLine(
-                        stringResource(R.string.id),
-                        bridge?.id ?: stringResource(R.string.no_bridge_id)
-                    )
-                }
-
-                // ip
-                item {
-                    DrawBridgeInfoLine(
-                        stringResource(R.string.ip),
-                        bridge?.ip ?: stringResource(R.string.no_bridge_id)
-                    )
-                }
-
-                // active
-                item {
-                    DrawBridgeInfoLine(
-                        stringResource(R.string.active),
-                        bridge?.active?.toString() ?: stringResource(R.string.not_applicable)
-                    )
-                }
-
-                // token
-                item {
-                    DrawBridgeInfoLine(
-                        stringResource(R.string.token),
-                        bridge?.token ?: stringResource(R.string.not_applicable)
-                    )
-                }
-
-                // last used
-                item {
-                    DrawBridgeInfoLine(
-                        stringResource(R.string.bridge_last_used),
-                        bridge?.lastUsed?.toString() ?: stringResource(R.string.not_applicable)
-                    )
-                }
-
-                // rooms
-                if (bridge?.rooms != null) {
+            SelectionContainer {
+                // This is the meat of the function.  All the data goes here.
+                LazyColumn {
+                    // id
                     item {
                         DrawBridgeInfoLine(
-                            stringResource(R.string.bridge_info_room),
-                            bridge.rooms.size.toString()
+                            stringResource(R.string.id),
+                            bridge?.id ?: stringResource(R.string.no_bridge_id)
                         )
+                    }
+
+                    // ip
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.ip),
+                            bridge?.ip ?: stringResource(R.string.no_bridge_id)
+                        )
+                    }
+
+                    // active
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.active),
+                            bridge?.active?.toString() ?: stringResource(R.string.not_applicable)
+                        )
+                    }
+
+                    // token
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.token),
+                            bridge?.token ?: stringResource(R.string.not_applicable)
+                        )
+                    }
+
+                    // last used
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.bridge_last_used),
+                            bridge?.lastUsed?.toString() ?: stringResource(R.string.not_applicable)
+                        )
+                    }
+
+                    // rooms
+                    if (bridge?.rooms != null) {
+                        item {
+                            DrawBridgeInfoLine(
+                                stringResource(R.string.bridge_info_room),
+                                bridge.rooms.size.toString()
+                            )
+                        }
                     }
                 }
             }

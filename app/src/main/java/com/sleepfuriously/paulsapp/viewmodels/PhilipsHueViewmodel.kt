@@ -2,6 +2,9 @@ package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
@@ -9,6 +12,7 @@ import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import kotlinx.coroutines.Dispatchers
@@ -54,9 +58,12 @@ class PhilipsHueViewmodel : ViewModel() {
     var addNewBridgeState = _addNewBridgeState.asStateFlow()
 
 
-    private val _philipsHueBridges = MutableStateFlow(setOf<PhilipsHueBridgeInfo>())
-    /** Holds the list of all bridges */
-    var philipsHueBridges = _philipsHueBridges.asStateFlow()
+//    private val _philipsHueBridges = MutableStateFlow(setOf<PhilipsHueBridgeInfo>())
+//    /** Holds the list of all bridges */
+//    var philipsHueBridges = _philipsHueBridges.asStateFlow()
+
+    var philipsHueBridgesCompose by mutableStateOf<Set<PhilipsHueBridgeInfo>>(mutableSetOf())
+        private set
 
 
     private val _crashNow = MutableStateFlow(false)
@@ -77,6 +84,18 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
     //  public functions
     //-------------------------
+
+    /**
+     * This is for testing the UI for adding a bridge.  Here we simply add a dummy
+     * bridge with some random data.
+     */
+    fun addBridgeTest() {
+        workingNewBridge = PhilipsHueNewBridge(
+            ip = "hey, I'm supposed to be an ip!!",
+            token = "goblllelsldlsy gook"
+        )
+        bridgeAddAllGoodAndDone()
+    }
 
     /**
      * todo: move to MainViewmodel
@@ -117,19 +136,11 @@ class PhilipsHueViewmodel : ViewModel() {
                 return@launch
             }
 
-            // fixme
-//            delay(1000)
-
             //------------
             // 2.  check philips hue system
             //
             checkPhilipsHue(ctx)
             allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
-
-            //------------
-            // 3.  todo: test other IoT devices
-            //
-//            delay(2000)
 
         }.invokeOnCompletion {
             // Note: this code will be called when the above coroutine exits,
@@ -139,9 +150,6 @@ class PhilipsHueViewmodel : ViewModel() {
             Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
             _iotTestingState.value = TestStatus.TEST_GOOD
             _iotTestingErrorMsg.value = ""
-//            _iotTestsStatus.value =
-//                if (allTestsSuccessful) TestStatus.TEST_GOOD
-//                else TestStatus.TEST_BAD
         }
     }
 
@@ -226,6 +234,26 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun getBridgeInfo(bridgeId: String) : PhilipsHueBridgeInfo? {
         return bridgeModel.getBridge(bridgeId)
+    }
+
+
+    /**
+     * Removes the specified bridge from our list.  Also tries to remove
+     * the token (username) from the bridge's list of approved devices.
+     * All this happens in the background.
+     *
+     * If the bridgeId is invalid, then nothing is done (of course).
+     */
+    fun deleteBridge(bridgeId: String) {
+        if (bridgeModel.deleteBridge(bridgeId) == false) {
+            Log.e(TAG, "Unable to remove bridge $bridgeId from our Set of bridges!")
+        }
+        // perhaps this is part of the problem.
+        philipsHueBridgesCompose = philipsHueBridgesCompose.filter { bridge ->
+            bridge.id != bridgeId
+        }.toSet()
+
+        Log.d(TAG, "end of deleteBridge(). philipsHueBridgesCompose.value.size = ${philipsHueBridgesCompose.size}")
     }
 
     //-------------------------
@@ -484,7 +512,8 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // Crazy maneuvers to update the bridges set and maintain the Flow.
             // Essentially I'm copying the Set with one additional item into a new variable.
-            _philipsHueBridges.update { it + newBridge }
+//            _philipsHueBridges.update { it + newBridge }
+            philipsHueBridgesCompose += newBridge
 
             // lastly signal that we're done with the new bridge stuff
             workingNewBridge = null
@@ -528,9 +557,17 @@ class PhilipsHueViewmodel : ViewModel() {
         _iotTestingErrorMsg.value = ""
         bridgeModel = PhilipsHueModel(ctx)
 
-        // Get all the bridges.
+/*        // Get all the bridges.
         _philipsHueBridges.value = bridgeModel.getAllBridges()
         if (_philipsHueBridges.value.isEmpty()) {
+            // nothing to do if there are no bridges. signal done w/ no problems.
+            _philipsHueTestStatus.value = TestStatus.TEST_GOOD
+            return
+        }
+*/
+        // Get all the bridges.
+        philipsHueBridgesCompose = bridgeModel.getAllBridges()
+        if (philipsHueBridgesCompose.isEmpty()) {
             // nothing to do if there are no bridges. signal done w/ no problems.
             _philipsHueTestStatus.value = TestStatus.TEST_GOOD
             return
@@ -538,8 +575,8 @@ class PhilipsHueViewmodel : ViewModel() {
 
         // check each bridge one by one to see if its info is current
         // and active.
-        for (bridge in _philipsHueBridges.value) {
-
+//        for (bridge in _philipsHueBridges.value) {
+        for (bridge in philipsHueBridgesCompose) {
             // does this bridge have an ip?
             val ip = bridge.ip ?: continue
             if (ip.isBlank()) {

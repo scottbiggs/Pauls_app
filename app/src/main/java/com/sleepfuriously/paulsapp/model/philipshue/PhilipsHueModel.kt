@@ -10,6 +10,7 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.OkHttpUtils
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGetRequest
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPostString
+import com.sleepfuriously.paulsapp.model.deletePref
 import com.sleepfuriously.paulsapp.model.getPrefsSet
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
@@ -17,6 +18,8 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenRespon
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -226,9 +229,11 @@ class PhilipsHueModel(private val ctx: Context) {
      *          Null if id is not found.
      */
     fun getBridge(bridgeId: String) : PhilipsHueBridgeInfo? {
-        return  bridges.find { bridge ->
+        val bridge = bridges.find { bridge ->
             bridge.id == bridgeId
         }
+        Log.d(TAG, "getBridge($bridgeId) " + if (bridge == null) "failed" else "successful")
+        return bridge
     }
 
 
@@ -317,11 +322,45 @@ class PhilipsHueModel(private val ctx: Context) {
      * This bridge will be removed from both the short-term and long-term
      * storage.  Yup, it's gone forever.
      *
+     * Since this does network communication, this needs to be called
+     * off the main thread.
+     *
      * @return      True - successfully removed bridge.
      *              False - bridge wasn't found.
      */
     fun deleteBridge(bridgeId: String) : Boolean {
-        TODO()
+
+        val bridge = getBridge(bridgeId) ?: return false
+
+        // 1) todo Tell the bridge to remove this app's username (token)
+
+        // 2) Remove bridge data from our permanent storage
+        if (removeBridgeTokenPrefs(bridgeId) == false) {
+            Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
+            return false
+        }
+
+        if (removeBridgeIP(bridgeId) == false) {
+            Log.e(TAG, "Problem removing IP from bridgeId = $bridgeId")
+            return false
+        }
+
+        if (removeBridgeId(bridgeId) == false) {
+            Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
+            return false
+        }
+
+        // 3) Remove bridge data from our temp storage.
+        //  As this is a complicated data structure, we need to use a
+        //  (kind of) complicated remove.
+        if (bridges.removeAll {
+                it.id == bridgeId
+            } == false) {
+            Log.e(TAG,"Unable to remove bridge $bridge at the final stage of deleteBridge(bridgeId = $bridgeId)!")
+            return false
+        }
+
+        return true
     }
 
     /**
@@ -331,7 +370,7 @@ class PhilipsHueModel(private val ctx: Context) {
      * @return      True - all bridges were removed (even if there were none).
      *              False - error condition (although I don't know what).
      */
-    fun deleteAllBridges() : Boolean {
+    suspend fun deleteAllBridges() : Boolean {
 
         var error = false
         bridges.forEach() { bridge ->
@@ -1006,6 +1045,121 @@ class PhilipsHueModel(private val ctx: Context) {
     //~~~~~~~~~~~
     //  delete
     //~~~~~~~~~~~
+
+    /**
+     * Removes the given token from our permanent storage.
+     * If the token does not already exist, then nothing is done.
+     *
+     * preconditions
+     *      - The bridge must already exist
+     *
+     * Note:    This does NOT remove the bridge token from our short-term
+     *  internal cache.  The caller is responsible for that.
+     *
+     * @param       bridgeId        Id of the bridge we want to change the token.
+     *
+     * @param       synchronize     When true (default is false), this will
+     *                              not return until the write is complete.
+     *                              This MUST be run outside of the Main thread
+     *                              when this happens!!!
+     *
+     * @return      True - successfully removed
+     *              False - could not find the bridgeId
+     */
+    private fun removeBridgeTokenPrefs(
+        bridgeId: String,
+        synchronize: Boolean = false
+    ) : Boolean {
+
+        if (getBridge(bridgeId) == null) {
+            Log.e(TAG, "unable to find bridge in removeBridgeToken(bridgeId = $bridgeId)")
+            return false
+        }
+
+        val tokenKey = assembleTokenKey(bridgeId)
+        deletePref(ctx, tokenKey, synchronize)
+        return true
+    }
+
+    /**
+     * Removes the given IP from our permanent storage.
+     * If the bridge does not exist, then nothing is done.
+     *
+     * Note:    This does NOT remove the bridge IP from our short-term
+     *  internal cache.  The caller is responsible for that.
+     *
+     * @param       bridgeId        Id of the bridge we want to change the token.
+     *
+     * @param       synchronize     When true (default is false), this will
+     *                              not return until the write is complete.
+     *                              This MUST be run outside of the Main thread
+     *                              when this happens!!!
+     *
+     * @return      True - successfully removed
+     *              False - could not find the bridgeId
+     */
+    private fun removeBridgeIP(
+        bridgeId: String,
+        synchronize: Boolean = false
+    ) : Boolean {
+
+        if (getBridge(bridgeId) == null) {
+            Log.e(TAG, "unable to find bridge in removeBridgeIP(bridgeId = $bridgeId)")
+            return false
+        }
+
+        val ipKey = assembleIpKey(bridgeId)
+        deletePref(ctx, ipKey, synchronize)
+        return true
+    }
+
+    /**
+     * Removes the bridge id from long-term storage (prefs).
+     *
+     * Note:    This does NOT remove the bridge data from our short-term
+     *  internal cache.  The caller is responsible for that.
+     *
+     * @param       bridgeId        Id of the bridge we want to remove.
+     *
+     * @param       synchronize     When true (default is false), this will
+     *                              not return until the write is complete.
+     *                              This MUST be run outside of the Main thread
+     *                              when this happens!!!
+     *
+     * @return      True - successfully removed
+     *              False - could not find the bridgeId
+     */
+    private fun removeBridgeId(
+        bridgeId: String,
+        synchronize: Boolean = false
+    ) : Boolean {
+
+        if (getBridge(bridgeId) == null) {
+            Log.e(TAG, "unable to find bridge in removeBridgeId(bridgeId = $bridgeId)")
+            return false
+        }
+
+        // Get the set of ids.  We'll have to change it
+        // and save that changed set.
+        val idSet = mutableSetOf<String>()
+        bridges.forEach { bridge ->
+            if (bridge.id != bridgeId) {
+                // don't record THIS id!
+                idSet.add(bridge.id)
+            }
+        }
+
+        // now save this in our shared prefs, overwriting
+        // any previous set of IDs.
+        savePrefsSet(
+            ctx = ctx,
+            filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
+            key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
+            synchronize = synchronize,
+            daSet = idSet
+        )
+        return true
+    }
 
     //~~~~~~~~~~~
     //  util
