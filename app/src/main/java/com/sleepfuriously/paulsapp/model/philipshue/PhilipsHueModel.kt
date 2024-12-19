@@ -109,6 +109,11 @@ class PhilipsHueModel(private val ctx: Context) {
     /** the class' reference to the gson library */
     private val gson = Gson()
 
+    private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
+    /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
+    val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
+
+
     //-------------------------------------
     //  functions
     //-------------------------------------
@@ -151,7 +156,7 @@ class PhilipsHueModel(private val ctx: Context) {
             active = newBridge.active,
             rooms = mutableSetOf(),
         )
-        bridges.add(bridgeToAdd)
+        _bridgeFlowSet.value += bridgeToAdd
 
         // update long-term data
         saveBridge(bridgeToAdd)
@@ -174,21 +179,21 @@ class PhilipsHueModel(private val ctx: Context) {
      *  and saved.  The only way to save that data is to use the
      *  functions below like [saveBridgeIp], [saveBridgeToken], etc.
      */
-    fun getAllBridges() : MutableSet<PhilipsHueBridgeInfo> {
-        return bridges
+    fun getAllBridges() : Set<PhilipsHueBridgeInfo> {
+        return _bridgeFlowSet.value
     }
 
     /**
      * Returns a Set of all bridges that are currently active.
      *
      * preconditions
-     *  - [bridges] is already setup and running.  Otherwise this just
+     *  - [_bridgeFlowSet] is already setup and running.  Otherwise this just
      *    doesn't make sense.
      */
     fun getAllActiveBridges() : MutableSet<PhilipsHueBridgeInfo> {
         val activeBridges = mutableSetOf<PhilipsHueBridgeInfo>()
 
-        bridges.forEach { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             if (bridge.active) {
                 activeBridges.add(bridge)
             }
@@ -213,7 +218,7 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     fun getAllBridgeIds() : Set<String> {
         val ids = mutableSetOf<String>()
-        bridges.forEach() {
+        _bridgeFlowSet.value.forEach {
             ids.add(it.id)
         }
         return ids
@@ -229,7 +234,7 @@ class PhilipsHueModel(private val ctx: Context) {
      *          Null if id is not found.
      */
     fun getBridge(bridgeId: String) : PhilipsHueBridgeInfo? {
-        val bridge = bridges.find { bridge ->
+        val bridge = _bridgeFlowSet.value.find { bridge ->
             bridge.id == bridgeId
         }
         Log.d(TAG, "getBridge($bridgeId) " + if (bridge == null) "failed" else "successful")
@@ -330,7 +335,7 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     fun deleteBridge(bridgeId: String) : Boolean {
 
-        val bridge = getBridge(bridgeId) ?: return false
+        val bridgeToDelete = getBridge(bridgeId) ?: return false
 
         // 1) todo Tell the bridge to remove this app's username (token)
 
@@ -353,13 +358,22 @@ class PhilipsHueModel(private val ctx: Context) {
         // 3) Remove bridge data from our temp storage.
         //  As this is a complicated data structure, we need to use a
         //  (kind of) complicated remove.
-        if (bridges.removeAll {
-                it.id == bridgeId
-            } == false) {
-            Log.e(TAG,"Unable to remove bridge $bridge at the final stage of deleteBridge(bridgeId = $bridgeId)!")
+        var tmpBridges = setOf<PhilipsHueBridgeInfo>()
+        var removed = false
+        _bridgeFlowSet.value.forEach { bridge ->
+            if (bridge.id != bridgeId) {
+                tmpBridges += bridge
+            }
+            else {
+                removed = true
+            }
+        }
+        if (removed == false) {
+            Log.e(TAG,"Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!")
             return false
         }
 
+        _bridgeFlowSet.value = tmpBridges
         return true
     }
 
@@ -373,7 +387,7 @@ class PhilipsHueModel(private val ctx: Context) {
     suspend fun deleteAllBridges() : Boolean {
 
         var error = false
-        bridges.forEach() { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             if (deleteBridge(bridge.id) == false) {
                 Log.d(TAG, "removeAllBridges() unable to remove ${bridge.id}!")
                 error = true
@@ -531,7 +545,7 @@ class PhilipsHueModel(private val ctx: Context) {
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /** holds all the bridges that this app know about */
-    private lateinit var bridges : MutableSet<PhilipsHueBridgeInfo>
+//    private lateinit var bridges : MutableSet<PhilipsHueBridgeInfo>
 
     /** This will be true after initialization. Needed to prevent accidentally double initialization. */
     private var initialized = false
@@ -561,7 +575,7 @@ class PhilipsHueModel(private val ctx: Context) {
 
         // create a Set of bridgeIds (in number form)
         val bridgeIds = mutableIntSetOf()
-        bridges.forEach() { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             bridgeIds.add(bridge.id.toInt())
         }
 
@@ -685,8 +699,6 @@ class PhilipsHueModel(private val ctx: Context) {
             return
         }
 
-        bridges = mutableSetOf()
-
         // Load the bridges
         runBlocking(Dispatchers.IO) {
             // start with the ids
@@ -712,7 +724,7 @@ class PhilipsHueModel(private val ctx: Context) {
                     token = token,
                 )
 
-                bridges.add(bridge)
+                _bridgeFlowSet.value += bridge
             }
 
             // This will tell us which bridges are active
@@ -879,7 +891,7 @@ class PhilipsHueModel(private val ctx: Context) {
 
         // make a Set of ids including the new one.
         val idSet = mutableSetOf<String>()
-        bridges.forEach() { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             idSet.add(bridge.id)
         }
 
@@ -1142,7 +1154,7 @@ class PhilipsHueModel(private val ctx: Context) {
         // Get the set of ids.  We'll have to change it
         // and save that changed set.
         val idSet = mutableSetOf<String>()
-        bridges.forEach { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             if (bridge.id != bridgeId) {
                 // don't record THIS id!
                 idSet.add(bridge.id)
@@ -1184,7 +1196,7 @@ class PhilipsHueModel(private val ctx: Context) {
 
 
         // fixme        I'm just turning them all as active
-        bridges.forEach { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
             bridge.active = true
         }
         return true
@@ -1202,7 +1214,7 @@ class PhilipsHueModel(private val ctx: Context) {
      */
     private suspend fun pollBridgeDataChanged(bridgeId: String) : Boolean {
         TODO()
-        bridges.forEach { bridge ->
+        _bridgeFlowSet.value.forEach { bridge ->
 
         }
     }
