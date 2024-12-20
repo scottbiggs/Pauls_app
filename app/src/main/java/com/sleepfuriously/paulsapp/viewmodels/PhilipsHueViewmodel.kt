@@ -7,12 +7,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +20,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -77,7 +76,7 @@ class PhilipsHueViewmodel : ViewModel() {
     var waitingForResponse = _waitingForResponse.asStateFlow()
 
     /** access to the philips hue bridge and all that stuff that goes with it */
-    lateinit var bridgeModel : PhilipsHueModel
+    private lateinit var bridgeModel : PhilipsHueModel
 
     /** This variable holds a new bridge while working on it.  Once filled in, it'll be added to the list */
     var workingNewBridge: PhilipsHueNewBridge? = null
@@ -141,7 +140,7 @@ class PhilipsHueViewmodel : ViewModel() {
             //------------
             // 2.  check philips hue system
             //
-            checkPhilipsHue(ctx)
+            checkPhilipsHue()
             allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
 
         }.invokeOnCompletion {
@@ -541,13 +540,13 @@ class PhilipsHueViewmodel : ViewModel() {
      * side effects
      *      - as described above
      */
-    private suspend fun checkPhilipsHue(ctx: Context) {
+    private suspend fun checkPhilipsHue() {
 
         // Get the bridge model started.  This will go through
         // its test routines during initialization.
         _philipsHueTestStatus.value = TestStatus.TESTING
         _iotTestingErrorMsg.value = ""
-        bridgeModel = PhilipsHueModel(ctx)
+        bridgeModel = PhilipsHueModel()
 
         // Get all the bridges.
         if (philipsHueBridgesCompose.isEmpty()) {

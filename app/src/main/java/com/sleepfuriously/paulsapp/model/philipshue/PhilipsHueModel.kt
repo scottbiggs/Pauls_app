@@ -6,6 +6,7 @@ import android.provider.Settings.Secure
 import android.util.Log
 import androidx.collection.mutableIntSetOf
 import com.google.gson.Gson
+import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.OkHttpUtils
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGetRequest
@@ -100,7 +101,7 @@ import java.io.IOException
  *  The construction of this class can take a bit of time.
  *  Consider initializing this class within a coroutine.
  */
-class PhilipsHueModel(private val ctx: Context) {
+class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
     //-------------------------------------
     //  data
