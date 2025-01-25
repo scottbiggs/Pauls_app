@@ -12,6 +12,8 @@ data class PhilipsHueNewBridge(
     var token : String = "",
     /** When true, this bridge is in active use */
     var active : Boolean = false,
+    /** The json string returned by the bridge describing its capabilities */
+    var body : String = ""
 )
 
 /**
@@ -38,15 +40,21 @@ data class PhilipsHueBridgeInfo(
     /** When true, this bridge is in active use */
     var active : Boolean = false,
     /** All the rooms controlled by this bridge */
-    val rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf()
+    val rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
+    /** The body of the json info was returned by the bridge. defaults to "" */
+    var body: String = ""
 ) {
     companion object {
+        /**
+         * Used the creating a new bridge
+         */
         operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
             return PhilipsHueBridgeInfo(
                 id = "",
                 ip = newBridge.ip,
                 token = newBridge.token,
-                active = newBridge.active
+                active = newBridge.active,
+                body = newBridge.body
             )
         }
     }
@@ -58,6 +66,7 @@ data class PhilipsHueBridgeInfo(
 data class PhilipsHueRoomInfo(
     val id: String,
     var on: Boolean = false,
+    var brightness : Int = 0,
     val lights: MutableSet<PhilipsHueLightInfo>
 ) {
     /**

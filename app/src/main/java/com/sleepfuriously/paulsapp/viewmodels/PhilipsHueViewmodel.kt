@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
@@ -76,7 +75,7 @@ class PhilipsHueViewmodel : ViewModel() {
     var waitingForResponse = _waitingForResponse.asStateFlow()
 
     /** access to the philips hue bridge and all that stuff that goes with it */
-    private lateinit var bridgeModel : PhilipsHueModel
+    private var bridgeModel = PhilipsHueModel()
 
     /** This variable holds a new bridge while working on it.  Once filled in, it'll be added to the list */
     var workingNewBridge: PhilipsHueNewBridge? = null
@@ -102,6 +101,9 @@ class PhilipsHueViewmodel : ViewModel() {
      * todo: move to MainViewmodel
      *
      * Runs all the initalization tests of the IoT devices.
+     *
+     * preconditions
+     *  [bridgeModel] is already setup and running
      *
      * side effects
      *   [iotTestsStatus]      set to true when this is done
@@ -341,7 +343,7 @@ class PhilipsHueViewmodel : ViewModel() {
      *      _addNewBridgeState      changed to reflect the addition of the
      *                              ip or an error.
      *
-     *      newBridge               may have a valid ip (if user typed it in right)
+     *      _workingNewBridge       may have a valid ip (if user typed it in right)
      */
     fun addPhilipsHueBridgeIp(newIp: String) {
 
@@ -546,7 +548,6 @@ class PhilipsHueViewmodel : ViewModel() {
         // its test routines during initialization.
         _philipsHueTestStatus.value = TestStatus.TESTING
         _iotTestingErrorMsg.value = ""
-        bridgeModel = PhilipsHueModel()
 
         // Get all the bridges.
         if (philipsHueBridgesCompose.isEmpty()) {

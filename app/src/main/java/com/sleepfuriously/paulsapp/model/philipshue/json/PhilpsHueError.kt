@@ -11,6 +11,7 @@ package com.sleepfuriously.paulsapp.model.philipshue.json
  * @param   address     An address (not always supplied)
  * @param   description A readable description of the error
  */
+@Deprecated("I think this is just api 1")
 data class PhilpsHueError(
     val type: Int = -1,
     val address: String = "",

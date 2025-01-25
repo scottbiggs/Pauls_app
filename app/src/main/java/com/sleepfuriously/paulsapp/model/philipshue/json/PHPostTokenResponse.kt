@@ -69,29 +69,6 @@ data class PHPostTokenResponseSuccessItem(
 )
 
 
-//----------------
-//  here are generated versions (not used)  todo: delete these once the example is no longer needed
-
-class TestPhTokenResponse : ArrayList<TestPhTokenResponseItem>()
-
-data class TestPhTokenResponseItem(
-    val error: TestTokenResponseError?,
-    val success: TestTokenResponseSuccess?
-)
-
-data class TestTokenResponseError(
-    val type: Int,
-    val address: String,
-    val description: String
-)
-
-data class TestTokenResponseSuccess(
-    val username: String,
-    val clientkey: String
-)
-
-
-
 //---------------------------------------------
 //  SEND json data
 //---------------------------------------------

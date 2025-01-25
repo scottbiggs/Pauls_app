@@ -1,5 +1,6 @@
 package com.sleepfuriously.paulsapp.model
 
+import android.annotation.SuppressLint
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -8,7 +9,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 /**
  * Bare-bones way to send and receive data from something via network
@@ -25,6 +30,52 @@ object OkHttpUtils {
         .connectTimeout(2, TimeUnit.SECONDS)
         .build()
 
+    /** use THIS instead of the regular OkHttpClient if we want to trust everyone */
+    private val allTrustingOkHttpClient: OkHttpClient
+
+
+    init {
+        /** an array of trust managers that does not validate certificate chains--it trusts everyone! */
+        val trustAllCerts = arrayOf<TrustManager>(
+            @SuppressLint("CustomX509TrustManager")
+            object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<X509Certificate?>?, authType: String?) {
+                    // this is empty on purpose: I don't want this check executed
+                }
+
+                override fun checkServerTrusted(chain: Array<X509Certificate?>?, authType: String?) {
+                    // this is empty on purpose: I don't want this check executed
+                }
+
+                override fun getAcceptedIssuers(): Array<X509Certificate> {
+                    return arrayOf<X509Certificate>()
+                }
+            }
+        )
+
+        // implementation of a socket trust manager that blindly trusts all
+        val sslContext = SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
+        // a socket factory that uses the all-trusting trust manager
+        val sslSocketFactory = sslContext.socketFactory
+
+        val allTrustingBuilder = OkHttpClient.Builder()
+
+        allTrustingBuilder.sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
+        allTrustingBuilder.hostnameVerifier { _, _ -> true }
+
+        // now to make our all-trusting okhttp client
+        allTrustingOkHttpClient = allTrustingBuilder.build()
+    }
+
+
+    /**
+     * Yep, this is the big blunt hammer.  Kills all outstanding requests.
+     */
+    fun cancelAll() {
+//        okHttpClient.     todo
+    }
 
     /**
      * Sends the GET request with the supplied url.
@@ -37,15 +88,82 @@ object OkHttpUtils {
      *      You must call this from a coroutine (or any non Main thread,
      *      as if anyone uses other threads anymore!)
      */
-    @Suppress("RedundantSuspendModifier")
-    suspend fun synchronousGetRequest(url: String) : MyResponse {
+    suspend fun synchronousGet(
+        url: String,
+        headerList: List<Pair<String, String>> = listOf(),
+        trustAll: Boolean = false
+    ): MyResponse = withContext(Dispatchers.IO)  {
 
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        val requestBuilder = Request.Builder()
 
-        val response = okHttpClient.newCall(request).execute()
-        return MyResponse(response)
+        // Making the request is a little tricky because of the headers.
+        // Rather than one chain of builds, I have to separate because the
+        // first header must be added with .header(), whereas successive
+        // headers need to be done with .addHeader().
+
+        try {
+            requestBuilder.url(url)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Can't make a real url with $url!")
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
+
+        // because of the need to break a good ol' for loop is the way to go
+        for (i in headerList.indices) {
+            val header = headerList[i]
+            if (header.first.isEmpty()) {
+                break   // empty header means nothing to do
+            }
+            if (i == 0) {
+                // the first header will replace
+                requestBuilder.header(header.first, header.second)
+            } else {
+                // successive headers add
+                requestBuilder.addHeader(header.first, header.second)
+            }
+        }
+
+        val request = requestBuilder.build()
+
+        try {
+            if (trustAll) {
+                val response = allTrustingOkHttpClient.newCall(request).execute()
+                return@withContext MyResponse(response)
+            } else {
+                val response = okHttpClient.newCall(request).execute()
+                return@withContext MyResponse(response)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "exception in synchronousGetRequest($url, $trustAll)")
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
+    }
+
+    /**
+     * Same as [synchronousGet] except takes a simple pair for the
+     * header.
+     */
+    suspend fun synchronousGet(
+        url: String,
+        header: Pair<String, String>,
+        trustAll: Boolean = false
+    ): MyResponse = withContext(Dispatchers.IO)  {
+        val headerList = listOf<Pair<String, String>>(header)
+        return@withContext synchronousGet(url, headerList, trustAll)
     }
 
 
@@ -54,50 +172,167 @@ object OkHttpUtils {
      *
      * @param   url         Where to send the POST
      *
-     * @param   bodyStr        The string to send as data
+     * @param   bodyStr     The string to send as data
      *
-     * @param   header      Any headers that needs to be attached.
+     * @param   headerList  Any headers that needs to be attached.
      *                      This is a Map<String, String> as there
      *                      can be multiple headers.
      *                      Use null (default) if no headers are needed
      *                      (they rarely are in our case).
+     *
+     * @param   trustAll    When true, all ssl trust checks are skipped.
+     *                      Hope you know what you're doing!
      *
      * @return  The response from the server
      *
      * NOTE
      *      May NOT be called on the main thread!
      */
-    suspend fun synchronousPostString(
+    suspend fun synchronousPost(
         url: String,
         bodyStr: String,
-        header: Map<String, String>? = null,
-    ) : MyResponse {
+        headerList: List<Pair<String, String>> = listOf(),
+        trustAll: Boolean = false
+    ): MyResponse = withContext(Dispatchers.IO) {
 
-        Log.d(TAG, "synchronousSendPostRequest( url = $url, body = $bodyStr, header = $header )")
+        Log.d(
+            TAG,
+            "synchronousPost( url = $url, body = $bodyStr, headers = $headerList, trustAll = $trustAll )"
+        )
 
         // need to make a RequestBody from the string (complicated!)
         val body = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = Request.Builder()
-            .url(url)
-            .post(body)
-            .build()
 
-        val myResponse: MyResponse
+        val requestBuilder = Request.Builder()
 
-        // this insures that we're not on the main thread
-        withContext(Dispatchers.IO) {   // does this even work?
-            myResponse = MyResponse(okHttpClient.newCall(request).execute())
+        try {
+            requestBuilder
+                .url(url)
+                .post(body)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Can't make a real url with $url!")
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
         }
 
-        return myResponse
+        headerList.forEachIndexed() { i, header ->
+            if (i == 0) {
+                if (header.first.isNotEmpty()) {
+                    requestBuilder.header(header.first, header.second)
+                }
+            } else {
+                if (header.first.isNotEmpty()) {
+                    requestBuilder.addHeader(header.first, header.second)
+                }
+            }
+        }
+        val request = requestBuilder.build()
+
+        try {
+            val myResponse: MyResponse
+
+            // two kinds of requests: unsafe and regular
+            if (trustAll) {
+                myResponse = MyResponse(allTrustingOkHttpClient.newCall(request).execute())
+                return@withContext myResponse
+            } else {
+                myResponse = MyResponse(okHttpClient.newCall(request).execute())
+                return@withContext myResponse
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "exception in synchronousPost($url, $bodyStr, $headerList, $trustAll)")
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
     }
 
-    /**
-     * Yep, this is the big blunt hammer.  Kills all outstanding requests.
-     */
-    fun cancelAll() {
-//        okHttpClient.     todo
+
+    private suspend fun synchronousPut(
+        url: String,
+        bodyStr: String,
+        headerList: List<Pair<String, String>> = listOf(),
+        trustAll: Boolean
+    ): MyResponse {
+        Log.d(
+            TAG,
+            "synchronousPut( url = $url, body = $bodyStr, headers = $headerList, trustAll = $trustAll )"
+        )
+
+        // need to make a RequestBody from the string (complicated!)
+        val body = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaType())
+
+        val requestBuilder = Request.Builder()
+
+        try {
+            requestBuilder
+                .url(url)
+                .put(body)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Can't make a real url with $url!")
+            e.printStackTrace()
+            return MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
+
+        headerList.forEachIndexed() { i, header ->
+            if (i == 0) {
+                if (header.first.isNotEmpty()) {
+                    requestBuilder.header(header.first, header.second)
+                }
+            } else {
+                if (header.first.isNotEmpty()) {
+                    requestBuilder.addHeader(header.first, header.second)
+                }
+            }
+        }
+        val request = requestBuilder.build()
+
+        try {
+            val myResponse: MyResponse
+
+            // two kinds of requests: unsafe and regular
+            if (trustAll) {
+                myResponse = MyResponse(allTrustingOkHttpClient.newCall(request).execute())
+                return myResponse
+            } else {
+                myResponse = MyResponse(okHttpClient.newCall(request).execute())
+                return myResponse
+            }
+
+        } catch (e: Exception) {
+            Log.e(
+                TAG,
+                "exception in synchronousPostRequest($url, $bodyStr, $headerList, $trustAll)"
+            )
+            e.printStackTrace()
+            return MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
     }
+
 }
 
 /**

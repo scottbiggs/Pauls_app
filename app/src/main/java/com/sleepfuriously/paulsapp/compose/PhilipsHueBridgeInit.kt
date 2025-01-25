@@ -238,7 +238,10 @@ private fun ManualBridgeSetupStep1_landscape(
     if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.workingNewBridge?.ip ?: ""),
+            stringResource(
+                R.string.new_bridge_stage_1_error_no_bridge_at_ip,
+                viewmodel.workingNewBridge?.ip ?: ""
+            ),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
@@ -399,7 +402,10 @@ private fun ManualBridgeSetupStep1_Portrait(
     if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
         Toast.makeText(
             ctx,
-            stringResource(R.string.new_bridge_stage_1_error_no_bridge_at_ip, viewmodel.workingNewBridge?.ip ?: ""),
+            stringResource(
+                R.string.new_bridge_stage_1_error_no_bridge_at_ip,
+                viewmodel.workingNewBridge?.ip ?: ""
+            ),
             Toast.LENGTH_LONG
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
