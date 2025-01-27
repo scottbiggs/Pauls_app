@@ -35,12 +35,10 @@ data class PhilipsHueBridgeInfo(
     var ip : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
     var token : String = "",
-    /** When was this bridge last accessed? (millis since jan 1, 1970) */
-    var lastUsed: Long = 0L,
     /** When true, this bridge is in active use */
     var active : Boolean = false,
     /** All the rooms controlled by this bridge */
-    val rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
+    var rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
     /** The body of the json info was returned by the bridge. defaults to "" */
     var body: String = ""
 ) {
@@ -65,6 +63,7 @@ data class PhilipsHueBridgeInfo(
  */
 data class PhilipsHueRoomInfo(
     val id: String,
+    val name: String,
     var on: Boolean = false,
     var brightness : Int = 0,
     val lights: MutableSet<PhilipsHueLightInfo>

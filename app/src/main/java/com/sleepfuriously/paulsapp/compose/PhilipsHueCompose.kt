@@ -85,15 +85,11 @@ import kotlin.math.roundToInt
 
 /**
  * Displays the philips hue stuff.
- *
- * @param   bridges     The PH bridges in the app.  They may be active
- *                      or inactive.
  */
 @Composable
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
     philipsHueViewmodel: PhilipsHueViewmodel
-//    bridges: Set<PhilipsHueBridgeInfo>,
 ) {
     Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
 
@@ -134,7 +130,6 @@ fun ShowMainScreenPhilipsHue(
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                     DrawBridgeSeparator(bridge.id, philipsHueViewmodel)
                 }
-
 
                 // The first item (which has the name of the bridge)
                 // will take the entire row of a grid.
@@ -378,20 +373,19 @@ private fun ShowBridgeInfoDialog(
                         )
                     }
 
-                    // last used
-                    item {
-                        DrawBridgeInfoLine(
-                            stringResource(R.string.bridge_last_used),
-                            bridge?.lastUsed?.toString() ?: stringResource(R.string.not_applicable)
-                        )
-                    }
-
                     // rooms
-                    if (bridge?.rooms != null) {
+                    bridge?.rooms?.forEachIndexed { i, room ->
                         item {
                             DrawBridgeInfoLine(
                                 stringResource(R.string.bridge_info_room),
-                                bridge.rooms.size.toString()
+                                room.id
+                            )
+                        }
+                        item {
+                            DrawBridgeInfoLine(
+                                stringResource(R.string.bridge_info_lights),
+                                room.lights.size.toString(),
+                                width = 150
                             )
                         }
                     }
@@ -424,7 +418,7 @@ private fun ShowBridgeInfoDialog(
 private fun DrawBridgeInfoLine(
     title: String,
     body: String,
-    width: Int = 90
+    width: Int = 120
 ) {
     Row {
         Text(

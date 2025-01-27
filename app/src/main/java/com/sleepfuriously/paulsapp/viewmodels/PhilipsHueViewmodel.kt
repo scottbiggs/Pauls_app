@@ -118,6 +118,14 @@ class PhilipsHueViewmodel : ViewModel() {
 
         var allTestsSuccessful = true       // start optimistically
 
+        // Start collecting the flow from the Model as soon as possible
+        viewModelScope.launch {
+            bridgeModel.bridgeFlowSet.collectLatest {
+                // This is the only place that this variable should be assigned!
+                philipsHueBridgesCompose = it
+            }
+        }
+
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {
 
@@ -153,14 +161,6 @@ class PhilipsHueViewmodel : ViewModel() {
             Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
             _iotTestingState.value = TestStatus.TEST_GOOD
             _iotTestingErrorMsg.value = ""
-
-            // Start collecting the flow from the Model as soon as possible
-            viewModelScope.launch {
-                bridgeModel.bridgeFlowSet.collectLatest {
-                    // This is the only place that this variable should be assigned!
-                    philipsHueBridgesCompose = it
-                }
-            }
         }
 
     }
@@ -584,7 +584,7 @@ class PhilipsHueViewmodel : ViewModel() {
             }
 
             // check that token works
-            val tokenWorks = bridgeModel.testBridgeToken(bridge.ip, token)
+            val tokenWorks = bridgeModel.doesBridgeAcceptToken(bridge, token)
             if (tokenWorks == false) {
                 continue
             }

@@ -156,7 +156,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             id = uniqueBridgeId,
             ip = newBridge.ip,
             token = newBridge.token,
-            lastUsed = System.currentTimeMillis(),
             active = newBridge.active,
             rooms = mutableSetOf(),
         )
@@ -219,7 +218,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      *          Null if id is not found.
      */
     fun getBridge(bridgeId: String) : PhilipsHueBridgeInfo? {
-        val bridge = _bridgeFlowSet.value.find { bridge ->
+        val bridge = bridgeFlowSet.value.find { bridge ->
             bridge.id == bridgeId
         }
         Log.d(TAG, "getBridge($bridgeId) " + if (bridge == null) "failed" else "successful")
@@ -244,12 +243,8 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      *              call to the bridge.  It'll have a lot more than you want!
      *              Returns empty string if the bridge doesn't exist or error.
      */
-    suspend fun getBridgeDataFromApi(bridgeId: String) : String {
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "trying to find the lights with bad id in getLights($bridgeId). aborting!")
-            return ""
-        }
+    @Deprecated("needs converting to v2")
+    suspend fun getBridgeDataStrFromApi(bridge: PhilipsHueBridgeInfo) : String {
 
         val fullAddress = createFullAddress(
             ip = bridge.ip,
@@ -257,7 +252,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         )
 
         val response = synchronousGet(url = fullAddress)
-        Log.v(TAG, "getBridgeData($bridgeId) = $response")
+        Log.v(TAG, "getBridgeData(${bridge.id}) = $response")
 
         if (response.isSuccessful) {
             return response.body
@@ -271,6 +266,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      *
      * fixme: this needs updating to v2!!!
      */
+    @Deprecated("needs updating to v2")
     suspend fun getLightsFromBridgeApi(bridgeId: String) : Set<PhilipsHueLightInfo> {
         val lights = mutableSetOf<PhilipsHueLightInfo>()
 
@@ -467,6 +463,18 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     //-------------------------------------
 
     /**
+     * Checks to see if the given bridge is active.
+     */
+    @SuppressWarnings("WeakerAccess")
+    suspend fun isBridgeActive(bridge: PhilipsHueBridgeInfo) : Boolean = withContext(Dispatchers.IO) {
+
+        if (doesBridgeRespondToIp(bridge) && doesBridgeAcceptToken(bridge)) {
+            return@withContext true
+        }
+        return@withContext false
+    }
+
+    /**
      * Tests to see if a bridge is at the given ip.
      *
      * This just tests to see if the basic debug screen appears.
@@ -513,6 +521,14 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         }
 
         return false
+    }
+
+    /**
+     * Alternate version that takes a bridge instead of an IP.
+     */
+    @SuppressWarnings("WeakerAccess")
+    suspend fun doesBridgeRespondToIp(bridge: PhilipsHueBridgeInfo) : Boolean {
+        return doesBridgeRespondToIp(bridge.ip)
     }
 
     /**
@@ -569,45 +585,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             Log.e(TAG, "   response => \n$response")
             return Pair("", GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE)
         }
-    }
-
-    /**
-     * Determines if the bridge understands the token (also called "name").
-     *
-     * This is a network call and should not be called on the main thread.
-     *
-     * @param       bridgeIp   ip of the bridge to test.
-     *
-     * @param       token       Token to test.  Philips Hue also calls this
-     *                          the "name."  It is specific to a mobile device
-     *                          (and probably the app).
-     *
-     * @return      True if the bridge responds to the current token.
-     *              False for all other cases.
-     */
-    suspend fun testBridgeToken(bridgeIp: String, token: String) : Boolean {
-
-        try {
-            val fullIp = createFullAddress(
-//                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-                prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
-                ip = bridgeIp,
-                suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
-            )
-            Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
-
-            // todo
-            // todo: actually access the bridge!!!
-            // todo
-
-        }
-        // fixme: catch the appropriate exceptions (instead of this catch-all)
-        catch(e: Exception) {
-            Log.d(TAG, "error when testing bridge token")
-            return false
-        }
-
-        return true
     }
 
 
@@ -668,19 +645,22 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      *                  translated ip number, like "196.192.86.1".  So the most
      *                  common case is:  "http://196.192.86.1"
      *
+     * @param   token   The token to insert in the command.  This authenticates the
+     *                  caller to the bridge.  Defaults to empty string.
+     *
      * @param   prefix  If the prefix is not contained in the ip, then this holds
      *                  it.  Generally this will be "https://" or "http://".
-     *                  Defaults to "".
      *
      * @param   suffix  Anything that goes AFTER the ip.  This is the directory
      *                  or parameters or whatever.  Remember that this should start
-     *                  with a backslash ('/').  Defaults to "/api", which is the basics.
+     *                  with a backslash ('/').
      */
     private fun createFullAddress(
         ip: String,
-//        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
-        suffix: String = "/api",
+        token: String = "",
+        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
+//        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
+        suffix: String
     ) : String {
 
         val fullAddress = "${prefix}$ip${suffix}"
@@ -848,32 +828,39 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     /**
      * Finds out if a bridge currently is active and responds to its token.
      *
-     * The url sent is:
-     *      http://192.168.86.166/api/<token>   (which seems to get everything about the bridge)
+     * @param       bridge      The bridge in question.  Does not check to see
+     *                          if everything is right.
      *
-     * @param       bridgeId        Id of the bridge.  Does not check to see
-     *                              if everything is right.
+     * @param       token       The token (username) to test.
      *
      * @return      True if the bridge is working and responds positively.
      *              False otherwise.
      */
-    private suspend fun doesBridgeRespondToToken(bridgeId: String) : Boolean {
-
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "bridge is null in doesBridgeRespondToToken($bridgeId). aborting!")
-            return false
-        }
+    suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo, token: String) :
+            Boolean = withContext(Dispatchers.IO) {
 
         // try getting the bridge's general info to see if the token works
         val fullAddress = createFullAddress(
             ip = bridge.ip,
-            suffix = SUFFIX_API + bridge.token
+            suffix = SUFFIX_GET_BRIDGE,
         )
 
         // Just want a response, nothing fancy
-        val response = synchronousGet(fullAddress)
-        return response.isSuccessful
+        val response = synchronousGet(
+            fullAddress,
+            header = Pair(HEADER_TOKEN_KEY, token),
+            trustAll = true
+        )
+        return@withContext response.isSuccessful
+
+    }
+
+    /**
+     * Alternate version of [doesBridgeAcceptToken]
+     */
+    suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo) :
+            Boolean = withContext(Dispatchers.IO) {
+        return@withContext doesBridgeAcceptToken(bridge, bridge.token)
     }
 
     //~~~~~~~~~~~
@@ -1207,6 +1194,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             Log.e(TAG, "Error: tried to initialize more than once!!!")
             return
         }
+        initialized = true
 
         //----------------
         //  1. Load bridge info from long-term storage
@@ -1220,15 +1208,13 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
         // Needs to run off the main thread
         runBlocking(Dispatchers.IO) {
-            // 1. Load the bridges, start with the ids
+            // 1. Load bridge ids from prefs
             val bridgeIds = loadAllBridgeIdsFromPrefs()
             if (bridgeIds.isNullOrEmpty()) {
-                // initialization complete as there's nothing to load
-                initialized = true
                 return@runBlocking
             }
 
-            // use these ids to load the rest of the data
+            // use these ids to load the ips & tokens from prefs
             bridgeIds.forEach() { id ->
 
                 // get the IP for this bridge
@@ -1251,14 +1237,12 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             //    a brand-new set with all the data in it.
             val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
             bridgeFlowSet.value.forEach { bridge ->
-                if (doesBridgeRespondToIp(bridge.id) && doesBridgeRespondToToken(bridge.id)) {
+                if (isBridgeActive(bridge)) {
                     bridge.active = true
 
                     // 2a. Find rooms and add them to the bridge data
                     val roomsFromApi = getRoomsFromBridgeApi(bridge.id)
-
-
-
+                    bridge.rooms = convertV2RoomAll(roomsFromApi, bridge)
                 }
                 else {
                     bridge.active = false
@@ -1267,9 +1251,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
                 newBridgeSet.add(bridge)
             }
             _bridgeFlowSet.update { newBridgeSet }  // stateflow reflects changes
-
-            // done initializing
-            initialized = true
         }
     }
 
@@ -1319,7 +1300,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         var changed = false
 
         // check to see if it's active first (may need to change active status)
-        if (doesBridgeRespondToIp(bridge.ip)) {
+        if (doesBridgeRespondToIp(bridge)) {
             if (bridge.active == true) {
                 changed = true
             }
@@ -1334,7 +1315,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         }
 
         // test the token
-        if (doesBridgeRespondToToken(bridge.id) == false) {
+        if (doesBridgeAcceptToken(bridge) == false) {
             // problem with the token.  Either there wasn't one
             // or the bridge was reset.  I'm calling this a change
             // regardless
@@ -1348,7 +1329,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         // Lastly, the catch-all: the body.  A lot of stuff goes on here,
         // and if anything changes along here, we'll notice it.
 
-        val bridgeJsonDataStr = getBridgeDataFromApi(bridge.id)
+        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
         if (bridgeJsonDataStr.isEmpty()) {
             Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
             if (bridge.body.isNotEmpty()) {
@@ -1397,7 +1378,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     private suspend fun convertV2RoomAll(
         phV2Rooms: PHv2ResourceRoomsAll,
         bridge: PhilipsHueBridgeInfo
-    ) : Set<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {
+    ) : MutableSet<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {
 
         val newRoomSet = mutableSetOf<PhilipsHueRoomInfo>()
 
@@ -1407,7 +1388,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         }
 
         phV2Rooms.data.forEach { v2Room ->
-            // check for error (should never happen)
+            // check correct type error (should never happen)
             if (v2Room.type != ROOM) {
                 Log.e(TAG, "Error!  Room (id = ${v2Room.id} has wrong type! Type = ${v2Room.type}, but should be 'room'!")
                 return@forEach      // this is the equivalent of continue (will skip this iteration)
@@ -1415,7 +1396,9 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
             val v2RoomIndividual = getRoomIndividualFromApi(v2Room.id, bridge)
             val room = convertPHv2RoomIndividual(v2RoomIndividual, bridge)
-            newRoomSet.add(room)
+            if (room != null) {
+                newRoomSet.add(room)
+            }
         }
 
         return@withContext newRoomSet
@@ -1425,16 +1408,16 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * Takes a [PHv2RoomIndividual] and converts it to a
      * [PhilipsHueRoomInfo].
      *
-     * If [v2RoomIndividual] is in error state, a blank is returned.
+     * If [v2RoomIndividual] is in error state (no data), null is returned.
      */
     private suspend fun convertPHv2RoomIndividual(
         v2RoomIndividual: PHv2RoomIndividual,
         bridge: PhilipsHueBridgeInfo
-    ) : PhilipsHueRoomInfo = withContext(Dispatchers.IO) {
+    ) : PhilipsHueRoomInfo? = withContext(Dispatchers.IO) {
 
         // first check to make sure original data is valid.
         if (v2RoomIndividual.data.isEmpty()) {
-            return@withContext PhilipsHueRoomInfo(id = EMPTY_STRING, lights = mutableSetOf())
+            return@withContext null
         }
 
         // Get group of lights. Will be null if no light group found.
@@ -1489,6 +1472,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
         return@withContext PhilipsHueRoomInfo(
             id = v2RoomIndividual.data[0].id,
+            name = v2RoomIndividual.data[0].metadata.name,
             on = on,
             brightness = brightness,
             lights = lightSet
@@ -1554,7 +1538,11 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             // more than one.
             if (groupedLightServices.size > 1) {
                 Log.e(TAG, "too many grouped light services in convertPHv2Room!  Aborting!")
-                return@withContext PhilipsHueRoomInfo(id = "-1", lights = mutableSetOf())
+                return@withContext PhilipsHueRoomInfo(
+                    id = "-1",
+                    name = EMPTY_STRING,
+                    lights = mutableSetOf()
+                )
             }
             val groupedLight = getGroupedLightFromApi(groupedLightServices[0].rid, bridge)
 
@@ -1598,6 +1586,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             // everything worked out! return that data
             val newRoom = PhilipsHueRoomInfo(
                 id = v2Room.id,
+                name = v2Room.metadata.name,
                 on = groupedLight.data[0].on.on,
                 brightness = groupedLight.data[0].dimming.brightness,
                 lights = regularLightSet
@@ -1608,6 +1597,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         // at this point, there's a room, but no lights
         val newRoom = PhilipsHueRoomInfo(
             id = v2Room.id,
+            name = v2Room.metadata.name,
             on = false,
             brightness = 0,
             lights = mutableSetOf()
@@ -1660,9 +1650,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         val state = PhilipsHueLightState(
             on = v2Light.on.on,
             bri = v2Light.dimming.brightness,
-//                                    hue = v2Light.color.,     todo: add these if necessary
-//                                    sat = ,
-//                                    xy = ,
         )
 
         val light = PhilipsHueLightInfo(
@@ -1670,9 +1657,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             name = v2Light.metadata.name,
             state = state,
             type = v2Light.type,
-//                                    modelid =,            todo: add if necessary
-//                                    swversion =,
-//                                    pointsymbol =,
         )
 
         return light
@@ -1706,7 +1690,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             return@withContext PHv2RoomIndividual(response.body)
         }
         else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id}!")
+            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2RoomIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -1950,11 +1934,11 @@ private const val PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX = "sleepfuriously_p"
 //  suffixes
 //
 
-/** This should go AFTER the ip and BEFORE the token */
+/** This is v1. It should ONLY be used when getting the token/username from bridge. */
 private const val SUFFIX_API = "/api/"
 
-/** Use this to get all the basic bridge information Goes AFTER the token */
-private const val SUFFIX_BRIDGE = "/bridge"
+/** Gets info about the bridge */
+private const val SUFFIX_GET_BRIDGE = "/clip/v2/resource/bridge"
 
 /** Used to get all the rooms associated with a bridge.  Goes AFTER the token */
 private const val SUFFIX_GET_ROOMS = "/clip/v2/resource/room"
@@ -2000,6 +1984,3 @@ private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX = "ph_bridge_token_key"
 
 /** prefix of key to get ip from prefs (see [PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX]) */
 private const val PHILIPS_HUE_BRIDGE_IP_KEY_PREFIX = "ph_bridge_ip_key"
-
-
-

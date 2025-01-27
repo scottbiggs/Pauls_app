@@ -454,7 +454,7 @@ class MainActivity : ComponentActivity() {
             // list known bridges
             Text("here the known bridges:")
             viewmodel.philipsHueBridgesCompose.forEach { bridge ->
-                Text("   bridge ${bridge.id}: ip = ${bridge.ip}, token = ${bridge.token}, lastUsed = ${bridge.lastUsed}, active = ${bridge.active}")
+                Text("   bridge ${bridge.id}: ip = ${bridge.ip}, token = ${bridge.token}, active = ${bridge.active}")
             }
 
 

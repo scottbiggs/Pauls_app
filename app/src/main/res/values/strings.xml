@@ -67,8 +67,10 @@
     <string name="drop_down_menu_desc">drop down menu</string>
     <string name="show_bridge_info">info</string>
     <string name="show_bridge_info_title">Bridge Info</string>
-    <string name="bridge_last_used">Last Used</string>
-    <string name="bridge_info_room">Rooms</string>
+    <string name="bridge_info_rooms">Rooms</string>
+    <string name="bridge_info_room">Room</string>
+    <string name="bridge_info_lights">Lights</string>
+    <string name="bridge_info_light">Light</string>
 
     <string name="remove_bridge">delete bridge</string>
     <string name="delete_bridge_confirm_title">Delete Bridge</string>
