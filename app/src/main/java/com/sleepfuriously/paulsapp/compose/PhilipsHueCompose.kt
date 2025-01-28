@@ -158,9 +158,8 @@ fun ShowMainScreenPhilipsHue(
                         item {
                             DisplayPhilipsHueRoom(
                                 roomName = room.name,
-                                illumination = room.getAverageIllumination()
-                                    .toFloat() / MAX_BRIGHTNESS.toFloat(),
-                                lightSwitchOn = room.on,
+                                illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
+                                lightSwitchOn = room.on
                             ) { newIllumination, switchOn ->
                                 // todo call the illumination change in the viewmodel
                                 //  and make it display (var by remember in a slider?)

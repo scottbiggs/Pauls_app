@@ -1448,63 +1448,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             return@withContext null
         }
 
-        // Get group of lights. Will be null if no light group found.
-        val lightGroup = getGroupedLightFromRoom(v2RoomIndividual.data[0], bridge)
-
-        // get lights; they are actually devices as part of the services list
-        val lightSet = mutableSetOf<PhilipsHueLightInfo>()
-        v2RoomIndividual.data[0].services.forEach { service ->
-            if (service.rtype == RTYPE_DEVICE) {
-                // It's a device, get it--maybe it's a light (I hope!)
-                val v2Device = getDeviceIndividualFromApi(service.rid, bridge)
-                if (v2Device.data.isNotEmpty()) {
-                    // look at its services--maybe one of those is a light
-                    v2Device.data[0].services.forEach { deviceService ->
-                        if (deviceService.rtype == RTYPE_LIGHT) {
-                            // It is a light!  Get that light's information!
-                            val v2Light = getLightInfoFromApi(deviceService.rid, bridge)
-                            if (v2Light.data.isNotEmpty()) {
-                                // ok, we FINALLY got some stuff here, whew!  But we're not
-                                // done.  We need the state!
-                                val state = PhilipsHueLightState(
-                                    on = v2Light.data[0].on.on,
-                                    bri = v2Light.data[0].dimming.brightness
-                                )
-                                val light = PhilipsHueLightInfo(
-                                    id = v2Light.data[0].id,
-                                    name = v2Light.data[0].metadata.name,
-                                    state = state,
-                                    type = v2Light.data[0].type,
-                                )
-                                lightSet.add(light)     // Wow, now we're really finally finally done!
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        val on = if (lightGroup == null) {
-            false
-        }
-        else {
-            lightGroup.on.on
-        }
-
-        val brightness = if (lightGroup == null) {
-            0
-        }
-        else {
-            lightGroup.dimming.brightness
-        }
-
-        return@withContext PhilipsHueRoomInfo(
-            id = v2RoomIndividual.data[0].id,
-            name = v2RoomIndividual.data[0].metadata.name,
-            on = on,
-            brightness = brightness,
-            lights = lightSet
-        )
+        return@withContext convertPHv2Room(v2RoomIndividual.data[0], bridge)
     }
 
     /**
