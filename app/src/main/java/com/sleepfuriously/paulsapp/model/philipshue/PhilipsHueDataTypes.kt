@@ -8,6 +8,8 @@ package com.sleepfuriously.paulsapp.model.philipshue
 data class PhilipsHueNewBridge(
     /** The ip of this bridge in the local network. */
     var ip : String = "",
+    /** the name of the bridge as printed on it */
+    var labelName: String = "",
     /** The token "name" used to access this bridge. */
     var token : String = "",
     /** When true, this bridge is in active use */
@@ -31,6 +33,8 @@ data class PhilipsHueNewBridge(
 data class PhilipsHueBridgeInfo(
     /** unique identifier for this bridge */
     var id : String,
+    /** Name as printed on the bridge itself */
+    var labelName : String,
     /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
     var ip : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
@@ -49,6 +53,7 @@ data class PhilipsHueBridgeInfo(
         operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
             return PhilipsHueBridgeInfo(
                 id = "",
+                labelName = newBridge.labelName,
                 ip = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,

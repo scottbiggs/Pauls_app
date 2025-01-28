@@ -103,5 +103,6 @@
     <string name="active">Active</string>
     <string name="not_applicable">N/A</string>
     <string name="token">username</string>
+    <string name="room">room</string>
 
 </resources>

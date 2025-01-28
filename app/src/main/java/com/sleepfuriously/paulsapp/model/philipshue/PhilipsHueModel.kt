@@ -135,25 +135,32 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * This creates a new bridge and adds it the permanent bridge
      * data.
      *
-     * It's assumed that whenever this happens, the bridge will be
-     * currently active and that any additional data will be added
-     * later.
-     *
      * preconditions
-     *      The newBridge MUST contain a token!!!
+     *      The newBridge must be active and contain a token!!!
      *
      * @param   newBridge       A nearly fully-loaded bridge info class
      *                          (the id will be set BY THIS FUNCTION).
      *                          The data is NOT checked for accuracy.
-     *
-     * @return      The id for this new bridge.
      */
-    suspend fun addBridge(newBridge: PhilipsHueNewBridge) : String {
+    suspend fun addBridge(
+        newBridge: PhilipsHueNewBridge
+    ) = withContext(Dispatchers.IO) {
 
-        // update our local data
-        val uniqueBridgeId = generateNewId()
+        // grab the id for this bridge
+        val responseStr = getBridgeDataStrFromApi(
+            bridgeIp = newBridge.ip,
+            token = newBridge.token
+        )
+        val v2BridgeResponse = PHv2ResourceBridge(responseStr)
+        if (v2BridgeResponse.data.isEmpty()) {
+            Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
+            return@withContext
+        }
+        val id = v2BridgeResponse.data[0].id
+
         val bridgeToAdd = PhilipsHueBridgeInfo(
-            id = uniqueBridgeId,
+            id = id,
+            labelName = newBridge.labelName,
             ip = newBridge.ip,
             token = newBridge.token,
             active = newBridge.active,
@@ -163,8 +170,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
         // update long-term data
         saveBridge(bridgeToAdd)
-
-        return uniqueBridgeId
     }
 
 
@@ -228,36 +233,30 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
     /**
      * Gets all the information about a particular bridge.  This is straight
-     * from the bridge itself.  It's up to the caller to parse it.
-     *
-     * This info:
-     *      lights
-     *      groups
-     *      config (whitelist is here)
-     *      schedules
-     *      scenes
-     *      sensors
-     *      resource links (not sure what this does)
+     * from the bridge itself.  It can easily be parsed with [PHv2ResourceBridge].
      *
      * @return      The JSON string that was returned in the body of the api
-     *              call to the bridge.  It'll have a lot more than you want!
-     *              Returns empty string if the bridge doesn't exist or error.
+     *              call to the bridge.
+     *              Returns empty string if the bridge doesn't exist, token
+     *              is not recognized, or some other error.
      */
-    @Deprecated("needs converting to v2")
-    suspend fun getBridgeDataStrFromApi(bridge: PhilipsHueBridgeInfo) : String {
+    suspend fun getBridgeDataStrFromApi(bridgeIp: String, token: String) : String {
 
         val fullAddress = createFullAddress(
-            ip = bridge.ip,
-            suffix = SUFFIX_API + bridge.token
+            ip = bridgeIp,
+            suffix = SUFFIX_GET_BRIDGE
         )
 
-        val response = synchronousGet(url = fullAddress)
-        Log.v(TAG, "getBridgeData(${bridge.id}) = $response")
+        val response = synchronousGet(
+            url = fullAddress,
+            header = Pair(HEADER_TOKEN_KEY, token),
+            trustAll = true     // fixme: when we start higher security
+        )
 
         if (response.isSuccessful) {
             return response.body
         }
-        return ""
+        return EMPTY_STRING
     }
 
     /**
@@ -475,6 +474,23 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     }
 
     /**
+     * Alternate version of [isBridgeActive].  This version only needs
+     * the ip and token (not the whole bridge).
+     */
+    suspend fun isBridgeActive(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : Boolean = withContext(Dispatchers.IO) {
+        if ((doesBridgeRespondToIp(ip = bridgeIp)) &&
+            (doesBridgeAcceptToken(bridgeIp, bridgeToken))) {
+            return@withContext true
+        }
+
+        return@withContext false
+    }
+
+
+    /**
      * Tests to see if a bridge is at the given ip.
      *
      * This just tests to see if the basic debug screen appears.
@@ -611,6 +627,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * @return      An id string that's guaranteed to be unique from
      *              all the other bridges
      */
+    @Deprecated("no longer needed: use v2 id instead")
     private fun generateNewId() : String {
 
         // strategy: go through the id (as numbers) until we don't
@@ -836,12 +853,12 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * @return      True if the bridge is working and responds positively.
      *              False otherwise.
      */
-    suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo, token: String) :
+    suspend fun doesBridgeAcceptToken(bridgeIp: String, token: String) :
             Boolean = withContext(Dispatchers.IO) {
 
         // try getting the bridge's general info to see if the token works
         val fullAddress = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = SUFFIX_GET_BRIDGE,
         )
 
@@ -860,7 +877,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      */
     suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo) :
             Boolean = withContext(Dispatchers.IO) {
-        return@withContext doesBridgeAcceptToken(bridge, bridge.token)
+        return@withContext doesBridgeAcceptToken(bridge.ip, bridge.token)
     }
 
     //~~~~~~~~~~~
@@ -1021,38 +1038,25 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * @return      True - successfully saved
      *              False - some problem prevented saving
      */
-    private suspend fun saveBridge(bridge: PhilipsHueBridgeInfo) : Boolean {
+    private suspend fun saveBridge(bridge: PhilipsHueBridgeInfo) :
+            Boolean = withContext(Dispatchers.IO) {
 
-        val returnVal = withContext(Dispatchers.IO) {
-
-            if (saveBridgeId(bridge.id) == false) {
-                Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
-                return@withContext false
-            }
-
-            if (bridge.ip == null) {
-                Log.e(TAG, "Error in saveBridge($bridge) - ip is null - aborting!")
-                return@withContext false
-            }
-
-            if (saveBridgeIp(bridge.id, bridge.ip!!, true) == false) {
-                Log.e(TAG, "Can't save the IP of the bridge in saveBridge($bridge) - aborting!")
-                return@withContext false
-            }
-
-            if (bridge.token == null) {
-                Log.e(TAG, "Error in saveBridge($bridge) - token is null - aborting!")
-                return@withContext false
-            }
-
-            if (saveBridgeToken(bridge.id, bridge.token!!, true) == false) {
-                Log.e(TAG, "Can't save the token of the bridge in saveBridge($bridge) - aborting!")
-                return@withContext false
-            }
-
-            true
+        if (saveBridgeId(bridge.id) == false) {
+            Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
+            return@withContext false
         }
-        return returnVal
+
+        if (saveBridgeIp(bridge.id, bridge.ip, true) == false) {
+            Log.e(TAG, "Can't save the IP of the bridge in saveBridge($bridge) - aborting!")
+            return@withContext false
+        }
+
+        if (saveBridgeToken(bridge.id, bridge.token, true) == false) {
+            Log.e(TAG, "Can't save the token of the bridge in saveBridge($bridge) - aborting!")
+            return@withContext false
+        }
+
+        return@withContext true
     }
 
     //~~~~~~~~~~~
@@ -1223,10 +1227,32 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
                 // get the token for this bridge
                 val token = loadBridgeTokenFromPrefs(id)
 
+                val isActive = isBridgeActive(ip, token)
+                var name = ""
+                if (isActive) {
+                    val jsonString = getBridgeDataStrFromApi(ip, token)
+                    if (jsonString.isEmpty()) {
+                        Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
+                    }
+                    else {
+                        val v2Bridge = PHv2ResourceBridge(jsonString)
+                        if (v2Bridge.data.isEmpty()) {
+                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
+                            Log.e(TAG, "   error = ${v2Bridge.errors[0].description}")
+                        }
+                        else {
+                            // finally we can get the name!
+                            name = v2Bridge.data[0].bridgeId
+                        }
+                    }
+                }
+
                 val bridge = PhilipsHueBridgeInfo(
                     id = id,
+                    labelName = name,
                     ip = ip,
                     token = token,
+                    active = isActive
                 )
 
                 _bridgeFlowSet.value += bridge
@@ -1297,6 +1323,8 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      */
     private suspend fun pollBridge(bridge: PhilipsHueBridgeInfo) : Boolean {
 
+        TODO()
+
         var changed = false
 
         // check to see if it's active first (may need to change active status)
@@ -1329,20 +1357,20 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         // Lastly, the catch-all: the body.  A lot of stuff goes on here,
         // and if anything changes along here, we'll notice it.
 
-        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
-        if (bridgeJsonDataStr.isEmpty()) {
-            Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
-            if (bridge.body.isNotEmpty()) {
-                changed = true
-                bridge.body = ""
-            }
-            // nothing more to do
-            return changed
-        }
+//        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
+//        if (bridgeJsonDataStr.isEmpty()) {
+//            Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
+//            if (bridge.body.isNotEmpty()) {
+//                changed = true
+//                bridge.body = ""
+//            }
+//            // nothing more to do
+//            return changed
+//        }
 
         // fixme: the bridgeInfo isn't that useful
-        val bridgeInfo = PHv2ResourceBridgesAll(bridgeJsonDataStr)
-
+//        val bridgeInfo = PHv2ResourceBridge(bridgeJsonDataStr)
+//
 //        if (bridge.body != bridgeJsonDataStr) {
 //            changed = true
 //            bridge.body = bridgeJsonDataStr
@@ -1698,6 +1726,39 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         }
     }
 
+    /**
+     * Gets the [PHv2ResourceBridge] data from a bridge.  According to
+     * the docs, this is IDENTICAL to getting a bridge with the bridge id.
+     * Makes sense as a bridge can only know about itself.
+     *
+     * This call is useful when you don't much info about the bridge yet.
+     * You'll get that info here!
+     */
+    suspend fun getBridgesAllFromApi(
+        bridgeIp: String,
+        token: String
+    ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {
+        val url = createFullAddress(
+            ip = bridgeIp,
+            suffix = SUFFIX_GET_BRIDGE
+        )
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, token),
+            trustAll = true
+        )
+
+        if (response.isSuccessful) {
+            return@withContext PHv2ResourceBridge(response.body)
+        }
+        else {
+            Log.e(TAG, "unable to get bridge info (ip = ${bridgeIp}!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return@withContext PHv2ResourceBridge(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
+    }
 
     /**
      * Given a device's id (or RID), this will retrieve the data from

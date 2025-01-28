@@ -92,6 +92,7 @@ class PhilipsHueViewmodel : ViewModel() {
     fun addBridgeTest() {
         workingNewBridge = PhilipsHueNewBridge(
             ip = "hey, I'm supposed to be an ip!!",
+            labelName = "testBridge",
             token = "goblllelsldlsy gook"
         )
         bridgeAddAllGoodAndDone()
@@ -324,7 +325,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
     /**
      * This gets the ip that's currently stored as the ip of a bridge
-     * that is in the process of being connected to.  If their is no
+     * that is in the process of being connected to.  If there is no
      * bridge or no ip has been set, then an empty string is returned.
      */
     fun getNewBridgeIp() : String {
@@ -505,8 +506,21 @@ class PhilipsHueViewmodel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
 
+            // Get the name of the bridge (I'm using the printed name on the bridge itself)
+            val v2bridge = bridgeModel.getBridgesAllFromApi(
+                bridgeIp = workingNewBridge!!.ip,
+                token = workingNewBridge!!.token
+            )
+            if (v2bridge.data.isEmpty()) {
+                Log.e(TAG, "Unable to get info from bridge (id = ${workingNewBridge?.labelName})in bridgeAllGoodAndDone()! Aborting!")
+                _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
+                return@launch
+            }
+
+            workingNewBridge?.labelName = v2bridge.data[0].bridgeId
+
             // Add this new bridge to our permanent data (and the Model).
-            val newBridgeId = bridgeModel.addBridge(workingNewBridge!!)
+            bridgeModel.addBridge(workingNewBridge!!)
 
             // lastly signal that we're done with the new bridge stuff
             workingNewBridge = null
@@ -584,7 +598,7 @@ class PhilipsHueViewmodel : ViewModel() {
             }
 
             // check that token works
-            val tokenWorks = bridgeModel.doesBridgeAcceptToken(bridge, token)
+            val tokenWorks = bridgeModel.doesBridgeAcceptToken(bridge.ip, token)
             if (tokenWorks == false) {
                 continue
             }

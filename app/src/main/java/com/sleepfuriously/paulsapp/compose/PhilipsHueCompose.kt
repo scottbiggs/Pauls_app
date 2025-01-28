@@ -57,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -136,7 +137,7 @@ fun ShowMainScreenPhilipsHue(
                 item(
                     span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
                 ) {
-                    DrawBridgeTitle(text = stringResource(id = R.string.ph_bridge_name, bridge.id))
+                    DrawBridgeTitle(text = stringResource(id = R.string.ph_bridge_name, bridge.labelName))
                 }
 
                 if (bridge.rooms.size == 0) {
@@ -156,7 +157,7 @@ fun ShowMainScreenPhilipsHue(
                     bridge.rooms.forEach { room ->
                         item {
                             DisplayPhilipsHueRoom(
-                                roomName = room.id,
+                                roomName = room.name,
                                 illumination = room.getAverageIllumination()
                                     .toFloat() / MAX_BRIGHTNESS.toFloat(),
                                 lightSwitchOn = room.on,
@@ -531,9 +532,15 @@ private fun DisplayPhilipsHueRoom(
 
     ) {
         Text(
+            text = stringResource(R.string.room),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = modifier
+                .padding(top = 4.dp, start = 8.dp)
+        )
+        Text(
             text = roomName,
             modifier = modifier
-                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .padding(start = 16.dp)
         )
 
         Row (
