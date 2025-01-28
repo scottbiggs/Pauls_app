@@ -511,13 +511,14 @@ class PhilipsHueViewmodel : ViewModel() {
                 bridgeIp = workingNewBridge!!.ip,
                 token = workingNewBridge!!.token
             )
-            if (v2bridge.data.isEmpty()) {
+            if (v2bridge.hasData() == false) {
                 Log.e(TAG, "Unable to get info from bridge (id = ${workingNewBridge?.labelName})in bridgeAllGoodAndDone()! Aborting!")
+                Log.e(TAG, "   data error msg = ${v2bridge.getError()}")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
                 return@launch
             }
 
-            workingNewBridge?.labelName = v2bridge.data[0].bridgeId
+            workingNewBridge?.labelName = v2bridge.getName()
 
             // Add this new bridge to our permanent data (and the Model).
             bridgeModel.addBridge(workingNewBridge!!)

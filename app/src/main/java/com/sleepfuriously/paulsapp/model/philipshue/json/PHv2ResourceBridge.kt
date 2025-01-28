@@ -33,9 +33,86 @@ import org.json.JSONObject
 
  */
 data class PHv2ResourceBridge(
-    val errors: List<PHv2Error> = listOf(),
-    val data: List<PHv2Bridge> = listOf()
+    private val errors: List<PHv2Error> = listOf(),
+    private val data: List<PHv2Bridge> = listOf()
 ) {
+    /**
+     * Simply tells if any data is in here or not.  If not,
+     * then use [getError] to figure out why.
+     */
+    fun hasData() : Boolean {
+        return data.isNotEmpty()
+    }
+
+    /**
+     * Returns the error message for this class.  If no error
+     * then empty string is returned.
+     */
+    fun getError() : String {
+        return if (errors.isEmpty()) {
+            ""
+        } else {
+            errors[0].description
+        }
+    }
+
+    /**
+     * Returns id.  If error, then empty string is returned.
+     */
+    fun getId() : String {
+        return if (data.isEmpty()) {
+            ""
+        }
+        else {
+            data[0].id
+        }
+    }
+
+    /**
+     * Returns name as printed on the bridge.  Empty on error.
+     */
+    fun getName() : String {
+        return if (data.isEmpty()) {
+            ""
+        }
+        else {
+            data[0].bridgeName
+        }
+    }
+
+    /**
+     * Returns the owner of this bridge.  Shouldn't be needed for our practices here,
+     * but I'm including for completeness.
+     *
+     * Will be null if this instance is an error.
+     */
+    fun getOwner() : PHv2ItemInArray? {
+        return if (data.isEmpty()) {
+            null
+        }
+        else {
+            data[0].owner
+        }
+    }
+
+    fun getTimeZone() : String {
+        return if (data.isEmpty()) {
+            ""
+        }
+        else {
+            data[0].timeZone.timeZone
+        }
+    }
+
+    fun getType() : String {
+        return if (data.isEmpty()) {
+            ""
+        }
+        else {
+            data[0].type
+        }
+    }
+
     companion object {
         /**
          * Alternate constructor.  Takes the actual json string that's returned
@@ -91,7 +168,7 @@ data class PHv2Bridge(
     val idV1: String = EMPTY_STRING,
     val owner: PHv2ItemInArray,
     /** id as printed on the device */
-    val bridgeId: String,
+    val bridgeName: String,
     val timeZone: PHv2BridgeTimeZone
 ) {
     companion object {
@@ -120,7 +197,7 @@ data class PHv2Bridge(
                 id = id,
                 idV1 = idV1,
                 owner = owner,
-                bridgeId = name,
+                bridgeName = name,
                 timeZone = timeZone
             )
         }

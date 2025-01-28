@@ -152,11 +152,12 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             token = newBridge.token
         )
         val v2BridgeResponse = PHv2ResourceBridge(responseStr)
-        if (v2BridgeResponse.data.isEmpty()) {
+        if (v2BridgeResponse.hasData() == false) {
             Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
+            Log.e(TAG, "   error msg: ${v2BridgeResponse.getError()}")
             return@withContext
         }
-        val id = v2BridgeResponse.data[0].id
+        val id = v2BridgeResponse.getId()
 
         val bridgeToAdd = PhilipsHueBridgeInfo(
             id = id,
@@ -1236,13 +1237,13 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
                     }
                     else {
                         val v2Bridge = PHv2ResourceBridge(jsonString)
-                        if (v2Bridge.data.isEmpty()) {
+                        if (v2Bridge.hasData() == false) {
                             Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
-                            Log.e(TAG, "   error = ${v2Bridge.errors[0].description}")
+                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
                         }
                         else {
                             // finally we can get the name!
-                            name = v2Bridge.data[0].bridgeId
+                            name = v2Bridge.getName()
                         }
                     }
                 }
