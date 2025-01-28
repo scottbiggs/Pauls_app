@@ -72,26 +72,7 @@ data class PhilipsHueRoomInfo(
     var on: Boolean = false,
     var brightness : Int = 0,
     val lights: MutableSet<PhilipsHueLightInfo>
-) {
-    /**
-     * Returns the average illumination of the lights that are currently ON.
-     */
-    fun getAverageIllumination() : Int {
-        var illumination = 0
-        var onLightCount = 0
-        lights.forEach { light ->
-            if (light.state.on) {
-                illumination += light.state.bri
-                onLightCount++
-            }
-        }
-        if (onLightCount == 0) {
-            return 0
-        }
-        illumination /= onLightCount
-        return illumination
-    }
-}
+)
 
 /**
  * Holds info about a single philips hue light
@@ -104,17 +85,6 @@ data class PhilipsHueLightInfo(
     val type: String = "",
     val modelid: String = "",
     val swversion: String = "",
-    /** looks like there are 8 of these, with keys "1", "2"..."8" */
-    var pointsymbol: MutableMap<String, String> = mutableMapOf(
-        "1" to "none",
-        "2" to "none",
-        "3" to "none",
-        "4" to "none",
-        "5" to "none",
-        "6" to "none",
-        "7" to "none",
-        "8" to "none"
-    )
 )
 
 /**
@@ -140,29 +110,6 @@ data class PhilipsHueLightState(
     var colormode: String = "ct",
     var reachable: Boolean = true
 )
-
-/**
- * Use this class to modify the current state of a light
- */
-data class PhilipsHueLightOnOffData (
-    /** Turn the light on or off. */
-    val on: Boolean,
-    /** Set light brightness to range of [0..254]. Not the same as turning it off! */
-    val bri: Int = 254,
-    /** Range [0..65535] */
-    val hue: Int = 65535,
-    /** Range [0..254] */
-    val sat: Int = 254,
-    /** Color as an array of xy-coords */
-    val xy: Pair<Float, Float> = Pair(0f, 0f),
-    /** Color temperature of white. 154 (cold) - 500 (warm) */
-    val ct: Int = 154,
-    /** "select" flashes once, "lselect" flashes repeatedly for 10 seconds */
-    val alert: String = "none",
-    /** time for transition in centiseconds */
-    val transitiontime: Int = 0
-)
-
 
 //------------------------------
 //  constants
