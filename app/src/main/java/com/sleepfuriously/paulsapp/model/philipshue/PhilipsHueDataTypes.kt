@@ -169,7 +169,7 @@ data class PhilipsHueLightOnOffData (
 //------------------------------
 
 /** the maximum light that a light can put out */
-const val MAX_BRIGHTNESS = 254
+const val MAX_BRIGHTNESS = 100
 
 /** min light that a light can emit */
 const val MIN_BRIGHTNESS = 0
