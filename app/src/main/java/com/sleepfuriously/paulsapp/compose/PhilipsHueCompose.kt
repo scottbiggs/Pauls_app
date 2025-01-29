@@ -94,8 +94,6 @@ fun ShowMainScreenPhilipsHue(
 ) {
     Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
 
-    val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
-
     // the content
     Column(
         modifier = modifier
@@ -111,65 +109,10 @@ fun ShowMainScreenPhilipsHue(
             color = Color.White
         )
 
-        LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 4.dp),
-            columns = GridCells.Adaptive(MIN_PH_ROOM_WIDTH.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalArrangement = Arrangement.Start
-        ) {
-            // Each bridge will consist of:
-            //  - separator
-            //  - title (name of the bridge)
-            //  - drop-down menu:
-            //      - bridge info
-            //      - delete bridge
-            //  - grid of all the rooms on the bridge
-            philipsHueViewmodel.philipsHueBridgesCompose.forEach { bridge ->
-
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    DrawBridgeSeparator(bridge.id, philipsHueViewmodel)
-                }
-
-                // The first item (which has the name of the bridge)
-                // will take the entire row of a grid.
-                item(
-                    span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
-                ) {
-                    DrawBridgeTitle(text = stringResource(id = R.string.ph_bridge_name, bridge.labelName))
-                }
-
-                if (bridge.rooms.size == 0) {
-                    // no rooms to display
-                    item(span = { GridItemSpan(this.maxLineSpan) }) {
-                        Text(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 8.dp, end = 8.dp),
-                            text = noRoomsFound,
-                            style = MaterialTheme.typography.labelLarge,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    // yes, there are rooms to display
-                    bridge.rooms.forEach { room ->
-                        item {
-                            DisplayPhilipsHueRoom(
-                                roomName = room.name,
-                                illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
-                                lightSwitchOn = room.on
-                            ) { newIllumination, switchOn ->
-                                // todo call the illumination change in the viewmodel
-                                //  and make it display (var by remember in a slider?)
-                            }
-                        }
-                    }
-                }
-
-            }
-        }
+        DrawBridgeContents(
+            bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
+            viewmodel = philipsHueViewmodel
+        )
 
     }
 
@@ -187,6 +130,80 @@ fun ShowMainScreenPhilipsHue(
     }
 
     // todo: show messages (if any)
+
+}
+
+@Composable
+private fun DrawBridgeContents(
+    bridgeInfoSet: Set<PhilipsHueBridgeInfo>,
+    viewmodel: PhilipsHueViewmodel
+) {
+    val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
+
+    LazyVerticalGrid(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 4.dp),
+        columns = GridCells.Adaptive(MIN_PH_ROOM_WIDTH.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalArrangement = Arrangement.Start
+    ) {
+
+        // Each bridge will consist of:
+        //  - separator
+        //  - title (name of the bridge)
+        //  - drop-down menu:
+        //      - bridge info
+        //      - delete bridge
+        //  - grid of all the rooms on the bridge
+        bridgeInfoSet.forEach { bridgeInfo ->
+
+            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                DrawBridgeSeparator(bridgeInfo.id, viewmodel)
+            }
+
+            // The first item (which has the name of the bridge)
+            // will take the entire row of a grid.
+            item(
+                span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+            ) {
+                DrawBridgeTitle(
+                    text = stringResource(
+                        id = R.string.ph_bridge_name,
+                        bridgeInfo.labelName
+                    )
+                )
+            }
+
+            if (bridgeInfo.rooms.size == 0) {
+                // no rooms to display
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
+                    Text(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp),
+                        text = noRoomsFound,
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                // yes, there are rooms to display
+                bridgeInfo.rooms.forEach { room ->
+                    item {
+                        DisplayPhilipsHueRoom(
+                            roomName = room.name,
+                            illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
+                            lightSwitchOn = room.on
+                        ) { newIllumination, switchOn ->
+                            // todo call the illumination change in the viewmodel
+                            //  and make it display (var by remember in a slider?)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 }
 
