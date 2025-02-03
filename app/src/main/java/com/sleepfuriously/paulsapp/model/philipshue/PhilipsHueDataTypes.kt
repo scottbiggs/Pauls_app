@@ -41,6 +41,8 @@ data class PhilipsHueBridgeInfo(
     var token : String = "",
     /** When true, this bridge is in active use */
     var active : Boolean = false,
+    /** Are we currently listening for events from this bridge? */
+    var connected: Boolean,
     /** All the rooms controlled by this bridge */
     var rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
     /** The body of the json info was returned by the bridge. defaults to "" */
@@ -57,6 +59,7 @@ data class PhilipsHueBridgeInfo(
                 ip = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,
+                connected = false,
                 body = newBridge.body
             )
         }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -113,7 +114,6 @@ fun ShowMainScreenPhilipsHue(
             bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
             viewmodel = philipsHueViewmodel
         )
-
     }
 
     // display the fab on top of stuff
@@ -379,6 +379,14 @@ private fun ShowBridgeInfoDialog(
                         DrawBridgeInfoLine(
                             stringResource(R.string.active),
                             bridge?.active?.toString() ?: stringResource(R.string.not_applicable)
+                        )
+                    }
+
+                    // connected
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.connected),
+                            bridge?.connected?.toString() ?: stringResource(R.string.not_applicable)
                         )
                     }
 

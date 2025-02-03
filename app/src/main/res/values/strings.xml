@@ -104,5 +104,6 @@
     <string name="not_applicable">N/A</string>
     <string name="token">username</string>
     <string name="room">room</string>
+    <string name="connected">connected</string>
 
 </resources>

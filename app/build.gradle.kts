@@ -89,4 +89,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
+    // okhttp-sse
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
 }

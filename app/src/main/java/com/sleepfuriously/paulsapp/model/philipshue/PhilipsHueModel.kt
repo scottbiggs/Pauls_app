@@ -13,6 +13,8 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.getTime
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.deletePref
@@ -29,6 +31,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
 import org.json.JSONObject
 import java.io.IOException
 
@@ -110,12 +117,99 @@ import java.io.IOException
 class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
     //-------------------------------------
-    //  data
+    //  flow data
     //-------------------------------------
 
     private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
     /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
     val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
+
+
+    //-------------------------------------
+    //  class data
+    //-------------------------------------
+
+    /**
+     * Reference to Event Source--I use it to close the connections.
+     * Each item in the list is a Pair:
+     *      bridgeId : EventSource
+     */
+//    private val eventSourceList = mutableListOf<Pair<String, EventSource>>()
+    /** reference to Event Source--I use it to close the connection */
+    private lateinit var myEventSource : EventSource
+
+
+    private val defaultListener = object : EventSourceListener() {
+        override fun onOpen(eventSource: EventSource, response: Response) {
+            super.onOpen(eventSource, response)
+            Log.d(TAG, "EventSourceListener: Connection Opened")
+            Log.i(TAG, "   time = ${getTime()}")
+
+            // todo - translate this info and put it in a flow so the
+            //  can display it
+            if (response.isSuccessful) {
+                val eventJsonString = response.body?.string()
+                Log.d(TAG, "sse - onOpen: json = $eventJsonString")
+            }
+            else {
+                Log.e(TAG, "problem with response in defaultListener.onOpen()!")
+                Log.e(TAG, "   code = ${response.code}")
+                Log.e(TAG, "   message = ${response.message}")
+                Log.e(TAG, "   request = ${response.request}")
+                Log.e(TAG, "   time = ${getTime()}")
+            }
+            response.body?.close()
+        }
+
+        override fun onClosed(eventSource: EventSource) {
+            super.onClosed(eventSource)
+            Log.d(TAG, "EventSourceListener: Connection Closed")
+            Log.i(TAG, "   time = ${getTime()}")
+
+            // todo: make this info visible (put in a flow)
+            Log.d(TAG, "sse - onClosed() for eventSource ${eventSource.toString()}")
+            Log.i(TAG, "   time = ${getTime()}")
+//            connected = false
+        }
+
+        override fun onEvent(
+            eventSource: EventSource,
+            id: String?,
+            type: String?,
+            data: String
+        ) {
+            super.onEvent(eventSource, id, type, data)
+            Log.d(TAG, "EventSourceListener: On Event Received! Data -: $data")
+            Log.d(TAG, "   eventSource = ${eventSource.toString()}")
+            Log.d(TAG, "   id = $id")
+            Log.d(TAG, "   type = $type")
+            Log.d(TAG, "   data = $data")
+            Log.i(TAG, "   time = ${getTime()}")
+
+            // todo: handle event - translate into json object and parse it, putting
+            //  result in flow so ui can display it correctly.  And anything else too.
+
+//            eventStr = data
+        }
+
+        override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+            super.onFailure(eventSource, t, response)
+
+            Log.e(TAG, "EventSourceListener: On Failure():")
+            Log.e(TAG, "   response.isSuccessful = ${response?.isSuccessful}")
+            Log.e(TAG, "   response.code = ${response?.code}")
+            Log.e(TAG, "   response.request = ${response?.request.toString()}")
+            Log.e(TAG, "   response.body = ${response?.peekBody(10000)?.string()}")
+            Log.e(TAG, "   time = ${getTime()}")
+
+            // todo: handle the failure (flow should show not connected)
+
+//            connected = false
+//            eventStr = "failure: body = ${response?.peekBody(10000).toString()}"
+//            response?.close()
+            response?.body?.close()
+        }
+    }
 
 
     //-------------------------------------
@@ -166,6 +260,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             token = newBridge.token,
             active = newBridge.active,
             rooms = mutableSetOf(),
+            connected = false
         )
         _bridgeFlowSet.value += bridgeToAdd
 
@@ -1253,7 +1348,8 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
                     labelName = name,
                     ip = ip,
                     token = token,
-                    active = isActive
+                    active = isActive,
+                    connected = false
                 )
 
                 _bridgeFlowSet.value += bridge
@@ -1277,8 +1373,95 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
                 newBridgeSet.add(bridge)
             }
+
+            // 3. Connect each active bridge
+            newBridgeSet.forEach { bridge ->
+                if (bridge.active) {
+                    connectToBridge(bridge)
+                }
+            }
+
+            // update the flow for all the bridges
             _bridgeFlowSet.update { newBridgeSet }  // stateflow reflects changes
         }
+    }
+
+    /**
+     * Connects the given bridge to this app, enabling this app to
+     * receive updates on changes to the Philips Hue world.
+     */
+    fun connectToBridge(bridge: PhilipsHueBridgeInfo) {
+
+        val request = Request.Builder()
+            .url("https://${bridge.ip}/eventstream/clip/v2")
+            .header("Accept", "text/event-stream")
+            .addHeader("hue-application-key", bridge.token)
+            .build()
+
+        // not found. add it using the default listener
+        myEventSource = EventSources.createFactory(getAllTrustingSseClient())
+            .newEventSource(
+                request = request,
+                listener = defaultListener
+            )
+
+        // start listening (this is asynchronous--no worries about thread safety)
+//        getAllTrustingClient().newCall(request).enqueue(responseCallback = object :
+//            Callback {
+//            override fun onFailure(call: Call, e: IOException) {
+//                Log.e(TAG, "API Call Failure: ${e.localizedMessage}")
+//                Log.e(TAG, "   time = ${getTime()}")
+//            }
+//
+//            override fun onResponse(call: Call, response: Response) {
+//                Log.d(TAG, "APi Call Success: ${response.peekBody(10000).string()}")
+//                Log.i(TAG, "   time = ${getTime()}")
+//                response.body?.close()
+//            }
+//        })
+
+/*
+        // test: just to see if I can get something--anything from the bridge here
+        val testRequest = Request.Builder()
+            .url("https://${bridge.ip}/clip/v2/resource/bridge")
+            .header("Accept", "text/event-stream")
+            .addHeader("hue-application-key", bridge.token)
+            .build()
+
+        getAllTrustingClient().newCall(testRequest).enqueue(object: Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "API Call Failure: ${e.localizedMessage}")
+                Log.e(TAG, "   time = ${getTime()}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                Log.d(TAG, "APi Call Success: ${response.peekBody(10000).string()}")
+                Log.i(TAG, "   time = ${getTime()}")
+                response.body?.close()
+            }
+        })
+*/
+    }
+
+    /**
+     * Stop receiving updates about the Philps Hue IoT for this bridge.
+     * If the bridge is not found, nothing is done.
+     */
+    fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
+        Log.d(TAG, "disconnect() called on bridge ${bridge.ip}")
+
+        // find the right eventsource
+//        for (i in 0 until eventSourceList.size) {
+//            val eventSource = eventSourceList[i]
+//            if (eventSource.first == bridge.id) {
+//                eventSource.second.cancel()
+//                return
+//            }
+//        }
+//        Log.e(TAG, "Unable to find bridge in disconnectFromBridge(bridgeId = ${bridge.id}")
+
+        myEventSource.cancel()
+
     }
 
     /**
@@ -1287,7 +1470,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * and some other stuff that has to hit the bridge, so it needs
      * to be off the main thread.
      */
-    suspend private fun convertRoomsData(
+    private suspend fun convertRoomsData(
         roomsFromApi: PHv2ResourceRoomsAll,
         bridge: PhilipsHueBridgeInfo
     ) : Set<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {

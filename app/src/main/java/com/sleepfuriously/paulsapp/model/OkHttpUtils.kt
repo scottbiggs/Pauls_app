@@ -33,6 +33,9 @@ object OkHttpUtils {
     /** use THIS instead of the regular OkHttpClient if we want to trust everyone */
     private val allTrustingOkHttpClient: OkHttpClient
 
+    /** Use this client for the Server-sent Event messages (it has different time-outs) */
+    val allTrustingOkHttpSseClient: OkHttpClient
+
 
     init {
         /** an array of trust managers that does not validate certificate chains--it trusts everyone! */
@@ -53,6 +56,7 @@ object OkHttpUtils {
             }
         )
 
+        //---------------
         // implementation of a socket trust manager that blindly trusts all
         val sslContext = SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
@@ -65,10 +69,37 @@ object OkHttpUtils {
         allTrustingBuilder.sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
         allTrustingBuilder.hostnameVerifier { _, _ -> true }
 
-        // now to make our all-trusting okhttp client
+        // now to make our all-trusting okhttp clients
         allTrustingOkHttpClient = allTrustingBuilder.build()
+
+        //---------------
+        // do the same thing with the special builder for server-sent events
+        val allTrustingSseBuilder = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)    // time to wait while connecting
+            .readTimeout(0, TimeUnit.MINUTES)      // 0 means never close
+            .writeTimeout(1, TimeUnit.MINUTES)      // do I need to write ever?
+
+        allTrustingSseBuilder.sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
+        allTrustingSseBuilder.hostnameVerifier { _, _ -> true }
+
+        allTrustingOkHttpSseClient = allTrustingSseBuilder.build()
     }
 
+    /**
+     * Returns a reference to a regular [OkHttpClient].  This one insists on
+     * full security.
+     */
+    fun getClient() : OkHttpClient {
+        return okHttpClient
+    }
+
+    /**
+     * Returns a reference to a special [OkHttpClient] that trusts everyone
+     * unconditionally and is designed to receive server-sent events.
+     */
+    fun getAllTrustingSseClient() : OkHttpClient {
+        return allTrustingOkHttpSseClient
+    }
 
     /**
      * Yep, this is the big blunt hammer.  Kills all outstanding requests.
