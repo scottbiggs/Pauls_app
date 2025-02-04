@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -36,6 +35,7 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -58,7 +58,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -159,7 +158,7 @@ private fun DrawBridgeContents(
         bridgeInfoSet.forEach { bridgeInfo ->
 
             item(span = { GridItemSpan(this.maxLineSpan) }) {
-                DrawBridgeSeparator(bridgeInfo.id, viewmodel)
+                DrawBridgeSeparator(bridgeInfo, viewmodel)
             }
 
             // The first item (which has the name of the bridge)
@@ -167,12 +166,21 @@ private fun DrawBridgeContents(
             item(
                 span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
             ) {
-                DrawBridgeTitle(
-                    text = stringResource(
-                        id = R.string.ph_bridge_name,
-                        bridgeInfo.labelName
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        enabled = bridgeInfo.active,
+                        selected = bridgeInfo.connected,
+                        onClick = { },
                     )
-                )
+                    DrawBridgeTitle(
+                        text = stringResource(
+                            id = R.string.ph_bridge_name,
+                            bridgeInfo.labelName
+                        )
+                    )
+                }
             }
 
             if (bridgeInfo.rooms.size == 0) {
@@ -212,8 +220,7 @@ private fun DrawBridgeContents(
  */
 @Composable
 private fun DrawBridgeSeparator(
-    bridgeId: String,
-//    bridges: Set<PhilipsHueBridgeInfo>,
+    bridge: PhilipsHueBridgeInfo,
     viewmodel: PhilipsHueViewmodel
 ) {
     var modifier = remember {
@@ -237,7 +244,7 @@ private fun DrawBridgeSeparator(
     DotDotDotBridgeMenu(
         modifier = modifier,
         viewmodel = viewmodel,
-        bridgeId = bridgeId,
+        bridge = bridge,
     )
 }
 
@@ -245,7 +252,7 @@ private fun DrawBridgeSeparator(
 private fun DotDotDotBridgeMenu(
     modifier : Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
-    bridgeId: String,
+    bridge: PhilipsHueBridgeInfo,
 ) {
     val ctx = LocalContext.current
     var isDropDownExpanded by remember { mutableStateOf(false) }
@@ -287,7 +294,28 @@ private fun DotDotDotBridgeMenu(
                 onClick = {
                     isDropDownExpanded = false
                     showInfoDialog = true
-                }
+                },
+            )
+
+            // disconnect or reconnect bridge (so we can receive updates)
+            DropdownMenuItem(
+                text = {
+                    if (bridge.connected) {
+                        Text(stringResource(R.string.disconnect_bridge))
+                    }
+                    else {
+                        Text(stringResource(R.string.reconnect_bridge))
+                    }
+                },
+                onClick = {
+                    isDropDownExpanded = false
+                    if (bridge.connected) {
+                        viewmodel.disconnectBridge(bridge)
+                    }
+                    else {
+                        viewmodel.connectBridge(bridge)
+                    }
+                },
             )
 
             // delete bridge
@@ -319,7 +347,7 @@ private fun DotDotDotBridgeMenu(
                 },
                 onConfirm = {
                     showDeleteDialog = false
-                    viewmodel.deleteBridge(bridgeId)    // this spurns a new coroutine and returns immediately
+                    viewmodel.deleteBridge(bridge.id)    // this spurns a new coroutine and returns immediately
                 },
                 titleText = stringResource(R.string.delete_bridge_confirm_title),
                 bodyText = stringResource(R.string.delete_bridge_confirm_body),
@@ -330,7 +358,7 @@ private fun DotDotDotBridgeMenu(
         if (showInfoDialog) {
             Log.d(TAG, "showing info dialog - showInfoDialog = $showInfoDialog")
             ShowBridgeInfoDialog(
-                bridgeId,
+                bridge.id,
                 viewmodel,
                 onClick = {
                     showInfoDialog = false
@@ -466,11 +494,10 @@ private fun DrawBridgeInfoLine(
 }
 
 @Composable
-private fun DrawBridgeTitle(text: String) {
+private fun DrawBridgeTitle(text: String, modifier: Modifier = Modifier) {
     Text(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, top = 2.dp, bottom = 8.dp),
+        modifier = modifier
+            .fillMaxWidth(),
         text = text,
         style = MaterialTheme.typography.headlineSmall,
         color = yellowVeryLight

@@ -31,7 +31,7 @@ data class PhilipsHueNewBridge(
  *  in after.
  */
 data class PhilipsHueBridgeInfo(
-    /** unique identifier for this bridge */
+    /** unique identifier for this bridge which comes from the philips hue v2 id*/
     var id : String,
     /** Name as printed on the bridge itself */
     var labelName : String,

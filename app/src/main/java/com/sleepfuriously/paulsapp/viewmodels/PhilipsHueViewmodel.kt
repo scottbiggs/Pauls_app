@@ -263,6 +263,37 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
+    /**
+     * Tells the philips hue model to stop receiving server-sent events to
+     * this bridge.
+     */
+    fun disconnectBridge(bridge: PhilipsHueBridgeInfo) {
+        bridgeModel.disconnectFromBridge(bridge)
+    }
+
+    /**
+     * Disconnects (via [disconnectBridge]).  If bridge can't be found, nothing
+     * is done.
+     */
+    fun disconnectBridge(bridgeId: String) {
+        val bridge = getBridgeInfo(bridgeId)
+        if (bridge == null) {
+            Log.e(TAG, "Cannot find bridge in disconnectBridge(bridgeId = $bridgeId)")
+        }
+        else {
+            disconnectBridge(bridgeId)
+        }
+    }
+
+    /**
+     * Tells the model to try to re-connect to this bridge so we can receive
+     * server-sent events.
+     */
+    fun connectBridge(bridge: PhilipsHueBridgeInfo) {
+        bridgeModel.connectToBridge(bridge)
+    }
+
+
     //-------------------------
     //  add bridge functions
     //-------------------------
