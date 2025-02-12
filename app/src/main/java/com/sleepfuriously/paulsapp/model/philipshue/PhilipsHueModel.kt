@@ -36,6 +36,8 @@ import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
+import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 
@@ -197,6 +199,9 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             }
         }
 
+        /**
+         * This is the event that the server sends us!!!!  YAY!
+         */
         override fun onEvent(
             eventSource: EventSource,
             id: String?,
@@ -204,17 +209,29 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             data: String
         ) {
             super.onEvent(eventSource, id, type, data)
-            Log.d(TAG, "EventSourceListener: On Event Received! Data -: $data")
+            Log.d(TAG, "EventSourceListener: On Event Received!")
             Log.d(TAG, "   eventSource = ${eventSource.toString()}")
             Log.d(TAG, "   id = $id")
             Log.d(TAG, "   type = $type")
             Log.d(TAG, "   data = $data")
             Log.i(TAG, "   time = ${getTime()}")
 
-            // todo: handle event - translate into json object and parse it, putting
-            //  result in flow so ui can display it correctly.  And anything else too.
-
-//            eventStr = data
+            try {
+                val eventJsonArray = JSONArray(data)
+                val firstJsonObject = eventJsonArray.getJSONObject(0)
+                val v2Event = PHv2ResourceServerSentEvent(firstJsonObject)
+                val bridge = getBridgeFromEventSource(eventSource)
+                if (bridge == null) {
+                    Log.e(TAG, "Unable to find bridge in onEvent()!")
+                    return
+                }
+                interpretEvent(bridge, v2Event)
+            }
+            catch (e: JSONException) {
+                Log.e(TAG, "Unable to parse event into json object: $data")
+                e.printStackTrace()
+                return
+            }
         }
 
         override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
@@ -246,11 +263,121 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
 
     //-------------------------------------
-    //  functions
+    //  initializations
     //-------------------------------------
 
     init {
         properInit()
+    }
+
+    /**
+     * This exists because kotlin sucks at inits.  Please don't
+     * call this function except during initialization.
+     *
+     * This loads any data that is stored in shared prefs.
+     *
+     * side effects
+     *  - [bridgeFlowSet] will contain data as in the shared prefs
+     */
+    private fun properInit() {
+
+        // idiot test to make sure this isn't run more than once.
+        if (initialized) {
+            Log.e(TAG, "Error: tried to initialize more than once!!!")
+            return
+        }
+        initialized = true
+
+        //----------------
+        //  1. Load bridge info from long-term storage
+        //
+        //  2. For each active bridge, get rooms for that bridge
+        //     (includes control data for the room)
+        //
+        //  3. Setup callbacks (events) for the bridges so we can be
+        //     updated when anything changes.
+        //
+
+        // Needs to run off the main thread
+        runBlocking(Dispatchers.IO) {
+
+            // 1. Load bridge ids from prefs
+            //
+            val bridgeIds = loadAllBridgeIdsFromPrefs()
+            if (bridgeIds.isNullOrEmpty()) {
+                return@runBlocking
+            }
+
+            // use these ids to load the ips & tokens from prefs
+            bridgeIds.forEach() { id ->
+
+                // get the IP for this bridge
+                val ip = loadBridgeIpFromPrefs(id)
+
+                // get the token for this bridge
+                val token = loadBridgeTokenFromPrefs(id)
+
+                val isActive = isBridgeActive(ip, token)
+                var name = ""
+                if (isActive) {
+                    val jsonString = getBridgeDataStrFromApi(ip, token)
+                    if (jsonString.isEmpty()) {
+                        Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
+                    }
+                    else {
+                        val v2Bridge = PHv2ResourceBridge(jsonString)
+                        if (v2Bridge.hasData() == false) {
+                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
+                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
+                        }
+                        else {
+                            // finally we can get the name!
+                            name = v2Bridge.getName()
+                        }
+                    }
+                }
+
+                val bridge = PhilipsHueBridgeInfo(
+                    id = id,
+                    labelName = name,
+                    ip = ip,
+                    token = token,
+                    active = isActive,
+                    connected = false
+                )
+
+                _bridgeFlowSet.value += bridge
+            }
+
+            // 2. Load data for each bridge (but only if it's active)
+            //    To make sure that the flow works correctly we construct
+            //    a brand-new set with all the data in it.
+            val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+            bridgeFlowSet.value.forEach { bridge ->
+                if (isBridgeActive(bridge)) {
+                    bridge.active = true
+
+                    // 2a. Find rooms and add them to the bridge data
+                    val roomsFromApi = getRoomsFromBridgeApi(bridge.id)
+                    bridge.rooms = convertV2RoomAll(roomsFromApi, bridge)
+                }
+                else {
+                    bridge.active = false
+                }
+
+                newBridgeSet.add(bridge)
+            }
+
+            // 3. Connect each active bridge so we can receive server-sent events
+            newBridgeSet.forEach { bridge ->
+                if (bridge.active) {
+                    connectToBridge(bridge)
+                }
+            }
+
+            // update the flow for all the bridges
+            _bridgeFlowSet.update { newBridgeSet }  // stateflow reflects changes
+        }
     }
 
 
@@ -589,6 +716,33 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     //-------------------------------------
     //  utils
     //-------------------------------------
+
+    /**
+     * Working completely by side effect, this analyses the result of a server-
+     * sent event and changes the contents of the bridge data appropriately.
+     */
+    private fun interpretEvent(bridge: PhilipsHueBridgeInfo, event: PHv2ResourceServerSentEvent) {
+
+        // todo: do this right
+
+        // but for now, I'm just doing what I normally do at the start
+        runBlocking(Dispatchers.IO) {
+            val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+            bridgeFlowSet.value.forEach { thisBridge ->
+                if (thisBridge.id == bridge.id) {
+                    // this is the bridge to change.  Add the new one instead
+                    // of the old one
+                    newBridgeSet.add(bridge)
+                }
+                else {
+                    // add the bridge without change
+                    newBridgeSet.add(thisBridge)
+                }
+            }
+
+            _bridgeFlowSet.update { newBridgeSet }
+        }
+    }
 
     /**
      * Grabs the bridge that uses this given eventSource.  If none can be found, this
@@ -1322,114 +1476,6 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     //~~~~~~~~~~~
 
     /**
-     * This exists because kotlin sucks at inits.  Please don't
-     * call this function except during initialization.
-     *
-     * This loads any data that is stored in shared prefs.
-     *
-     * side effects
-     *  - [bridges] will contain data as in the shared prefs
-     */
-    private fun properInit() {
-
-        // idiot test to make sure this isn't run more than once.
-        if (initialized) {
-            Log.e(TAG, "Error: tried to initialize more than once!!!")
-            return
-        }
-        initialized = true
-
-        //----------------
-        //  1. Load bridge info from long-term storage
-        //
-        //  2. For each active bridge, get rooms for that bridge
-        //     (includes control data for the room)
-        //
-        //  3. Setup callbacks (events) for the bridges so we can be
-        //     updated when anything changes.
-        //
-
-        // Needs to run off the main thread
-        runBlocking(Dispatchers.IO) {
-            // 1. Load bridge ids from prefs
-            val bridgeIds = loadAllBridgeIdsFromPrefs()
-            if (bridgeIds.isNullOrEmpty()) {
-                return@runBlocking
-            }
-
-            // use these ids to load the ips & tokens from prefs
-            bridgeIds.forEach() { id ->
-
-                // get the IP for this bridge
-                val ip = loadBridgeIpFromPrefs(id)
-
-                // get the token for this bridge
-                val token = loadBridgeTokenFromPrefs(id)
-
-                val isActive = isBridgeActive(ip, token)
-                var name = ""
-                if (isActive) {
-                    val jsonString = getBridgeDataStrFromApi(ip, token)
-                    if (jsonString.isEmpty()) {
-                        Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
-                    }
-                    else {
-                        val v2Bridge = PHv2ResourceBridge(jsonString)
-                        if (v2Bridge.hasData() == false) {
-                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
-                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
-                        }
-                        else {
-                            // finally we can get the name!
-                            name = v2Bridge.getName()
-                        }
-                    }
-                }
-
-                val bridge = PhilipsHueBridgeInfo(
-                    id = id,
-                    labelName = name,
-                    ip = ip,
-                    token = token,
-                    active = isActive,
-                    connected = false
-                )
-
-                _bridgeFlowSet.value += bridge
-            }
-
-            // 2. Load data for each bridge (but only if it's active)
-            //    To make sure that the flow works correctly we construct
-            //    a brand-new set with all the data in it.
-            val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
-            bridgeFlowSet.value.forEach { bridge ->
-                if (isBridgeActive(bridge)) {
-                    bridge.active = true
-
-                    // 2a. Find rooms and add them to the bridge data
-                    val roomsFromApi = getRoomsFromBridgeApi(bridge.id)
-                    bridge.rooms = convertV2RoomAll(roomsFromApi, bridge)
-                }
-                else {
-                    bridge.active = false
-                }
-
-                newBridgeSet.add(bridge)
-            }
-
-            // 3. Connect each active bridge
-            newBridgeSet.forEach { bridge ->
-                if (bridge.active) {
-                    connectToBridge(bridge)
-                }
-            }
-
-            // update the flow for all the bridges
-            _bridgeFlowSet.update { newBridgeSet }  // stateflow reflects changes
-        }
-    }
-
-    /**
      * Connects the given bridge to this app, enabling this app to
      * receive updates on changes to the Philips Hue world.
      */
@@ -1524,73 +1570,73 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     private suspend fun pollBridge(bridge: PhilipsHueBridgeInfo) : Boolean {
 
         TODO()
-
-        var changed = false
-
-        // check to see if it's active first (may need to change active status)
-        if (doesBridgeRespondToIp(bridge)) {
-            if (bridge.active == true) {
-                changed = true
-            }
-            bridge.active = true
-        }
-        else {
-            if (bridge.active == true) {
-                changed = true
-            }
-            bridge.active = false
-            return changed
-        }
-
-        // test the token
-        if (doesBridgeAcceptToken(bridge) == false) {
-            // problem with the token.  Either there wasn't one
-            // or the bridge was reset.  I'm calling this a change
-            // regardless
-            bridge.token = ""
-            changed = true
-            return changed
-        }
-
-
-        // fixme:  this isn't that useful.
-        // Lastly, the catch-all: the body.  A lot of stuff goes on here,
-        // and if anything changes along here, we'll notice it.
-
-//        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
-//        if (bridgeJsonDataStr.isEmpty()) {
-//            Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
-//            if (bridge.body.isNotEmpty()) {
+//
+//        var changed = false
+//
+//        // check to see if it's active first (may need to change active status)
+//        if (doesBridgeRespondToIp(bridge)) {
+//            if (bridge.active == true) {
 //                changed = true
-//                bridge.body = ""
 //            }
-//            // nothing more to do
+//            bridge.active = true
+//        }
+//        else {
+//            if (bridge.active == true) {
+//                changed = true
+//            }
+//            bridge.active = false
 //            return changed
 //        }
-
-        // fixme: the bridgeInfo isn't that useful
-//        val bridgeInfo = PHv2ResourceBridge(bridgeJsonDataStr)
 //
-//        if (bridge.body != bridgeJsonDataStr) {
+//        // test the token
+//        if (doesBridgeAcceptToken(bridge) == false) {
+//            // problem with the token.  Either there wasn't one
+//            // or the bridge was reset.  I'm calling this a change
+//            // regardless
+//            bridge.token = ""
 //            changed = true
-//            bridge.body = bridgeJsonDataStr
+//            return changed
 //        }
-
-
-        // get the list of rooms that the bridge knows about
-        val roomsBridgeInfo = getRoomsFromBridgeApi(bridge.id)
-        if (bridge.rooms.size != roomsBridgeInfo.size()) {
-            changed = true
-        }
-
-        // convert to a Set of rooms
-        val newRoomSet = convertV2RoomAll(phV2Rooms = roomsBridgeInfo, bridge = bridge)
-
-        // See if there are any differences in this set and our current set of rooms
-
-//        compareRooms(roomsBridgeInfo)
-
-        return changed
+//
+//
+//        // fixme:  this isn't that useful.
+//        // Lastly, the catch-all: the body.  A lot of stuff goes on here,
+//        // and if anything changes along here, we'll notice it.
+//
+////        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
+////        if (bridgeJsonDataStr.isEmpty()) {
+////            Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
+////            if (bridge.body.isNotEmpty()) {
+////                changed = true
+////                bridge.body = ""
+////            }
+////            // nothing more to do
+////            return changed
+////        }
+//
+//        // fixme: the bridgeInfo isn't that useful
+////        val bridgeInfo = PHv2ResourceBridge(bridgeJsonDataStr)
+////
+////        if (bridge.body != bridgeJsonDataStr) {
+////            changed = true
+////            bridge.body = bridgeJsonDataStr
+////        }
+//
+//
+//        // get the list of rooms that the bridge knows about
+//        val roomsBridgeInfo = getRoomsFromBridgeApi(bridge.id)
+//        if (bridge.rooms.size != roomsBridgeInfo.size()) {
+//            changed = true
+//        }
+//
+//        // convert to a Set of rooms
+//        val newRoomSet = convertV2RoomAll(phV2Rooms = roomsBridgeInfo, bridge = bridge)
+//
+//        // See if there are any differences in this set and our current set of rooms
+//
+////        compareRooms(roomsBridgeInfo)
+//
+//        return changed
     }
 
     /**

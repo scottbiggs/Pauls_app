@@ -124,6 +124,7 @@ class PhilipsHueViewmodel : ViewModel() {
             bridgeModel.bridgeFlowSet.collectLatest {
                 // This is the only place that this variable should be assigned!
                 philipsHueBridgesCompose = it
+                Log.d(TAG, "philipsHueBridgesCompose changed!")
             }
         }
 
@@ -269,20 +270,6 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun disconnectBridge(bridge: PhilipsHueBridgeInfo) {
         bridgeModel.disconnectFromBridge(bridge)
-    }
-
-    /**
-     * Disconnects (via [disconnectBridge]).  If bridge can't be found, nothing
-     * is done.
-     */
-    fun disconnectBridge(bridgeId: String) {
-        val bridge = getBridgeInfo(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "Cannot find bridge in disconnectBridge(bridgeId = $bridgeId)")
-        }
-        else {
-            disconnectBridge(bridgeId)
-        }
     }
 
     /**

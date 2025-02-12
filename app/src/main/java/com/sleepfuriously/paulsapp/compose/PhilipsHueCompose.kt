@@ -197,6 +197,7 @@ private fun DrawBridgeContents(
                 }
             } else {
                 // yes, there are rooms to display
+                Log.d(TAG, "Updating display of ${bridgeInfo.rooms.size} rooms")
                 bridgeInfo.rooms.forEach { room ->
                     item {
                         DisplayPhilipsHueRoom(
