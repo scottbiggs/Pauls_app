@@ -1,5 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
+import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
+
 /**
  * Information about a NEW bridge.  It's essentially the same
  * as [PhilipsHueBridgeInfo], but without a few things that
@@ -74,7 +77,9 @@ data class PhilipsHueRoomInfo(
     val name: String,
     var on: Boolean = false,
     var brightness : Int = 0,
-    val lights: MutableSet<PhilipsHueLightInfo>
+    val lights: MutableSet<PhilipsHueLightInfo>,
+    /** References to group of lights in this room.  Even though it's an array, there should be just 1. */
+    val groupedLightServices: List<PHv2ItemInArray>
 )
 
 /**
@@ -117,6 +122,8 @@ data class PhilipsHueLightState(
 //------------------------------
 //  constants
 //------------------------------
+
+private const val TAG = "PhilipsHueDataTypes"
 
 /** the maximum light that a light can put out */
 const val MAX_BRIGHTNESS = 100

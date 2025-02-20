@@ -170,9 +170,9 @@ data class PHv2Room(
     val type: String,
     val id: String,
     val idV1: String,
-    /** all the devices (things) in this room (could be services too) */
+    /** all the devices (things) in this room */
     val children: List<PHv2ItemInArray> = listOf(),
-    /** Services that use this room whole or in part. Very broad. */
+    /** Services that use this room whole or in part. Most importantly: groupd_light!!! */
     val services: List<PHv2ItemInArray> = listOf(),
     /** Inludes human-readable info about this room */
     val metadata: PHv2RoomMetadata

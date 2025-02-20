@@ -90,9 +90,11 @@ import kotlin.math.roundToInt
 @Composable
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
-    philipsHueViewmodel: PhilipsHueViewmodel
+    philipsHueViewmodel: PhilipsHueViewmodel,
+    bridges: Set<PhilipsHueBridgeInfo>
 ) {
-    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
+//    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
+    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${bridges.size}")
 
     // the content
     Column(
@@ -110,7 +112,8 @@ fun ShowMainScreenPhilipsHue(
         )
 
         DrawBridgeContents(
-            bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
+//            bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
+            bridgeInfoSet = bridges,
             viewmodel = philipsHueViewmodel
         )
     }

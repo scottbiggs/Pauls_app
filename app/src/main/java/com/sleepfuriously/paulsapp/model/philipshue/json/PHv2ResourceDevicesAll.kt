@@ -134,7 +134,14 @@ data class PHv2Device(
          *                      json array, so the parent doesn't make sense.
          */
         operator fun invoke(jsonObject: JSONObject) : PHv2Device {
+            // create the service list
             val serviceList = mutableListOf<PHv2ResourceIdentifier>()
+            if (jsonObject.has(SERVICES)) {
+                val serviceJsonArray = jsonObject.getJSONArray(SERVICES)
+                for (i in 0 until serviceJsonArray.length()) {
+                    serviceList.add(PHv2ResourceIdentifier(serviceJsonArray.getJSONObject(i)))
+                }
+            }
 
             return PHv2Device(
                 type = jsonObject.optString(TYPE),
@@ -145,6 +152,17 @@ data class PHv2Device(
                 deviceMode = PHv2DeviceMode(jsonObject),
                 services = serviceList
             )
+        }
+
+        /**
+         * Alternate constructor
+         *
+         * @param   jsonStr     A string representation of the json that is
+         *                      this actual device (NOT the parent!).
+         */
+        operator fun invoke(jsonStr: String) : PHv2Device {
+            val jsonObject = JSONObject(jsonStr)
+            return PHv2Device(jsonObject)
         }
     }
 }

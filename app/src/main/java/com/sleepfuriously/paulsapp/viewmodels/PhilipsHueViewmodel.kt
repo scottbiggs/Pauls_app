@@ -75,11 +75,35 @@ class PhilipsHueViewmodel : ViewModel() {
     var waitingForResponse = _waitingForResponse.asStateFlow()
 
     /** access to the philips hue bridge and all that stuff that goes with it */
-    private var bridgeModel = PhilipsHueModel()
+    private var bridgeModel = PhilipsHueModel(coroutineScope = viewModelScope)
 
     /** This variable holds a new bridge while working on it.  Once filled in, it'll be added to the list */
     var workingNewBridge: PhilipsHueNewBridge? = null
         private set
+
+
+    init {
+        // Setup a coroutine that listens for changes (works as a consumer) to
+        // the flow from the Philips Hue model.
+        // When there is a change, pass that change along to philipsHueBridgesCompose
+        // (this makes us now a producer).  Thus this viewmodel is an intermediary (both).
+        viewModelScope.launch {
+            bridgeModel.bridgeFlowSet.collectLatest {
+//            bridgeModel.bridgeFlowSet.collect {
+                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it")
+                philipsHueBridgesCompose = it
+            }
+        }
+
+        // example from my working test
+//        viewModelScope.launch {
+//            bridgeRepository.bridges.collectLatest {
+//                Log.d(TAG, "bridges = $it")
+//                composeBridgeSet = it
+//            }
+//        }
+
+    }
 
     //-------------------------
     //  public functions
@@ -119,14 +143,6 @@ class PhilipsHueViewmodel : ViewModel() {
 
         var allTestsSuccessful = true       // start optimistically
 
-        // Start collecting the flow from the Model as soon as possible
-        viewModelScope.launch {
-            bridgeModel.bridgeFlowSet.collectLatest {
-                // This is the only place that this variable should be assigned!
-                philipsHueBridgesCompose = it
-                Log.d(TAG, "philipsHueBridgesCompose changed!")
-            }
-        }
 
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {

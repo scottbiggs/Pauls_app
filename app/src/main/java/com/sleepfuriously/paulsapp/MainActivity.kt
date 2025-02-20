@@ -285,7 +285,11 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        ShowMainScreenPhilipsHue(modifier, philipsHueViewmodel)
+                        ShowMainScreenPhilipsHue(
+                            modifier = modifier,
+                            philipsHueViewmodel = philipsHueViewmodel,
+                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
+                        )
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)

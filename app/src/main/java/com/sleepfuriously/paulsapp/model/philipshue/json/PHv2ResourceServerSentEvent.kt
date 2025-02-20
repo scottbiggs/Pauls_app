@@ -7,7 +7,8 @@ import org.json.JSONObject
  * Could be just about anything.
  */
 data class PHv2ResourceServerSentEvent(
-    val id: String,
+    /** id of the event for this specific group of data, not a device, group, or service */
+    val eventId: String,
     /** will be ‘update’, ‘add’, ‘delete’, or ‘error’ */
     val type: String,
     val createtime: String,
@@ -32,7 +33,7 @@ data class PHv2ResourceServerSentEvent(
             }
 
             return PHv2ResourceServerSentEvent(
-                id = id,
+                eventId = id,
                 type = type,
                 createtime = createtime,
                 data = data
@@ -49,7 +50,9 @@ data class PHv2ResourceServerSentEvent(
  *  This is probably incomplete (as are the docs!!!).
  */
 data class PHv2SseData(
-    val id: String,
+    /** The id of the event. What changed is in [owner]. */
+    val eventId: String,
+    /** Old version--seems to refer to the [owner]. */
     val idV1: String = "",
     /** the type of thing that we're talking about: device, light, group, etc */
     val type: String,
@@ -57,7 +60,7 @@ data class PHv2SseData(
     val dimming: PHv2LightDimming? = null,
     /** when not null, this will hold a change in the on/off aspect */
     val on: PHv2LightOn? = null,
-    /** when not null, this will hold reference to the owner */
+    /** when not null, this will hold reference to the owner (which is probably the device or service) */
     val owner: PHv2ResourceIdentifier? = null
 ) {
     companion object {
@@ -89,7 +92,7 @@ data class PHv2SseData(
             else { null }
 
             return PHv2SseData(
-                id = id,
+                eventId = id,
                 idV1 = idv1,
                 type = type,
                 dimming = dimming,

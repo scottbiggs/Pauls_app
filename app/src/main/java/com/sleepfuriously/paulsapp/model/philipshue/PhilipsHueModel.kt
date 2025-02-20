@@ -25,10 +25,12 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenRespon
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -116,7 +118,10 @@ import java.io.IOException
  *  The construction of this class can take a bit of time.
  *  Consider initializing this class within a coroutine.
  */
-class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
+class PhilipsHueModel(
+    private val ctx: Context = MyApplication.appContext,
+    private val coroutineScope: CoroutineScope
+) {
 
     //-------------------------------------
     //  flow data
@@ -216,16 +221,24 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             Log.d(TAG, "   data = $data")
             Log.i(TAG, "   time = ${getTime()}")
 
+            val bridge = getBridgeFromEventSource(eventSource)
+            if (bridge == null) {
+                Log.e(TAG, "Unable to find bridge in onEvent()!")
+                return
+            }
+
             try {
                 val eventJsonArray = JSONArray(data)
-                val firstJsonObject = eventJsonArray.getJSONObject(0)
-                val v2Event = PHv2ResourceServerSentEvent(firstJsonObject)
-                val bridge = getBridgeFromEventSource(eventSource)
-                if (bridge == null) {
-                    Log.e(TAG, "Unable to find bridge in onEvent()!")
-                    return
+
+                coroutineScope.launch {
+                    // create list of events
+                    val eventList = listOf<PHv2ResourceServerSentEvent>()
+                    for (i in 0 until eventJsonArray.length()) {
+                        val eventJsonObj = eventJsonArray.getJSONObject(i)
+                        val v2Event = PHv2ResourceServerSentEvent(eventJsonObj)
+                        interpretEvent(bridge, v2Event)
+                    }
                 }
-                interpretEvent(bridge, v2Event)
             }
             catch (e: JSONException) {
                 Log.e(TAG, "Unable to parse event into json object: $data")
@@ -303,13 +316,16 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
 
             // 1. Load bridge ids from prefs
             //
-            val bridgeIds = loadAllBridgeIdsFromPrefs()
-            if (bridgeIds.isNullOrEmpty()) {
+            val bridgeIdsFromPrefs = loadAllBridgeIdsFromPrefs()
+            if (bridgeIdsFromPrefs.isNullOrEmpty()) {
                 return@runBlocking
             }
 
+            /**  temp holder */
+            val workingBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+
             // use these ids to load the ips & tokens from prefs
-            bridgeIds.forEach() { id ->
+            bridgeIdsFromPrefs.forEach() { id ->
 
                 // get the IP for this bridge
                 val ip = loadBridgeIpFromPrefs(id)
@@ -346,19 +362,21 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
                     connected = false
                 )
 
-                _bridgeFlowSet.value += bridge
+                // fixme: this is too early!  The bridgeFlowSet should be done once all the
+                //  bridges are completely figured out!
+                workingBridgeSet += bridge
             }
 
             // 2. Load data for each bridge (but only if it's active)
             //    To make sure that the flow works correctly we construct
             //    a brand-new set with all the data in it.
             val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
-            bridgeFlowSet.value.forEach { bridge ->
+            workingBridgeSet.forEach { bridge ->
                 if (isBridgeActive(bridge)) {
                     bridge.active = true
 
                     // 2a. Find rooms and add them to the bridge data
-                    val roomsFromApi = getRoomsFromBridgeApi(bridge.id)
+                    val roomsFromApi = getRoomsFromBridgeApi(bridge)
                     bridge.rooms = convertV2RoomAll(roomsFromApi, bridge)
                 }
                 else {
@@ -474,6 +492,9 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * Set of bridges.  If the id is bogus this returns null.
      * Great way to check to see if a bridge exists.
      *
+     * preconditions
+     *      bridgeFlowSet   Needs to be setup and working with all correct data.
+     *
      * @return  The [PhilipsHueBridgeInfo] of the bridge with the
      *          given id.
      *          Null if id is not found.
@@ -550,17 +571,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      *
      * @return      Set of all rooms found with this bridge
      */
-    private suspend fun getRoomsFromBridgeApi(bridgeId: String) : PHv2ResourceRoomsAll {
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "trying to find rooms with bad id in getRooms($bridgeId). aborting!")
-            return PHv2ResourceRoomsAll(JSONObject())
-        }
-
-//        val fullAddress = createFullAddress(
-//            ip = bridge.ip,
-//            suffix = SUFFIX_API + bridge.token + SUFFIX_GET_ROOMS
-//        )
+    private suspend fun getRoomsFromBridgeApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceRoomsAll {
 
         val fullAddress = createFullAddress(
             prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
@@ -569,11 +580,9 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         )
 
         // get info from bridge
-//        val response = synchronousGetRequest(fullAddress)
         val response = synchronousGet(
             url = fullAddress,
-//            header = Pair(HEADER_KEY_TOKEN, bridge.token)
-            header = Pair(HEADER_TOKEN_KEY, "dS0mS4HxTJdJdD-QJqUo780Ubl782Zc1DD4fQXNn"),
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
             trustAll = true
         )
 
@@ -720,29 +729,141 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     /**
      * Working completely by side effect, this analyses the result of a server-
      * sent event and changes the contents of the bridge data appropriately.
+     *
+     * @param   eventBridge     The bridge that the event relates to
+     *
+     * @param   event           Data structure describing the event.
      */
-    private fun interpretEvent(bridge: PhilipsHueBridgeInfo, event: PHv2ResourceServerSentEvent) {
+    private suspend fun interpretEvent(eventBridge: PhilipsHueBridgeInfo, event: PHv2ResourceServerSentEvent) {
 
-        // todo: do this right
+        Log.d(TAG, "interpretEvent()  eventBridge = ${eventBridge.id}")
+        Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
+        Log.d(TAG, "interpretEvent()  event.eventId = ${event.eventId}")
+        Log.d(TAG, "interpretEvent()  event.data = ${event.data}")
 
-        // but for now, I'm just doing what I normally do at the start
-        runBlocking(Dispatchers.IO) {
-            val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
-            bridgeFlowSet.value.forEach { thisBridge ->
-                if (thisBridge.id == bridge.id) {
-                    // this is the bridge to change.  Add the new one instead
-                    // of the old one
-                    newBridgeSet.add(bridge)
+        // if this is an error, we have nothing to do
+        if (event.type == "error") {
+            Log.w(TAG, "interpretEvent() - can't do anything with an error, skipping!")
+            return
+        }
+
+        // Yay, this works!!! The viewmodel got the change and passed it along to the view.
+        val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+
+        // rebuild the bridge set
+        bridgeFlowSet.value.forEach { bridge ->
+            // Is this the bridge in question?
+            if (bridge.id == eventBridge.id) {
+                // Yes, this is the bridge.  What kind of event was it?
+                when (event.type) {
+                    "update" -> {
+                        // go through each datum for this event
+                        event.data.forEach { eventDatum ->
+                            // what kind of device changed?
+                            when (eventDatum.type) {
+                                "light" -> {
+                                    val light = findLightFromId(eventDatum.owner!!.rid, bridge)
+                                    if (light == null) {
+                                        Log.e(TAG, "unable to find changed light in interpretEvent()!")
+                                    }
+                                    else {
+                                        // yes, we have a light!
+                                        if (eventDatum.on != null) {
+                                            light.state.on = eventDatum.on.on
+                                        }
+                                        if (eventDatum.dimming != null) {
+                                            light.state.bri = eventDatum.dimming.brightness
+                                        }
+
+                                        // now fix the room.
+                                        val room = findRoomFromLight(light, bridge)
+                                        if (room != null) {
+                                            // There's just one light group per room. Get its info and
+                                            // reset the room's data.
+                                            val lightGroup = getGroupedLightFromApi(room.groupedLightServices[0].rid, bridge)
+                                            room.brightness = lightGroup.data[0].dimming.brightness
+                                            room.on = lightGroup.data[0].on.on
+                                        }
+                                    }
+                                }
+
+                                "grouped_light" -> {
+                                    TODO()
+                                }
+
+                                "room" -> {
+                                    TODO()
+                                }
+
+                                else -> {
+                                    TODO()
+                                }
+                            }
+
+                        }
+                    }
+                    "add" -> {
+                        TODO()
+                    }
+                    "delete" -> {
+                        TODO()
+                    }
+                    else -> {
+                        Log.e(TAG, "Unknown event type!!! Aborting!")
+                        return
+                    }
                 }
-                else {
-                    // add the bridge without change
-                    newBridgeSet.add(thisBridge)
-                }
+//                bridge.labelName = "slippery sam"
             }
 
-            _bridgeFlowSet.update { newBridgeSet }
+            newBridgeSet.add(bridge)
         }
+        _bridgeFlowSet.update { newBridgeSet.toSet() }
+
+
+
     }
+
+    /**
+     * Another helper.  This finds the room that a light resides in.
+     * Returns null if not found.
+     */
+    private fun findRoomFromLight(
+        light: PhilipsHueLightInfo,
+        bridge: PhilipsHueBridgeInfo
+    ) : PhilipsHueRoomInfo? {
+        bridge.rooms.forEach { room ->
+            room.lights.forEach { maybeThisLight ->
+                if (maybeThisLight.id == light.id) {
+                    Log.d(TAG, "found the room that holds light (id = ${light.id}")
+                    return room
+                }
+            }
+        }
+        Log.d(TAG, "Could not find the room that holds light (id = ${light.id}. Sorry.")
+        return null
+    }
+
+
+    /**
+     * Goes through all the lights in this bridge and returns the one that
+     * matches the given id.  Returns null if not found.
+     */
+    private fun findLightFromId(id: String, bridge: PhilipsHueBridgeInfo) : PhilipsHueLightInfo? {
+
+        // go through all the rooms
+        bridge.rooms.forEach { room ->
+            room.lights.forEach { light ->
+                if (light.id == id) {
+                    Log.d(TAG, "Found the light in findLightFromId(id = $id), yay!")
+                    return light
+                }
+            }
+        }
+        Log.d(TAG, "did not find light (id = $id) in findLightFromId().  Sigh.")
+        return null
+    }
+
 
     /**
      * Grabs the bridge that uses this given eventSource.  If none can be found, this
@@ -1669,9 +1790,14 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             }
 
             val v2RoomIndividual = getRoomIndividualFromApi(v2Room.id, bridge)
-            val room = convertPHv2RoomIndividual(v2RoomIndividual, bridge)
-            if (room != null) {
-                newRoomSet.add(room)
+            if (v2RoomIndividual.errors.isNotEmpty()) {
+                Log.e(TAG, "convertV2RoomAll(): error getting individual room!")
+            }
+            else {
+                val room = convertPHv2RoomIndividual(v2RoomIndividual, bridge)
+                if (room != null) {
+                    newRoomSet.add(room)
+                }
             }
         }
 
@@ -1747,67 +1873,72 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         val groupedLightServices = mutableListOf<PHv2ItemInArray>()
         v2Room.services.forEach { service ->
             if (service.rtype == RTYPE_GROUP_LIGHT) {
+                Log.d(TAG, "convertPHv2Room() found a grouped_light, yay! (id = ${service.rid})")
                 groupedLightServices.add(service)
             }
         }
 
         if (groupedLightServices.isNotEmpty()) {
-            // Yep, we have some light groups.  But a room should have no
-            // more than one.
+            // Yep, we have some light groups.  But a room should have ONLY one.
             if (groupedLightServices.size > 1) {
                 Log.e(TAG, "too many grouped light services in convertPHv2Room!  Aborting!")
                 return@withContext PhilipsHueRoomInfo(
                     id = "-1",
                     name = EMPTY_STRING,
-                    lights = mutableSetOf()
+                    lights = mutableSetOf(),
+                    groupedLightServices = groupedLightServices
                 )
             }
+
+            // The grouped_light has info on on/off and brightness
             val groupedLight = getGroupedLightFromApi(groupedLightServices[0].rid, bridge)
+            var onOff = false
+            var brightness = 0
+            if (groupedLight.errors.isEmpty()) {
+                onOff = groupedLight.data[0].on.on
+                brightness = groupedLight.data[0].dimming.brightness
+            }
 
             // get the lights
-            val v2RoomLights = mutableListOf<PHv2LightIndividual>()
+            val regularLightSet = mutableSetOf<PhilipsHueLightInfo>()
             v2Room.children.forEach { child ->
                 if (child.rtype == RTYPE_DEVICE) {
-                    // is this device a light?
+                    // is this device a light?  It's a light iff one of its services is rtype = "light".
                     val device = getDeviceIndividualFromApi(child.rid, bridge)
-                    if (device.data.isNotEmpty() && (device.data[0].type == LIGHT)) {
-                        // yes, it's a light!  Get it properly.
-                        val v2Light = getLightInfoFromApi(device.data[0].id, bridge)
-
-                        // double check to make sure it's valid
-                        if (v2Light.data.isNotEmpty()) {
-                            // it's a proper light, add it
-                            v2RoomLights.add(v2Light)
+                    if (device.data.isNotEmpty() && (device.data[0].type == DEVICE)) {
+                        // yes, it's a device (probably a light)!  To make sure, search its services.
+                        device.data[0].services.forEach { service ->
+                            if (service.rtype == RTYPE_LIGHT) {
+                                val v2light = getLightInfoFromApi(service.rid, bridge)
+                                if (v2light != null) {
+                                    val regularLight = PhilipsHueLightInfo(
+                                        id = v2light.data[0].id,
+                                        name = v2light.data[0].metadata.name,
+                                        state = PhilipsHueLightState(
+                                            on = v2light.data[0].on.on,
+                                            bri = v2light.data[0].dimming.brightness
+                                        ),
+                                        type = v2light.data[0].type
+                                    )
+                                    regularLightSet.add(regularLight)
+                                }
+                                else {
+                                    Log.e(TAG, "problem finding light in convertPHv2Room()!!!")
+                                }
+                            }
                         }
                     }
                 }
-            }
-
-            // convert the lights to our usable data format
-            val regularLightSet = mutableSetOf<PhilipsHueLightInfo>()
-            v2RoomLights.forEach { v2Light ->
-                val state = PhilipsHueLightState(
-                    on = v2Light.data[0].on.on,
-                    bri = v2Light.data[0].dimming.brightness
-                    // todo: more if necessary
-                )
-                val newRegularLight = PhilipsHueLightInfo(
-                    id = v2Light.data[0].id,
-                    name = v2Light.data[0].metadata.name,
-                    state = state,
-                    type = v2Light.data[0].type,
-                    modelid = v2Light.data[0].mode
-                )
-                regularLightSet.add(newRegularLight)
             }
 
             // everything worked out! return that data
             val newRoom = PhilipsHueRoomInfo(
                 id = v2Room.id,
                 name = v2Room.metadata.name,
-                on = groupedLight.data[0].on.on,
-                brightness = groupedLight.data[0].dimming.brightness,
-                lights = regularLightSet
+                on = onOff,
+                brightness = brightness,
+                lights = regularLightSet,
+                groupedLightServices = groupedLightServices
             )
             return@withContext newRoom
         }
@@ -1818,10 +1949,53 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             name = v2Room.metadata.name,
             on = false,
             brightness = 0,
-            lights = mutableSetOf()
+            lights = mutableSetOf(),
+            groupedLightServices = groupedLightServices
         )
 
         return@withContext newRoom
+    }
+
+    /**
+     * Helper function.  From a list of [PHv2ResourceIdentifier]s, this finds the
+     * first that is of type [RTYPE_LIGHT], finds it's full info, and returns its
+     * [PhilipsHueRoomInfo] form.
+     *
+     * @return  Null if a light can't be found or there was some sort of error.
+     */
+    private suspend fun getLightInfoFromServiceList(
+        serviceList: List<PHv2ResourceIdentifier>,
+        bridge: PhilipsHueBridgeInfo
+    ) : PhilipsHueLightInfo? {
+
+        serviceList.forEach { service ->
+            if (service.rtype == RTYPE_LIGHT) {
+                // yep found it!
+                val v2ApiLight = getLightInfoFromApi(service.rid, bridge)
+                if (v2ApiLight == null) {
+                    Log.w(TAG, "Problem getting light in getLightInfoFromServiceList()!  rid = ${service.rid}")
+                    return null
+                }
+
+                if (v2ApiLight.errors.isNotEmpty()) {
+                    Log.w(TAG, "Error occurred getting light in getLightInfoFromServiceList()!")
+                    Log.w(TAG, "   error = ${v2ApiLight.errors[0]}")
+                }
+
+                // convert to our PhilipsHueLightInfo
+                return PhilipsHueLightInfo(
+                    id = v2ApiLight.data[0].id,
+                    name = v2ApiLight.data[0].metadata.name,
+                    state = PhilipsHueLightState(
+                        on = v2ApiLight.data[0].on.on,
+                        bri = v2ApiLight.data[0].dimming.brightness
+                    ),
+                    type = v2ApiLight.data[0].type
+                )
+            }
+        }
+        // nothing found
+        return null
     }
 
     /**
@@ -1987,6 +2161,11 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
      * Given an id for a light group, this goes to the bridge and
      * gets all the info it can about it.
      *
+     * note
+     *      AFAIK, grouped_lights doesn't know about the lights that it controls.  It's a kind
+     *      of setting for a bunch of lights.  The room (or zone?) applies this to all
+     *      the lights that it controls.
+     *
      * @return  [PHv2GroupedLightIndividual] instance with all the info on this light group.
      */
     private suspend fun getGroupedLightFromApi(
@@ -2033,8 +2212,11 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
             if (child.rtype == RTYPE_DEVICE) {
                 try {
                     val device = getLightInfoFromApi(child.rid, bridge)
-                    if (device.data.isNotEmpty() && device.data[0].type == LIGHT) {
-                        lightSet.add(device.data[0])
+                    if (device == null) {
+                        Log.d(TAG, "device not found in getRoomLightsFromApi()! Skipping rid = ${child.rid}")
+                    }
+                    else if (device.data.isNotEmpty() && device.data[0].type == LIGHT) {
+                            lightSet.add(device.data[0])
                     }
 
                 }
@@ -2085,12 +2267,42 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
     }
 
     /**
+     * Retrieves info about a specific device given its id.
+     * Returns null if not found.
+     */
+    private suspend fun getDeviceInfoFromApi(
+        deviceId: String,
+        bridge: PhilipsHueBridgeInfo
+    ) : PHv2Device? {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = "$SUFFIX_GET_DEVICE/$deviceId"
+        )
+
+        val response = synchronousGet(
+            url = url,
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
+            trustAll = true     // todo: make more secure in future
+        )
+
+        if (response.isSuccessful == false) {
+            Log.e(TAG, "can't get device (id = $deviceId) from bridge!")
+            return null
+        }
+
+        // successful--process this info and return
+        return PHv2Device(response.body)
+    }
+
+    /**
      * Retrieves info about a specific light, given its id.
+     * Returns null on error (light can't be found).
      */
     private suspend fun getLightInfoFromApi(
         lightId: String,
         bridge: PhilipsHueBridgeInfo
-    ) : PHv2LightIndividual = withContext(Dispatchers.IO) {
+    ) : PHv2LightIndividual? = withContext(Dispatchers.IO) {
         // construct the url
         val url = createFullAddress(
             ip = bridge.ip,
@@ -2106,8 +2318,7 @@ class PhilipsHueModel(private val ctx: Context = MyApplication.appContext) {
         if (response.isSuccessful == false) {
             Log.e(TAG, "unsuccessful attempt at getting light data!  lightId = $lightId, bridgeId = ${bridge.id}")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
-            // returning empty object
-            return@withContext PHv2LightIndividual(JSONObject())
+            return@withContext null
         }
 
         val lightData = PHv2LightIndividual(response.body)
