@@ -51,6 +51,55 @@ data class PhilipsHueBridgeInfo(
     /** The body of the json info was returned by the bridge. defaults to "" */
     var body: String = ""
 ) {
+    /**
+     * This should cause the flow to update correctly.
+     */
+    override fun equals(other: Any?): Boolean {
+        val otherBridge = other as PhilipsHueBridgeInfo
+        if (id != otherBridge.id) {
+            return false
+        }
+        if (labelName != otherBridge.labelName) {
+            return false
+        }
+        if (ip != otherBridge.ip) {
+            return false
+        }
+        if (token != otherBridge.token) {
+            return false
+        }
+        if (active != otherBridge.active) {
+            return false
+        }
+        if (connected != otherBridge.connected) {
+            return false
+        }
+        if (body != otherBridge.body) {
+            return false
+        }
+        if (rooms.size != otherBridge.rooms.size) {
+            return false
+        }
+        rooms.forEach { room ->
+            if (otherBridge.rooms.contains(room) == false) {
+                return false
+            }
+        }
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + labelName.hashCode()
+        result = 31 * result + ip.hashCode()
+        result = 31 * result + token.hashCode()
+        result = 31 * result + active.hashCode()
+        result = 31 * result + connected.hashCode()
+        result = 31 * result + rooms.hashCode()
+        result = 31 * result + body.hashCode()
+        return result
+    }
+
     companion object {
         /**
          * Used the creating a new bridge
@@ -80,7 +129,43 @@ data class PhilipsHueRoomInfo(
     val lights: MutableSet<PhilipsHueLightInfo>,
     /** References to group of lights in this room.  Even though it's an array, there should be just 1. */
     val groupedLightServices: List<PHv2ItemInArray>
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        val otherRoom = other as PhilipsHueRoomInfo
+        if (otherRoom.id != id) {
+            return false
+        }
+        if (otherRoom.name != name) {
+            return false
+        }
+        if (otherRoom.on != on) {
+            return false
+        }
+        if (otherRoom.brightness != brightness) {
+            return false
+        }
+        if (otherRoom.lights.size != lights.size) {
+            return false
+        }
+        otherRoom.lights.forEach { otherLight ->
+            if (lights.contains(otherLight) == false) {
+                return false
+            }
+        }
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + on.hashCode()
+        result = 31 * result + brightness
+        result = 31 * result + lights.hashCode()
+        result = 31 * result + groupedLightServices.hashCode()
+        return result
+    }
+
+}
 
 /**
  * Holds info about a single philips hue light
@@ -96,7 +181,44 @@ data class PhilipsHueLightInfo(
     val type: String = "",
     val modelid: String = "",
     val swversion: String = "",
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        val t = other as PhilipsHueLightInfo
+        if (t.lightId != lightId) {
+            return false
+        }
+        if (t.deviceId != deviceId) {
+            return false
+        }
+        if (t.name != name) {
+            return false
+        }
+        if (t.state != state) {
+            return false
+        }
+        if (t.type != type) {
+            return false
+        }
+        if (t.modelid != modelid) {
+            return false
+        }
+        if (t.swversion != swversion) {
+            return false
+        }
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = lightId.hashCode()
+        result = 31 * result + deviceId.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + state.hashCode()
+        result = 31 * result + type.hashCode()
+        result = 31 * result + modelid.hashCode()
+        result = 31 * result + swversion.hashCode()
+        return result
+    }
+}
 
 /**
  * Defines the state of a light.  Yup, pretty complicated (these lights
