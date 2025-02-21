@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -224,7 +225,7 @@ private fun DrawBridgeSeparator(
     bridge: PhilipsHueBridgeInfo,
     viewmodel: PhilipsHueViewmodel
 ) {
-    var modifier = remember {
+    val modifier = remember {
         Modifier
             .fillMaxWidth()
             .padding(top = 32.dp)
@@ -357,7 +358,6 @@ private fun DotDotDotBridgeMenu(
 
         // Display all the info we know about this bridge
         if (showInfoDialog) {
-            Log.d(TAG, "showing info dialog - showInfoDialog = $showInfoDialog")
             ShowBridgeInfoDialog(
                 bridge,
                 onClick = {
@@ -588,7 +588,7 @@ private fun DisplayPhilipsHueRoom(
     var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
 
     // variables for displaying the lightbulb
-    var lightImage by remember { mutableStateOf(getProperLightImage(sliderPosition)) }
+    var lightImage by remember { mutableIntStateOf(getProperLightImage(sliderPosition)) }
     var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
 
     Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")

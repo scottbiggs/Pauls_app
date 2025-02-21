@@ -451,42 +451,6 @@ class PhilipsHueModel(
     //-------------------------------------
 
     /**
-     * Returns a Set of all the bridges currently loaded in this class.
-     * Could be empty if no bridges are registered or we haven't loaded
-     * bridges from the long-term storage yet.
-     *
-     * NOTE
-     *  Changing any data of these bridges will not be propogated
-     *  and saved.  The only way to save that data is to use the
-     *  functions below like [saveBridgeIp], [saveBridgeToken], etc.
-     */
-    fun getAllBridges() : Set<PhilipsHueBridgeInfo> {
-        return _bridgeFlowSet.value
-    }
-
-
-    /**
-     * Returns a Set of all the bridge ids from the currently loaded bridges.
-     * You can use these to access those bridge as most of these functions
-     * need a bridge id.
-     *
-     * Note
-     *  This should be used only after bridge data has been loaded from
-     *  long-term storage.
-     *
-     * @return      Set (not mutable) of Strings that represent the ids of
-     *              the various bridges.  Could be empty of no bridges are
-     *              registered.
-     */
-    fun getAllBridgeIds() : Set<String> {
-        val ids = mutableSetOf<String>()
-        _bridgeFlowSet.value.forEach {
-            ids.add(it.id)
-        }
-        return ids
-    }
-
-    /**
      * Returns the bridge with the given id from the current
      * Set of bridges.  If the id is bogus this returns null.
      * Great way to check to see if a bridge exists.
@@ -536,36 +500,6 @@ class PhilipsHueModel(
     }
 
     /**
-     * Gets a Set of all the lights that the bridge knows about.
-     * Returns an empty set on error or no lights.
-     *
-     * fixme: this needs updating to v2!!!
-     */
-    @Deprecated("needs updating to v2")
-    suspend fun getLightsFromBridgeApi(bridgeId: String) : Set<PhilipsHueLightInfo> {
-        val lights = mutableSetOf<PhilipsHueLightInfo>()
-
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "trying to find the lights with bad id in getLights($bridgeId). aborting!")
-            return lights
-        }
-
-        val fullAddress = createFullAddress(
-            ip = bridge.ip,
-            suffix = SUFFIX_API + bridge.token + SUFFIX_GET_LIGHTS
-        )
-
-        val response = synchronousPost(
-            url = fullAddress,
-            bodyStr = generateGetTokenBody(),
-            trustAll = true
-        )
-
-        TODO()
-    }
-
-    /**
      * Finds all the rooms with the associated bridge.
      *
      * @return      Set of all rooms found with this bridge
@@ -596,48 +530,6 @@ class PhilipsHueModel(
     //-------------------------------------
     //  update
     //-------------------------------------
-
-    /**
-     * Saves the data of all the bridges into shared prefs.  Any existing prefs
-     * will be overwritten.
-     *
-     * Because this hits the shared prefs multiple times, to avoid any race
-     * conditions, this should be run off the main thread.
-     *
-     * side effects
-     *      - shared prefs files will be modified
-     */
-    suspend fun saveAllBridgesData() {
-
-        //------------
-        //  Explanation:
-        // Because I'm using sharedprefs, the bridge data needs to be saved in a
-        // simple way.  There are two methods.
-        //
-        //  - A Set of ids is stored.  It is kept in its own file.
-        //
-        //  - Each aspect of the data is stored in its own key-value pair.
-        //  That means that we have to generate a unique key for the values.
-        //  The values that need saving are:
-        //
-        //      IPs for the bridges
-        //
-        //      tokens for the bridges
-        //
-        //  The key for each of these follows this formula:
-        //
-        //      key = item_prefix + bridge_id
-        //
-        //  For example
-        //      The token key for bridge (with id = 42) would be:
-        //      key = PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX + 42
-        //
-
-        // build the Set of keys
-
-        TODO()
-    }
-
 
     //-------------------------------------
     //  delete
@@ -708,7 +600,7 @@ class PhilipsHueModel(
      * @return      True - all bridges were removed (even if there were none).
      *              False - error condition (although I don't know what).
      */
-    suspend fun deleteAllBridges() : Boolean {
+    fun deleteAllBridges() : Boolean {
 
         var error = false
         _bridgeFlowSet.value.forEach { bridge ->
@@ -1003,7 +895,7 @@ class PhilipsHueModel(
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
 
-        val fullAddress = createFullAddress(ip = bridgeIp, suffix = "/api/")
+        val fullAddress = createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
         Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
 
         val response = synchronousPost(
@@ -1092,9 +984,6 @@ class PhilipsHueModel(
      *                  translated ip number, like "196.192.86.1".  So the most
      *                  common case is:  "http://196.192.86.1"
      *
-     * @param   token   The token to insert in the command.  This authenticates the
-     *                  caller to the bridge.  Defaults to empty string.
-     *
      * @param   prefix  If the prefix is not contained in the ip, then this holds
      *                  it.  Generally this will be "https://" or "http://".
      *
@@ -1104,14 +993,13 @@ class PhilipsHueModel(
      */
     private fun createFullAddress(
         ip: String,
-        token: String = "",
         prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
 //        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
         suffix: String
     ) : String {
 
         val fullAddress = "${prefix}$ip${suffix}"
-        Log.d(TAG,"fullAddress created. -> $fullAddress")
+        Log.i(TAG,"fullAddress created. -> $fullAddress")
         return fullAddress
     }
 
@@ -1130,15 +1018,6 @@ class PhilipsHueModel(
      */
     private fun constructUserName(bridgeIp: String) : String {
         return PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX + bridgeIp
-    }
-
-    /**
-     * When registering this app to a philips hue bridge, it's curious
-     * about the type of device talking to it.  This returns a string
-     * for that purpose.
-     */
-    private fun constructDeviceType(bridgeIp: String) : String {
-        return PHILIPS_HUE_BRIDGE_DEVICE_TYPE
     }
 
     /**
@@ -1275,7 +1154,7 @@ class PhilipsHueModel(
     /**
      * Finds out if a bridge currently is active and responds to its token.
      *
-     * @param       bridge      The bridge in question.  Does not check to see
+     * @param       bridgeIp    Ip of the bridge in question.  Does not check to see
      *                          if everything is right.
      *
      * @param       token       The token (username) to test.
@@ -1661,34 +1540,6 @@ class PhilipsHueModel(
 
         myEventSource.cancel()
 
-    }
-
-    /**
-     * Converts data structures: from [PHv2ResourceRoomsAll] to a Set
-     * of [PhilipsHueRoomInfo].  This involves getting light information
-     * and some other stuff that has to hit the bridge, so it needs
-     * to be off the main thread.
-     */
-    private suspend fun convertRoomsData(
-        roomsFromApi: PHv2ResourceRoomsAll,
-        bridge: PhilipsHueBridgeInfo
-    ) : Set<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {
-
-        val newRooms = mutableSetOf<PhilipsHueRoomInfo>()
-        roomsFromApi.data.forEach { apiRoom ->
-
-//            val id = apiRoom.id
-//            adsfadf
-//
-//            val room = PhilipsHueRoomInfo(
-//                id = ,
-//                on = ,
-//                brightness = ,
-//                lights = ,
-//            )
-        }
-
-        return@withContext newRooms
     }
 
     /**

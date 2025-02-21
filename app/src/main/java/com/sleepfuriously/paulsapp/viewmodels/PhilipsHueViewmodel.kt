@@ -131,7 +131,7 @@ class PhilipsHueViewmodel : ViewModel() {
      *  [bridgeModel] is already setup and running
      *
      * side effects
-     *   [iotTestsStatus]      set to true when this is done
+     *   [_iotTestingState]      set to true when this is done
      */
     fun checkIoT(ctx: Context) {
 
@@ -251,19 +251,6 @@ class PhilipsHueViewmodel : ViewModel() {
         }
 
         return result
-    }
-
-    /**
-     * Passes along a copy of the bridge info.  Could be useful for
-     * displaying data to the user.
-     *
-     * @param   bridgeId        The id of the bridge.
-     *
-     * @return  All that we know about this bridge.  Returns null
-     *          if the id doesn't make sense or some other error.
-     */
-    fun getBridgeInfo(bridgeId: String) : PhilipsHueBridgeInfo? {
-        return bridgeModel.getBridge(bridgeId)
     }
 
 
@@ -609,7 +596,7 @@ class PhilipsHueViewmodel : ViewModel() {
         // and active.
         for (bridge in philipsHueBridgesCompose) {
             // does this bridge have an ip?
-            val ip = bridge.ip ?: continue
+            val ip = bridge.ip
             if (ip.isBlank()) {
                 bridge.active = false
                 continue
