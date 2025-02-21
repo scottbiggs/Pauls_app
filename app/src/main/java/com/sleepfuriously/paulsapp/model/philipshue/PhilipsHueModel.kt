@@ -231,8 +231,7 @@ class PhilipsHueModel(
                 val eventJsonArray = JSONArray(data)
 
                 coroutineScope.launch {
-                    // create list of events
-                    val eventList = listOf<PHv2ResourceServerSentEvent>()
+                    // process each event
                     for (i in 0 until eventJsonArray.length()) {
                         val eventJsonObj = eventJsonArray.getJSONObject(i)
                         val v2Event = PHv2ResourceServerSentEvent(eventJsonObj)
@@ -747,10 +746,12 @@ class PhilipsHueModel(
             return
         }
 
-        // Yay, this works!!! The viewmodel got the change and passed it along to the view.
-        val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        // Boo, this no longer works!!! The viewmodel only registers the first change.  sigh!!!
+        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+        val newBridgeSetHash = System.identityHashCode(newBridgeList)
+        Log.d(TAG, "-->creating newBridgeSet hash = $newBridgeSetHash")
 
-        // rebuild the bridge set
+        // rebuild the bridge list
         bridgeFlowSet.value.forEach { bridge ->
             // Is this the bridge in question?
             if (bridge.id == eventBridge.id) {
@@ -788,14 +789,21 @@ class PhilipsHueModel(
                                 }
 
                                 "grouped_light" -> {
-                                    TODO()
+                                    Log.e(TAG, "Unhandled grouped_light!!!")
                                 }
 
                                 "room" -> {
+                                    Log.e(TAG, "Unhandled room event. Crashing now.")
+                                    TODO()
+                                }
+
+                                "update" -> {
+                                    Log.e(TAG, "Unhandled update event. Crashing now.")
                                     TODO()
                                 }
 
                                 else -> {
+                                    Log.e(TAG, "Unhandled event type: ${event.type}. Crashing now.")
                                     TODO()
                                 }
                             }
@@ -816,9 +824,10 @@ class PhilipsHueModel(
 //                bridge.labelName = "slippery sam"
             }
 
-            newBridgeSet.add(bridge)
+            newBridgeList.add(bridge)
         }
-        _bridgeFlowSet.update { newBridgeSet.toSet() }
+        Log.d(TAG, "-->Setting bridgeFlowSet to newBridgeSet (hash = $newBridgeSetHash). Viewmodel should be updating!")
+        _bridgeFlowSet.update { newBridgeList.toSet() }
 
 
 
@@ -834,28 +843,35 @@ class PhilipsHueModel(
     ) : PhilipsHueRoomInfo? {
         bridge.rooms.forEach { room ->
             room.lights.forEach { maybeThisLight ->
-                if (maybeThisLight.id == light.id) {
-                    Log.d(TAG, "found the room that holds light (id = ${light.id}")
+                if (maybeThisLight.lightId == light.lightId) {
+                    Log.d(TAG, "found the room that holds light (id = ${light.lightId}")
                     return room
                 }
             }
         }
-        Log.d(TAG, "Could not find the room that holds light (id = ${light.id}. Sorry.")
+        Log.d(TAG, "Could not find the room that holds light (id = ${light.lightId}. Sorry.")
         return null
     }
 
 
     /**
      * Goes through all the lights in this bridge and returns the one that
-     * matches the given id.  Returns null if not found.
+     * matches the given id.  It also checks device ids FOR lights (as they
+     * are sometimes used interchangeably).
+     *
+     * Returns null if not found.
      */
     private fun findLightFromId(id: String, bridge: PhilipsHueBridgeInfo) : PhilipsHueLightInfo? {
 
         // go through all the rooms
         bridge.rooms.forEach { room ->
             room.lights.forEach { light ->
-                if (light.id == id) {
+                if (light.lightId == id) {
                     Log.d(TAG, "Found the light in findLightFromId(id = $id), yay!")
+                    return light
+                }
+                if (light.deviceId == id) {
+                    Log.d(TAG, "Found the light from its deviceId in findLightFromId(id = $id), whew!")
                     return light
                 }
             }
@@ -1912,7 +1928,8 @@ class PhilipsHueModel(
                                 val v2light = getLightInfoFromApi(service.rid, bridge)
                                 if (v2light != null) {
                                     val regularLight = PhilipsHueLightInfo(
-                                        id = v2light.data[0].id,
+                                        lightId = v2light.data[0].id,
+                                        deviceId = v2light.data[0].owner.rid,
                                         name = v2light.data[0].metadata.name,
                                         state = PhilipsHueLightState(
                                             on = v2light.data[0].on.on,
@@ -1984,7 +2001,8 @@ class PhilipsHueModel(
 
                 // convert to our PhilipsHueLightInfo
                 return PhilipsHueLightInfo(
-                    id = v2ApiLight.data[0].id,
+                    lightId = v2ApiLight.data[0].id,
+                    deviceId = v2ApiLight.data[0].owner.rid,
                     name = v2ApiLight.data[0].metadata.name,
                     state = PhilipsHueLightState(
                         on = v2ApiLight.data[0].on.on,
@@ -2045,7 +2063,8 @@ class PhilipsHueModel(
         )
 
         val light = PhilipsHueLightInfo(
-            id = v2Light.id,
+            lightId = v2Light.id,
+            deviceId = v2Light.owner.rid,
             name = v2Light.metadata.name,
             state = state,
             type = v2Light.type,

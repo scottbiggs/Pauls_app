@@ -107,5 +107,7 @@
     <string name="token">username</string>
     <string name="room">room</string>
     <string name="connected">connected</string>
+    <string name="light_on">on</string>
+    <string name="light_off">off</string>
 
 </resources>

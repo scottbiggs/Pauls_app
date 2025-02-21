@@ -93,9 +93,6 @@ fun ShowMainScreenPhilipsHue(
     philipsHueViewmodel: PhilipsHueViewmodel,
     bridges: Set<PhilipsHueBridgeInfo>
 ) {
-//    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
-    Log.v(TAG, "ShowMainScreenPhilipsHue() begin. num bridges = ${bridges.size}")
-
     // the content
     Column(
         modifier = modifier
@@ -362,8 +359,7 @@ private fun DotDotDotBridgeMenu(
         if (showInfoDialog) {
             Log.d(TAG, "showing info dialog - showInfoDialog = $showInfoDialog")
             ShowBridgeInfoDialog(
-                bridge.id,
-                viewmodel,
+                bridge,
                 onClick = {
                     showInfoDialog = false
                     Log.d(TAG, "click! - showInfoDialog = $showInfoDialog")
@@ -374,12 +370,11 @@ private fun DotDotDotBridgeMenu(
 
 @Composable
 private fun ShowBridgeInfoDialog(
-    bridgeId: String,
-    viewmodel: PhilipsHueViewmodel,
+    bridge: PhilipsHueBridgeInfo,
     onClick: () -> Unit
 ) {
 
-    val bridge = remember { viewmodel.getBridgeInfo(bridgeId) }
+    val ctx = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onClick,
@@ -394,7 +389,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.id),
-                            bridge?.id ?: stringResource(R.string.no_bridge_id)
+                            bridge.id
                         )
                     }
 
@@ -402,7 +397,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.ip),
-                            bridge?.ip ?: stringResource(R.string.no_bridge_id)
+                            bridge.ip
                         )
                     }
 
@@ -410,7 +405,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.active),
-                            bridge?.active?.toString() ?: stringResource(R.string.not_applicable)
+                            bridge.active.toString()
                         )
                     }
 
@@ -418,7 +413,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.connected),
-                            bridge?.connected?.toString() ?: stringResource(R.string.not_applicable)
+                            bridge.connected.toString()
                         )
                     }
 
@@ -426,24 +421,46 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.token),
-                            bridge?.token ?: stringResource(R.string.not_applicable)
+                            bridge.token
                         )
                     }
 
                     // rooms
-                    bridge?.rooms?.forEachIndexed { i, room ->
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.bridge_info_rooms),
+                            bridge.rooms.size.toString()
+                        )
+                    }
+                    bridge.rooms.forEach { room ->
                         item {
                             DrawBridgeInfoLine(
                                 stringResource(R.string.bridge_info_room),
                                 room.id
                             )
                         }
+
                         item {
                             DrawBridgeInfoLine(
                                 stringResource(R.string.bridge_info_lights),
                                 room.lights.size.toString(),
                                 width = 150
                             )
+                        }
+
+                        room.lights.forEach { light ->
+                            val onStr =
+                                if (light.state.on) ctx.getString(R.string.light_on) else ctx.getString(
+                                    R.string.light_off
+                                )
+                            val brightness = light.state.bri
+                            item {
+                                DrawBridgeInfoLine(
+                                    light.name,
+                                    "$onStr, brightness = $brightness",
+                                    width = 150
+                                )
+                            }
                         }
                     }
                 }

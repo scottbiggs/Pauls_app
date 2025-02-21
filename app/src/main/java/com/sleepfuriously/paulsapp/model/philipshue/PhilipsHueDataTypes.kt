@@ -86,8 +86,11 @@ data class PhilipsHueRoomInfo(
  * Holds info about a single philips hue light
  */
 data class PhilipsHueLightInfo(
-    /** the id is also a number to be used to access it directly */
-    val id: String,
+    /** the id is also a number to be used to access it directly as a LIGHT */
+    val lightId: String,
+    /** id for this light DEVICE--remember, a light is a child of a device (so this could also be called the parent). */
+    val deviceId: String,
+    /** human-readable name for this light (find in the metadata of PHv2Device), the parent of the light. */
     val name: String = "",
     var state: PhilipsHueLightState = PhilipsHueLightState(),
     val type: String = "",
@@ -102,8 +105,8 @@ data class PhilipsHueLightInfo(
 data class PhilipsHueLightState(
     /** Simply tells if the light is currently on. */
     var on: Boolean = false,
-    /** Range of [0..254]. Not the same as [on]! */
-    var bri: Int = 254,
+    /** Range [0..100] */
+    var bri: Int = 100,
     /** Range [0..65535] */
     var hue: Int = 65535,
     /** Range [0..254] */
