@@ -71,18 +71,18 @@ data class PHv2SseData(
         operator fun invoke(jsonObject: JSONObject) : PHv2SseData {
             // the required components
             val id = jsonObject.getString(ID)
-            val idv1 = jsonObject.getString(ID_V1)
             val type = jsonObject.getString(TYPE)
 
             // optional properties
 
+            val idv1 = jsonObject.optString(ID_V1)      // this was required according to docs--experience shows its optional
             val dimming = if (jsonObject.has(DIMMING)) {
-                PHv2LightDimming(jsonObject.getJSONObject(DIMMING))
+                PHv2LightDimming(jsonObject)
             }
             else { null }
 
             val on = if (jsonObject.has(ON)) {
-                PHv2LightOn(jsonObject.getJSONObject(ON))
+                PHv2LightOn(jsonObject)
             }
             else { null }
 

@@ -57,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sleepfuriously.paulsapp.compose.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -117,21 +118,23 @@ class MainActivity : ComponentActivity() {
 
             PaulsAppTheme {
 
+                // create data to receive state flows from the philips hue viewmodel
+                val wifiWorking by philipsHueViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                val iotTestingState by philipsHueViewmodel.iotTestingState.collectAsStateWithLifecycle()
+                val iotTestingErrorMsg by philipsHueViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
+                val philipsHueTestStatus by philipsHueViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
+                val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
+                val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
+                val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
+
+                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
+
+                // Before anything, do we need to exit?
+                if (philipsHueFinishNow) {
+                    finish()
+                }
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-                    // create data to receive flows from the philips hue viewmodel
-                    val wifiWorking by philipsHueViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                    val iotTestingState by philipsHueViewmodel.iotTestingState.collectAsStateWithLifecycle()
-                    val iotTestingErrorMsg by philipsHueViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
-                    val philipsHueTestStatus by philipsHueViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
-                    val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
-                    val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
-                    val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
-
-                    // Before anything, do we need to exit?
-                    if (philipsHueFinishNow) {
-                        finish()
-                    }
 
                     //------------------------
                     //  What to display?  Depends on what's happening.
@@ -178,6 +181,7 @@ class MainActivity : ComponentActivity() {
                         FourPanes(
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
+                            philipsHueBridges = philipsHueBridges
                         )
                     }
 
@@ -204,6 +208,7 @@ class MainActivity : ComponentActivity() {
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
+        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
         modifier : Modifier = Modifier,
     ) {
 
@@ -288,7 +293,8 @@ class MainActivity : ComponentActivity() {
                         ShowMainScreenPhilipsHue(
                             modifier = modifier,
                             philipsHueViewmodel = philipsHueViewmodel,
-                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
+//                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
+                            bridges = philipsHueBridges
                         )
                     }
                     Box(modifier = niceBorderModifier

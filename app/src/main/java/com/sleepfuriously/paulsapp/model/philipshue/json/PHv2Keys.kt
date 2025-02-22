@@ -95,6 +95,15 @@ const val RTYPE_LIGHT = "light"
 /** Denotes that this is a group of lights */
 const val RTYPE_GROUP_LIGHT = "grouped_light"
 
+/** Some sort of reference to an entire bridge (a bridge group?) */
+const val RTYPE_BRIDGE_HOME = "bridge_home"
+
+/** Another new type of group--don't know what to make of it yet */
+const val RTYPE_PRIVATE_GROUP = "private_group"
+
+/** This one is obvious (finally something I can work with). */
+const val RTYPE_ROOM = "room"
+
 /** Identifies an [TYPE] as a device */
 const val TYPE_DEVICE = "device"
 

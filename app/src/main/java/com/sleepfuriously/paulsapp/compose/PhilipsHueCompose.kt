@@ -94,6 +94,8 @@ fun ShowMainScreenPhilipsHue(
     philipsHueViewmodel: PhilipsHueViewmodel,
     bridges: Set<PhilipsHueBridgeInfo>
 ) {
+    Log.d(TAG, "running ShowMainScreenPhilipsHue()")
+
     // the content
     Column(
         modifier = modifier
@@ -111,7 +113,7 @@ fun ShowMainScreenPhilipsHue(
 
         DrawBridgeContents(
 //            bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
-            bridgeInfoSet = bridges,
+            bridges = bridges,
             viewmodel = philipsHueViewmodel
         )
     }
@@ -135,9 +137,10 @@ fun ShowMainScreenPhilipsHue(
 
 @Composable
 private fun DrawBridgeContents(
-    bridgeInfoSet: Set<PhilipsHueBridgeInfo>,
+    bridges: Set<PhilipsHueBridgeInfo>,
     viewmodel: PhilipsHueViewmodel
 ) {
+    Log.d(TAG, "DrawBridgeContents() start")
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
     LazyVerticalGrid(
@@ -156,7 +159,7 @@ private fun DrawBridgeContents(
         //      - bridge info
         //      - delete bridge
         //  - grid of all the rooms on the bridge
-        bridgeInfoSet.forEach { bridgeInfo ->
+        bridges.forEach { bridgeInfo ->
 
             item(span = { GridItemSpan(this.maxLineSpan) }) {
                 DrawBridgeSeparator(bridgeInfo, viewmodel)
@@ -198,8 +201,9 @@ private fun DrawBridgeContents(
                 }
             } else {
                 // yes, there are rooms to display
-                Log.d(TAG, "Updating display of ${bridgeInfo.rooms.size} rooms")
+                Log.d(TAG, "DrawBridgeContents: updating display of ${bridgeInfo.rooms.size} rooms")
                 bridgeInfo.rooms.forEach { room ->
+                    Log.d(TAG, "DrawBridgeContents() - drawing room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
                     item {
                         DisplayPhilipsHueRoom(
                             roomName = room.name,
@@ -592,6 +596,7 @@ private fun DisplayPhilipsHueRoom(
     var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
 
     Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
+    Log.d(TAG, "   on = $lightSwitchOn, illumination = $illumination")
 
     Column(modifier = modifier
         .fillMaxSize()

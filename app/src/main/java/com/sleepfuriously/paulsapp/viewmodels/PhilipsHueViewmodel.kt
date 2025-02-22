@@ -90,8 +90,21 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch {
             bridgeModel.bridgeFlowSet.collectLatest {
 //            bridgeModel.bridgeFlowSet.collect {
-                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it")
-                philipsHueBridgesCompose = it
+                // hmmm, this doesn't seem to work???
+//                philipsHueBridgesCompose = it
+
+                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${System.identityHashCode(it)}")
+
+                // rebuilding a copy of the
+                val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+                it.forEach { bridge ->
+                    newBridgeSet.add(bridge)
+                    Log.d(TAG, "Setting philipsHueBridgesCompose:")
+                    bridge.rooms.forEach { room ->
+                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
+                    }
+                }
+                philipsHueBridgesCompose = newBridgeSet
             }
         }
 
