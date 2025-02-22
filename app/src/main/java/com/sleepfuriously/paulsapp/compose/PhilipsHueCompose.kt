@@ -42,8 +42,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -208,8 +206,11 @@ private fun DrawBridgeContents(
                         DisplayPhilipsHueRoom(
                             roomName = room.name,
                             illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
-                            lightSwitchOn = room.on
-                        ) { newIllumination, switchOn ->
+                            lightSwitchOn = room.on,
+                            roomBrightChangingFunction = { newBrightness ->
+//                                viewmodel.changingBrightness(newBrightness, room, bridgeInfo)
+                            }
+                        ) { newIllumination, newSwitchOn ->
                             // todo call the illumination change in the viewmodel
                             //  and make it display (var by remember in a slider?)
                         }
@@ -573,8 +574,10 @@ private fun ShowMainPhilipsHueAddBridgeFab(
  * @param   illumination    How much is this room currently illumniated.
  *                          0 = off all the way to 1 = full on.
  *
- * @param   roomChangedFunction     Function to call when the illumination is
- *                                  changed by the user.  It takes the new
+ * @param   roomBrightChangingFunction  Function to call while the slider is being manipulated.
+ *
+ * @param   roomChangeCompleteFunction  Function to call when the illumination is
+ *                                  changed and completed by the user.  It takes the new
  *                                  illumination value and a boolean for if the
  *                                  switch is on/off.
  */
@@ -584,18 +587,25 @@ private fun DisplayPhilipsHueRoom(
     roomName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
-    roomChangedFunction: (newIllumination: Float, switchOn: Boolean) -> Unit,
+    roomBrightChangingFunction: (newBrightness: Float) -> Unit,
+    roomChangeCompleteFunction: (newIllumination: Float, newSwitchOn: Boolean) -> Unit,
 ) {
 
     // variables for the widgets
-    var sliderPosition by remember { mutableFloatStateOf(illumination) }
-    var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
+//    var sliderPosition by remember { mutableFloatStateOf(illumination) }
 
-    // variables for displaying the lightbulb
-    var lightImage by remember { mutableIntStateOf(getProperLightImage(sliderPosition)) }
-    var lightColor by remember { mutableStateOf(getLightColor(sliderPosition)) }
+    var sliderPosition = illumination       // temporary--used while the hand is sliding
+//    var sliderPosition by remember { mutableFloatStateOf(illumination) }        // doesn't update from events
 
-    Log.d(TAG, "begin DisplayPhilipsHueRoom:  lightImage = $lightImage, lightColor = $lightColor")
+//    var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
+
+    // variables for displaying the lightbulb image
+//    var lightImage by remember { mutableIntStateOf(getProperLightImage(illumination)) }
+    val lightImage = getProperLightImage(illumination)    // changes while hand is sliding
+//    var lightImageColor by remember { mutableStateOf(getLightColor(illumination)) }
+    val lightImageColor = getLightColor(illumination)
+
+    Log.d(TAG, "begin DisplayPhilipsHueRoom()  $roomName: lightImage = $lightImage, lightImageColor = $lightImageColor")
     Log.d(TAG, "   on = $lightSwitchOn, illumination = $illumination")
 
     Column(modifier = modifier
@@ -629,18 +639,18 @@ private fun DisplayPhilipsHueRoom(
                 modifier = modifier
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
-                checked = roomLightsSwitchOn,
+                checked = lightSwitchOn,
                 onCheckedChange = { newSliderState ->
-                    roomLightsSwitchOn = newSliderState
-                    if (roomLightsSwitchOn) {
-                        lightImage = getProperLightImage(sliderPosition)
-                        lightColor = getLightColor(sliderPosition)
-                    }
-                    else {
-                        lightImage = getProperLightImage(0f)
-                        lightColor = getLightColor(0f)
-                    }
-                    roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
+//                    roomLightsSwitchOn = newSliderState
+//                    if (roomLightsSwitchOn) {
+//                        lightImage = getProperLightImage(sliderPosition)
+//                        lightImageColor = getLightColor(sliderPosition)
+//                    }
+//                    else {
+//                        lightImage = getProperLightImage(0f)
+//                        lightImageColor = getLightColor(0f)
+//                    }
+                    roomChangeCompleteFunction.invoke(sliderPosition, newSliderState)
                 }
             )
 
@@ -648,17 +658,20 @@ private fun DisplayPhilipsHueRoom(
             // the far right.
             Spacer(modifier = modifier.weight(1f))
 
-            DrawLightBulb(lightImage, lightColor)
+            DrawLightBulb(lightImage, lightImageColor)
         }
 
         Slider(
             value = sliderPosition,
-            enabled = roomLightsSwitchOn,
+            enabled = lightSwitchOn,
             onValueChange = {
+                Log.d(TAG, "Slider: onValueChanged: $it")
                 sliderPosition = it
-                lightImage = getProperLightImage(sliderPosition)
-                lightColor = getLightColor(sliderPosition)
-                roomChangedFunction.invoke(sliderPosition, roomLightsSwitchOn)
+//                lightImage = getProperLightImage(sliderPosition)
+//                lightImageColor = getLightColor(sliderPosition)
+            },
+            onValueChangeFinished = {
+                roomChangeCompleteFunction.invoke(sliderPosition, lightSwitchOn)
             },
             modifier = modifier
                 .padding(vertical = 4.dp, horizontal = 18.dp)
