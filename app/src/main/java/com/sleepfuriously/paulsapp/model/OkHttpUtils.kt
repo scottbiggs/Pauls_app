@@ -291,7 +291,7 @@ object OkHttpUtils {
     }
 
 
-    private suspend fun synchronousPut(
+    suspend fun synchronousPut(
         url: String,
         bodyStr: String,
         headerList: List<Pair<String, String>> = listOf(),

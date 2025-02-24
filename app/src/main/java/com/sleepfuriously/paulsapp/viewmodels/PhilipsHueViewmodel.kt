@@ -142,12 +142,14 @@ class PhilipsHueViewmodel : ViewModel() {
         changedRoom: PhilipsHueRoomInfo,
         changedBridge: PhilipsHueBridgeInfo
     ) {
-        bridgeModel.roomBrightnessChanged(
-            newBrightness = newBrightness,
-            newOnStatus = newOnStatus,
-            changedRoom = changedRoom,
-            changedBridge = changedBridge
-        )
+        viewModelScope.launch(Dispatchers.IO) {
+            bridgeModel.roomBrightnessChanged(
+                newBrightness = newBrightness,
+                newOnStatus = newOnStatus,
+                changedRoom = changedRoom,
+                changedBridge = changedBridge
+            )
+        }
     }
 
     /**

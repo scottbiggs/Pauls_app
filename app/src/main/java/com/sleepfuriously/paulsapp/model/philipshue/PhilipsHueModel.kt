@@ -17,6 +17,7 @@ import com.sleepfuriously.paulsapp.getTime
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.deletePref
 import com.sleepfuriously.paulsapp.model.getPrefsSet
 import com.sleepfuriously.paulsapp.model.getPrefsString
@@ -535,32 +536,54 @@ class PhilipsHueModel(
      * The brightness of a room has changed.  Do the necessary work so that
      * the bridge flow reports the change.
      */
-    fun roomBrightnessChanged(
+    suspend fun roomBrightnessChanged(
         newBrightness: Int,
         newOnStatus: Boolean,
         changedRoom: PhilipsHueRoomInfo,
         changedBridge: PhilipsHueBridgeInfo
     ) {
-        Log.d(TAG, "roomBrightnessChanged() begin. newBrightness = $newBrightness, newOnStatus = $newOnStatus")
-        // start with a brand-new bridge list
-        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-        bridgeFlowSet.value.forEach { bridge ->
-            if (bridge.id == changedBridge.id) {
-                // found the correct bridge. Now find the correct room
-                bridge.rooms.forEach { room ->
-                    if (room.id == changedRoom.id) {
-                        room.brightness = newBrightness
-                        room.on = newOnStatus
-
-                        // todo: tell the bridge about the change!!!
-                        Log.d(TAG, "   - found the room and made the changes!")
-                    }
-                }
+        // what's the name of the group of lights in this room?
+        var groupedLightId = ""
+        changedRoom.groupedLightServices.forEach { groupedLight ->
+            if (groupedLight.rtype == "grouped_light") {
+                groupedLightId = groupedLight.rid
             }
-            newBridgeList.add(bridge)
+        }
+        if (groupedLightId.isEmpty()) {
+            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!")
+            return
         }
 
-        _bridgeFlowSet.update { newBridgeList.toSet() }
+        // construct the body. consists of on and brightness in json format
+        val body = "{\"on\": {\"on\": $newOnStatus}, \"dimming\": {\"brightness\": $newBrightness}}"
+        Log.d(TAG, "---> body = $body")
+
+        // construct the url
+        val url = createFullAddress(
+            ip = changedBridge.ip,
+            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
+        )
+
+        // send the PUT
+        val response = synchronousPut(
+            url = url,
+            bodyStr = body,
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, changedBridge.token)),
+            trustAll = true     // fixme when we have full security going
+        )
+
+        // did it work?
+        if (response.isSuccessful) {
+            Log.d(TAG, "roomBrightnessChanged() PUT request successful!")
+        }
+        else {
+            Log.e(TAG, "error sending PUT request in roomBrightnessChanged()!")
+            Log.e(TAG, "response:")
+            Log.e(TAG, "   code = ${response.code}")
+            Log.e(TAG, "   message = ${response.message}")
+            Log.e(TAG, "   headers = ${response.headers}")
+            Log.e(TAG, "   body = ${response.body}")
+        }
     }
 
     //-------------------------------------
