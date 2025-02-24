@@ -24,10 +24,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -210,6 +212,47 @@ fun MyYesNoDialog(
                 onClick = onDismiss
             ) { Text(dismissText, color = MaterialTheme.colorScheme.primary) }
         }
+    )
+}
+
+/**
+ * This is a slider that is able to respond to outside changes in its value,
+ * yet only report changes once the slide is complete (user's finger leaves
+ * the slider).
+ *
+ * @param   sliderInputValue        The value that the slider should display
+ *                                  while not in the middle of a slide.  As
+ *                                  this changes this function will recompose,
+ *                                  updating the display appropriately.
+ *
+ * @param   setSliderValueFunction  Function to call when a slide is complete.
+ *                                  The value of the completed slide  in the
+ *                                  range [0..1] is input to the function.
+ *
+ * @param   enabled                 Same as [Slider].
+ */
+@Composable
+fun SliderReportWhenFinished(
+    sliderInputValue: Float,
+    setSliderValueFunction: (Float) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier
+) {
+    val slidingPosition = remember { mutableFloatStateOf(0f) }
+    val sliding = remember { mutableStateOf(false) }
+
+    Slider(
+        value = if (sliding.value) slidingPosition.floatValue else sliderInputValue,
+        enabled = enabled,
+        onValueChange = {
+            slidingPosition.floatValue = it
+            sliding.value = true
+        },
+        onValueChangeFinished = {
+            setSliderValueFunction(slidingPosition.floatValue)
+            sliding.value = false
+        },
+        modifier = modifier
     )
 }
 

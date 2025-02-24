@@ -531,6 +531,38 @@ class PhilipsHueModel(
     //  update
     //-------------------------------------
 
+    /**
+     * The brightness of a room has changed.  Do the necessary work so that
+     * the bridge flow reports the change.
+     */
+    fun roomBrightnessChanged(
+        newBrightness: Int,
+        newOnStatus: Boolean,
+        changedRoom: PhilipsHueRoomInfo,
+        changedBridge: PhilipsHueBridgeInfo
+    ) {
+        Log.d(TAG, "roomBrightnessChanged() begin. newBrightness = $newBrightness, newOnStatus = $newOnStatus")
+        // start with a brand-new bridge list
+        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+        bridgeFlowSet.value.forEach { bridge ->
+            if (bridge.id == changedBridge.id) {
+                // found the correct bridge. Now find the correct room
+                bridge.rooms.forEach { room ->
+                    if (room.id == changedRoom.id) {
+                        room.brightness = newBrightness
+                        room.on = newOnStatus
+
+                        // todo: tell the bridge about the change!!!
+                        Log.d(TAG, "   - found the room and made the changes!")
+                    }
+                }
+            }
+            newBridgeList.add(bridge)
+        }
+
+        _bridgeFlowSet.update { newBridgeList.toSet() }
+    }
+
     //-------------------------------------
     //  delete
     //-------------------------------------
@@ -650,90 +682,6 @@ class PhilipsHueModel(
                         Log.v(TAG, "interpeting UPDATE event")
 
                         interpretUpdateEvent(bridge, event)
-/*
-                        // go through each datum for this event
-                        event.data.forEach { eventDatum ->
-                            // what kind of device changed?
-                            when (eventDatum.type) {
-                                "light" -> {
-                                    val light = findLightFromId(eventDatum.owner!!.rid, bridge)
-                                    if (light == null) {
-                                        Log.e(TAG, "unable to find changed light in interpretEvent()!")
-                                    }
-                                    else {
-                                        // yes, we have a light!
-                                        if (eventDatum.on != null) {
-                                            light.state.on = eventDatum.on.on
-                                        }
-                                        if (eventDatum.dimming != null) {
-                                            light.state.bri = eventDatum.dimming.brightness
-                                        }
-
-                                        // now fix the room  -- fixme: why am I doing this here?
-                                        val room = findRoomFromLight(light, bridge)
-                                        if (room != null) {
-                                            // There's just one light group per room. Get its info and
-                                            // reset the room's data.
-                                            val lightGroup = getGroupedLightFromApi(room.groupedLightServices[0].rid, bridge)
-                                            if (lightGroup != null) {
-                                                room.brightness =
-                                                    lightGroup.data[0].dimming.brightness
-                                                room.on = lightGroup.data[0].on.on
-                                            }
-                                            else {
-                                                Log.e(TAG, "Error in interpretEvent()! Could not get grouped_light id = ${room.groupedLightServices[0].rid}!")
-                                                Log.e(TAG, "    skipping...")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                "grouped_light" -> {
-                                    Log.d(TAG, "--> grouped_light event. owner = ${eventDatum.owner}")
-
-                                    // figure out what rtype the owner of this grouped_light event is
-                                    when (eventDatum.owner?.rtype) {
-                                        RTYPE_PRIVATE_GROUP -> {
-                                            // todo
-                                            Log.e(TAG, "implement me!!!")
-                                        }
-                                        RTYPE_BRIDGE_HOME -> {
-                                            // todo
-                                            Log.e(TAG, "implement me!!!")
-                                        }
-                                        RTYPE_ROOM -> {
-                                            // Ah, the owner is a room.  Signal that room to change according to the event.
-                                            val roomId = eventDatum.owner.rid
-                                            val room = findRoomFromId(roomId, bridge)
-                                            if (room != null) {
-                                                room.brightness = eventDatum.dimming?.brightness ?: 0
-                                                room.on = eventDatum.on?.on ?: false
-                                            }
-                                            else {
-                                                Log.e(TAG, "Error in interpretEvent()--can't find room that owns grouped_light event. Aborting!")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                "room" -> {
-                                    Log.e(TAG, "Unhandled room event. Crashing now.")
-                                    TODO()
-                                }
-
-                                "update" -> {
-                                    Log.e(TAG, "Unhandled update event. Crashing now.")
-                                    TODO()
-                                }
-
-                                else -> {
-                                    Log.e(TAG, "Unhandled event type: ${event.type}. Crashing now.")
-                                    TODO()
-                                }
-                            }
-
-                        }
-*/
                     }
                     "add" -> {
                         Log.e(TAG, "todo: implement interpeting ADD event")
@@ -752,7 +700,6 @@ class PhilipsHueModel(
                         return
                     }
                 }
-//                bridge.labelName = "slippery sam"
             }
 
             // creating new bridge list for the flow to work properly
@@ -767,15 +714,6 @@ class PhilipsHueModel(
             }
         }
         _bridgeFlowSet.update { newBridgeList.toSet() }
-
-        // more debugging info
-//        Log.d(TAG, "Verifying (from bridgeFlowSet):")
-//        bridgeFlowSet.value.forEach { bridge ->
-//            bridge.rooms.forEach { room ->
-//                Log.d(TAG, "   -> ${room.name}: on = ${room.on}, bri = ${room.brightness}")
-//            }
-//        }
-
     }
 
     /**
@@ -836,7 +774,7 @@ class PhilipsHueModel(
                             val room = findRoomFromId(roomId, bridge)
                             if (room != null) {
                                 if (eventDatum.dimming != null) {
-                                    room.brightness = eventDatum.dimming.brightness ?: 0
+                                    room.brightness = eventDatum.dimming.brightness
                                 }
                                 if (eventDatum.on != null) {
                                     room.on = eventDatum.on.on

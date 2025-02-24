@@ -14,6 +14,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,6 +122,33 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
     //  public functions
     //-------------------------
+
+    /**
+     * User has changed the brightness of a room, either by turning a light on/off
+     * or by changing the dimming level.  Tell the model about it.
+     *
+     * @param   newBrightness       The new brightness level: Int [0..MAX_BRIGHTNESS].
+     *
+     * @param   newOnStatus         Has the room been turned on or off?  Depends
+     *                              on the previous state.
+     *
+     * @param   changedRoom         The room in question.
+     *
+     * @param   changedBridge       The bridge that holds the room.
+     */
+    fun roomBrightnessChanged(
+        newBrightness: Int,
+        newOnStatus: Boolean,
+        changedRoom: PhilipsHueRoomInfo,
+        changedBridge: PhilipsHueBridgeInfo
+    ) {
+        bridgeModel.roomBrightnessChanged(
+            newBrightness = newBrightness,
+            newOnStatus = newOnStatus,
+            changedRoom = changedRoom,
+            changedBridge = changedBridge
+        )
+    }
 
     /**
      * This is for testing the UI for adding a bridge.  Here we simply add a dummy

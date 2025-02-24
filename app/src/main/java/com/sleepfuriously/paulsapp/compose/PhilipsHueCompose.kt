@@ -36,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -207,13 +206,17 @@ private fun DrawBridgeContents(
                             roomName = room.name,
                             illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
                             lightSwitchOn = room.on,
-                            roomBrightChangingFunction = { newBrightness ->
-//                                viewmodel.changingBrightness(newBrightness, room, bridgeInfo)
+                            roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
+                                val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
+                                Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
+                                viewmodel.roomBrightnessChanged(
+                                    (newIllumination * MAX_BRIGHTNESS).toInt(),
+                                    newSwitchOn,
+                                    room,
+                                    bridgeInfo
+                                )
                             }
-                        ) { newIllumination, newSwitchOn ->
-                            // todo call the illumination change in the viewmodel
-                            //  and make it display (var by remember in a slider?)
-                        }
+                        )
                     }
                 }
             }
@@ -367,7 +370,6 @@ private fun DotDotDotBridgeMenu(
                 bridge,
                 onClick = {
                     showInfoDialog = false
-                    Log.d(TAG, "click! - showInfoDialog = $showInfoDialog")
                 })
         }
     }
@@ -574,8 +576,6 @@ private fun ShowMainPhilipsHueAddBridgeFab(
  * @param   illumination    How much is this room currently illumniated.
  *                          0 = off all the way to 1 = full on.
  *
- * @param   roomBrightChangingFunction  Function to call while the slider is being manipulated.
- *
  * @param   roomChangeCompleteFunction  Function to call when the illumination is
  *                                  changed and completed by the user.  It takes the new
  *                                  illumination value and a boolean for if the
@@ -587,26 +587,11 @@ private fun DisplayPhilipsHueRoom(
     roomName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
-    roomBrightChangingFunction: (newBrightness: Float) -> Unit,
     roomChangeCompleteFunction: (newIllumination: Float, newSwitchOn: Boolean) -> Unit,
 ) {
-
-    // variables for the widgets
-//    var sliderPosition by remember { mutableFloatStateOf(illumination) }
-
-    var sliderPosition = illumination       // temporary--used while the hand is sliding
-//    var sliderPosition by remember { mutableFloatStateOf(illumination) }        // doesn't update from events
-
-//    var roomLightsSwitchOn by remember { mutableStateOf(lightSwitchOn) }
-
     // variables for displaying the lightbulb image
-//    var lightImage by remember { mutableIntStateOf(getProperLightImage(illumination)) }
     val lightImage = getProperLightImage(illumination)    // changes while hand is sliding
-//    var lightImageColor by remember { mutableStateOf(getLightColor(illumination)) }
     val lightImageColor = getLightColor(illumination)
-
-    Log.d(TAG, "begin DisplayPhilipsHueRoom()  $roomName: lightImage = $lightImage, lightImageColor = $lightImageColor")
-    Log.d(TAG, "   on = $lightSwitchOn, illumination = $illumination")
 
     Column(modifier = modifier
         .fillMaxSize()
@@ -641,16 +626,7 @@ private fun DisplayPhilipsHueRoom(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 onCheckedChange = { newSliderState ->
-//                    roomLightsSwitchOn = newSliderState
-//                    if (roomLightsSwitchOn) {
-//                        lightImage = getProperLightImage(sliderPosition)
-//                        lightImageColor = getLightColor(sliderPosition)
-//                    }
-//                    else {
-//                        lightImage = getProperLightImage(0f)
-//                        lightImageColor = getLightColor(0f)
-//                    }
-                    roomChangeCompleteFunction.invoke(sliderPosition, newSliderState)
+                    roomChangeCompleteFunction.invoke(illumination, newSliderState)
                 }
             )
 
@@ -661,25 +637,20 @@ private fun DisplayPhilipsHueRoom(
             DrawLightBulb(lightImage, lightImageColor)
         }
 
-        Slider(
-            value = sliderPosition,
+        SliderReportWhenFinished(
+            sliderInputValue = illumination,
+            setSliderValueFunction = { finalValue ->
+                roomChangeCompleteFunction.invoke(finalValue, lightSwitchOn)
+            },
             enabled = lightSwitchOn,
-            onValueChange = {
-                Log.d(TAG, "Slider: onValueChanged: $it")
-                sliderPosition = it
-//                lightImage = getProperLightImage(sliderPosition)
-//                lightImageColor = getLightColor(sliderPosition)
-            },
-            onValueChangeFinished = {
-                roomChangeCompleteFunction.invoke(sliderPosition, lightSwitchOn)
-            },
-            modifier = modifier
+            modifier = Modifier
                 .padding(vertical = 4.dp, horizontal = 18.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(veryDarkCoolGray)
         )
+
         Text(
-            text = stringResource(id = R.string.brightness, (sliderPosition * 100).roundToInt()),
+            text = stringResource(id = R.string.brightness, (illumination * MAX_BRIGHTNESS).roundToInt()),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
@@ -702,10 +673,10 @@ private fun DrawLightBulb(imageId : Int, colorTint: Color) {
 
 private fun getProperLightImage(illumination: Float) : Int {
     val lightImage =
-        if (illumination < 0.25f) {
+        if (illumination < 0.05f) {
             R.drawable.bare_bulb_white_04
         }
-        else if (illumination < 0.5f) {
+        else if (illumination < 0.4f) {
             R.drawable.bare_bulb_white_03
         }
         else if (illumination < 0.75f) {
@@ -719,10 +690,10 @@ private fun getProperLightImage(illumination: Float) : Int {
 
 private fun getLightColor(illumination: Float) : Color {
     val color =
-        if (illumination < 0.25f) {
+        if (illumination < 0.05f) {
             coolGray
         }
-        else if (illumination < 0.5f) {
+        else if (illumination < 0.4f) {
             lightCoolGray
         }
         else if (illumination < 0.75f) {
