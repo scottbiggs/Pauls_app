@@ -11,6 +11,7 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
@@ -474,7 +475,7 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
 
             // Get the name of the bridge (I'm using the printed name on the bridge itself)
-            val v2bridge = bridgeModel.getBridgesAllFromApi(
+            val v2bridge = PhilipsHueBridgeApi.getBridge(
                 bridgeIp = workingNewBridge!!.ip,
                 token = workingNewBridge!!.token
             )

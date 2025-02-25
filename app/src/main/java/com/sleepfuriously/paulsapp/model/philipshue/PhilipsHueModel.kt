@@ -18,12 +18,8 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
-import com.sleepfuriously.paulsapp.model.deletePref
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
-import com.sleepfuriously.paulsapp.model.savePrefsSet
-import com.sleepfuriously.paulsapp.model.savePrefsString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +35,6 @@ import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import org.json.JSONArray
 import org.json.JSONException
-import org.json.JSONObject
 import java.io.IOException
 
 /**
@@ -334,7 +329,7 @@ class PhilipsHueModel(
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
                 if (isActive) {
-                    val jsonString = getBridgeDataStrFromApi(ip, token)
+                    val jsonString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
                     if (jsonString.isEmpty()) {
                         Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
                     }
@@ -374,7 +369,7 @@ class PhilipsHueModel(
                     bridge.active = true
 
                     // 2a. Find rooms and add them to the bridge data
-                    val roomsFromApi = getRoomsFromBridgeApi(bridge)
+                    val roomsFromApi = PhilipsHueBridgeApi.getAllRooms(bridge)
                     bridge.rooms = convertV2RoomAll(roomsFromApi, bridge)
                 }
                 else {
@@ -417,7 +412,7 @@ class PhilipsHueModel(
     ) = withContext(Dispatchers.IO) {
 
         // grab the id for this bridge
-        val responseStr = getBridgeDataStrFromApi(
+        val responseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
             bridgeIp = newBridge.ip,
             token = newBridge.token
         )
@@ -469,63 +464,6 @@ class PhilipsHueModel(
         return bridge
     }
 
-
-    /**
-     * Gets all the information about a particular bridge.  This is straight
-     * from the bridge itself.  It can easily be parsed with [PHv2ResourceBridge].
-     *
-     * @return      The JSON string that was returned in the body of the api
-     *              call to the bridge.
-     *              Returns empty string if the bridge doesn't exist, token
-     *              is not recognized, or some other error.
-     */
-    suspend fun getBridgeDataStrFromApi(bridgeIp: String, token: String) : String {
-
-        val fullAddress = createFullAddress(
-            ip = bridgeIp,
-            suffix = SUFFIX_GET_BRIDGE
-        )
-
-        val response = synchronousGet(
-            url = fullAddress,
-            header = Pair(HEADER_TOKEN_KEY, token),
-            trustAll = true     // fixme: when we start higher security
-        )
-
-        if (response.isSuccessful) {
-            return response.body
-        }
-        return EMPTY_STRING
-    }
-
-    /**
-     * Finds all the rooms with the associated bridge.
-     *
-     * @return      Set of all rooms found with this bridge
-     */
-    private suspend fun getRoomsFromBridgeApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceRoomsAll {
-
-        val fullAddress = createFullAddress(
-            prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-            ip = bridge.ip,
-            suffix = SUFFIX_GET_ROOMS
-        )
-
-        // get info from bridge
-        val response = synchronousGet(
-            url = fullAddress,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
-            trustAll = true
-        )
-
-        Log.d(TAG, "getting response for url: $fullAddress")
-        val roomsData = PHv2ResourceRoomsAll(response.body)
-        Log.d(TAG, "got rooms: $roomsData")
-
-        return roomsData
-    }
-
-
     //-------------------------------------
     //  update
     //-------------------------------------
@@ -557,7 +495,7 @@ class PhilipsHueModel(
         Log.d(TAG, "---> body = $body")
 
         // construct the url
-        val url = createFullAddress(
+        val url = PhilipsHueBridgeApi.createFullAddress(
             ip = changedBridge.ip,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
@@ -939,7 +877,7 @@ class PhilipsHueModel(
         }
 
         try {
-            val fullIp = createFullAddress(
+            val fullIp = PhilipsHueBridgeApi.createFullAddress(
 //                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
                 prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
                 ip = ip,
@@ -1001,7 +939,7 @@ class PhilipsHueModel(
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
 
-        val fullAddress = createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
+        val fullAddress = PhilipsHueBridgeApi.createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
         Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
 
         val response = synchronousPost(
@@ -1078,36 +1016,6 @@ class PhilipsHueModel(
         }
     }
 
-
-    /**
-     * Constructs the complete address from the constituent parts.
-     *
-     * @param   ip      The main part of the address.  This is generally thought
-     *                  to be the domain name + ".com" or whatever domain suffix
-     *                  is appropriate.  In our use, this also can contain the
-     *                  prefix, which is usually "http://" or "https://" as well.
-     *                  Also in our cases, the domain is rarely used--we use the
-     *                  translated ip number, like "196.192.86.1".  So the most
-     *                  common case is:  "http://196.192.86.1"
-     *
-     * @param   prefix  If the prefix is not contained in the ip, then this holds
-     *                  it.  Generally this will be "https://" or "http://".
-     *
-     * @param   suffix  Anything that goes AFTER the ip.  This is the directory
-     *                  or parameters or whatever.  Remember that this should start
-     *                  with a backslash ('/').
-     */
-    private fun createFullAddress(
-        ip: String,
-        prefix: String = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-//        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
-        suffix: String
-    ) : String {
-
-        val fullAddress = "${prefix}$ip${suffix}"
-        Log.i(TAG,"fullAddress created. -> $fullAddress")
-        return fullAddress
-    }
 
     /**
      * To obtain the token for accessing a bridge, we have to tell that
@@ -1212,7 +1120,7 @@ class PhilipsHueModel(
             Boolean = withContext(Dispatchers.IO) {
 
         // try getting the bridge's general info to see if the token works
-        val fullAddress = createFullAddress(
+        val fullAddress = PhilipsHueBridgeApi.createFullAddress(
             ip = bridgeIp,
             suffix = SUFFIX_GET_BRIDGE,
         )
@@ -1299,90 +1207,6 @@ class PhilipsHueModel(
 
     }
 
-    /**
-     * Polls a single bridge, updating info if necessary.
-     *
-     * side effects
-     *  Bridge data will be modified if anything has changed.
-     *
-     * @return  True if anything has changed (that this detects!).
-     *
-     * Assumptions:
-     *      The id and IP for the bridge does not changed.  If so, then
-     *      the user needs to delete this entry for the bridge and
-     *      enter it in as if it's a new bridge
-     */
-    private suspend fun pollBridge(bridge: PhilipsHueBridgeInfo) : Boolean {
-
-        TODO()
-//
-//        var changed = false
-//
-//        // check to see if it's active first (may need to change active status)
-//        if (doesBridgeRespondToIp(bridge)) {
-//            if (bridge.active == true) {
-//                changed = true
-//            }
-//            bridge.active = true
-//        }
-//        else {
-//            if (bridge.active == true) {
-//                changed = true
-//            }
-//            bridge.active = false
-//            return changed
-//        }
-//
-//        // test the token
-//        if (doesBridgeAcceptToken(bridge) == false) {
-//            // problem with the token.  Either there wasn't one
-//            // or the bridge was reset.  I'm calling this a change
-//            // regardless
-//            bridge.token = ""
-//            changed = true
-//            return changed
-//        }
-//
-//
-//        // fixme:  this isn't that useful.
-//        // Lastly, the catch-all: the body.  A lot of stuff goes on here,
-//        // and if anything changes along here, we'll notice it.
-//
-////        val bridgeJsonDataStr = getBridgeDataStrFromApi(bridge)
-////        if (bridgeJsonDataStr.isEmpty()) {
-////            Log.e(TAG, "getBridgeDataFromApi(id = ${bridge.id} yielded an empty result!!!")
-////            if (bridge.body.isNotEmpty()) {
-////                changed = true
-////                bridge.body = ""
-////            }
-////            // nothing more to do
-////            return changed
-////        }
-//
-//        // fixme: the bridgeInfo isn't that useful
-////        val bridgeInfo = PHv2ResourceBridge(bridgeJsonDataStr)
-////
-////        if (bridge.body != bridgeJsonDataStr) {
-////            changed = true
-////            bridge.body = bridgeJsonDataStr
-////        }
-//
-//
-//        // get the list of rooms that the bridge knows about
-//        val roomsBridgeInfo = getRoomsFromBridgeApi(bridge.id)
-//        if (bridge.rooms.size != roomsBridgeInfo.size()) {
-//            changed = true
-//        }
-//
-//        // convert to a Set of rooms
-//        val newRoomSet = convertV2RoomAll(phV2Rooms = roomsBridgeInfo, bridge = bridge)
-//
-//        // See if there are any differences in this set and our current set of rooms
-//
-////        compareRooms(roomsBridgeInfo)
-//
-//        return changed
-    }
 
     /**
      * Converts a [PHv2ResourceRoomsAll] into a set of [PhilipsHueRoomInfo].
@@ -1413,7 +1237,7 @@ class PhilipsHueModel(
                 return@forEach      // this is the equivalent of continue (will skip this iteration)
             }
 
-            val v2RoomIndividual = getRoomIndividualFromApi(v2Room.id, bridge)
+            val v2RoomIndividual = PhilipsHueBridgeApi.getRoomIndividualFromApi(v2Room.id, bridge)
             if (v2RoomIndividual.errors.isNotEmpty()) {
                 Log.e(TAG, "convertV2RoomAll(): error getting individual room!")
             }
@@ -1445,39 +1269,6 @@ class PhilipsHueModel(
         }
 
         return@withContext convertPHv2Room(v2RoomIndividual.data[0], bridge)
-    }
-
-    /**
-     * Returns the first grouped light found in the given room.
-     * As a room, it shouldn't have more than one group.
-     *
-     * @param   v2Room      This is a [PHv2Room].  That is, it's
-     *                      taken from the data section of the
-     *                      class that's actually returned from the
-     *                      API.
-     *
-     * @return  The [PHv2GroupedLight] that's within.  Null will
-     *          be returned if no grouped lights are found.
-     */
-    private suspend fun getGroupedLightFromRoom(
-        v2Room: PHv2Room,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2GroupedLight? = withContext(Dispatchers.IO) {
-        v2Room.children.forEach { child ->
-            if (child.rtype == RTYPE_GROUP_LIGHT) {
-                val groupedLightIndividual = getGroupedLightFromApi(
-                    child.rid, bridge
-                )
-
-                // quick sanity check
-                if ((groupedLightIndividual != null) && (groupedLightIndividual.data.isNotEmpty())) {
-                    val groupedLight = groupedLightIndividual.data[0]
-                    return@withContext groupedLight
-                }
-            }
-        }
-        // not found
-        return@withContext null
     }
 
     /**
@@ -1515,7 +1306,7 @@ class PhilipsHueModel(
             }
 
             // The grouped_light has info on on/off and brightness
-            val groupedLight = getGroupedLightFromApi(groupedLightServices[0].rid, bridge)
+            val groupedLight = PhilipsHueBridgeApi.getGroupedLightFromApi(groupedLightServices[0].rid, bridge)
             var onOff = false
             var brightness = 0
             if ((groupedLight != null) && (groupedLight.errors.isEmpty())) {
@@ -1528,12 +1319,12 @@ class PhilipsHueModel(
             v2Room.children.forEach { child ->
                 if (child.rtype == RTYPE_DEVICE) {
                     // is this device a light?  It's a light iff one of its services is rtype = "light".
-                    val device = getDeviceIndividualFromApi(child.rid, bridge)
+                    val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(child.rid, bridge)
                     if (device.data.isNotEmpty() && (device.data[0].type == DEVICE)) {
                         // yes, it's a device (probably a light)!  To make sure, search its services.
                         device.data[0].services.forEach { service ->
                             if (service.rtype == RTYPE_LIGHT) {
-                                val v2light = getLightInfoFromApi(service.rid, bridge)
+                                val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(service.rid, bridge)
                                 if (v2light != null) {
                                     val regularLight = PhilipsHueLightInfo(
                                         lightId = v2light.data[0].id,
@@ -1596,7 +1387,7 @@ class PhilipsHueModel(
         serviceList.forEach { service ->
             if (service.rtype == RTYPE_LIGHT) {
                 // yep found it!
-                val v2ApiLight = getLightInfoFromApi(service.rid, bridge)
+                val v2ApiLight = PhilipsHueBridgeApi.getLightInfoFromApi(service.rid, bridge)
                 if (v2ApiLight == null) {
                     Log.w(TAG, "Problem getting light in getLightInfoFromServiceList()!  rid = ${service.rid}")
                     return null
@@ -1681,277 +1472,6 @@ class PhilipsHueModel(
         return light
     }
 
-    /**
-     * Given the id (v2) of a room, this gets the individual info
-     * from the bridge about that room.
-     *
-     * Note that if there's an error, then that info will also be in
-     * the data that's returned (in the error json array).
-     */
-    private suspend fun getRoomIndividualFromApi(
-        roomId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2RoomIndividual = withContext(Dispatchers.IO) {
-
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_ROOMS/$roomId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
-            trustAll = true     // fixme: change when using secure stuff
-        )
-
-        if (response.isSuccessful) {
-            // We got a valid response.  Parse the body into our data structure
-            return@withContext PHv2RoomIndividual(response.body)
-        }
-        else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
-            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
-            return@withContext PHv2RoomIndividual(
-                errors = listOf(PHv2Error(description = response.message))
-            )
-        }
-    }
-
-    /**
-     * Gets the [PHv2ResourceBridge] data from a bridge.  According to
-     * the docs, this is IDENTICAL to getting a bridge with the bridge id.
-     * Makes sense as a bridge can only know about itself.
-     *
-     * This call is useful when you don't much info about the bridge yet.
-     * You'll get that info here!
-     */
-    suspend fun getBridgesAllFromApi(
-        bridgeIp: String,
-        token: String
-    ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {
-        val url = createFullAddress(
-            ip = bridgeIp,
-            suffix = SUFFIX_GET_BRIDGE
-        )
-        val response = synchronousGet(
-            url = url,
-            header = Pair(HEADER_TOKEN_KEY, token),
-            trustAll = true
-        )
-
-        if (response.isSuccessful) {
-            return@withContext PHv2ResourceBridge(response.body)
-        }
-        else {
-            Log.e(TAG, "unable to get bridge info (ip = ${bridgeIp}!")
-            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
-            return@withContext PHv2ResourceBridge(
-                errors = listOf(PHv2Error(description = response.message))
-            )
-        }
-    }
-
-    /**
-     * Given a device's id (or RID), this will retrieve the data from
-     * the bridge.  Essentially just sets up the API call for you.
-     *
-     * If there's an error, the error portion is filled in.
-     */
-    private suspend fun getDeviceIndividualFromApi(
-        deviceRid: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2ResourceDeviceIndividual = withContext(Dispatchers.IO) {
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_DEVICE/$deviceRid"
-        )
-        val response = synchronousGet(
-            url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
-            trustAll = true     // fixme: change when using secure stuff
-        )
-
-        if (response.isSuccessful) {
-            // We got a valid response.  Parse the body into our data structure
-            return@withContext PHv2ResourceDeviceIndividual(response.body)
-        }
-        else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id}!")
-            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
-            return@withContext PHv2ResourceDeviceIndividual(
-                errors = listOf(PHv2Error(description = response.message))
-            )
-        }
-    }
-
-    /**
-     * Given an id for a light group, this goes to the bridge and
-     * gets all the info it can about it.
-     *
-     * note
-     *      AFAIK, grouped_lights doesn't know about the lights that it controls.  It's a kind
-     *      of setting for a bunch of lights.  The room (or zone?) applies this to all
-     *      the lights that it controls.
-     *
-     * @return  [PHv2GroupedLightIndividual] instance with all the info on this light group.
-     */
-    private suspend fun getGroupedLightFromApi(
-        groupId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2GroupedLightIndividual? = withContext(Dispatchers.IO) {
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
-            trustAll = true
-        )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting grouped_lights!  groupId = $groupId, bridgeId = ${bridge.id}")
-            Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
-            // returning null
-            return@withContext null
-        }
-
-        val group = PHv2GroupedLightIndividual(JSONObject(response.body))
-        return@withContext group
-    }
-
-    /**
-     * Finds all the lights in a room by polling the bridge.
-     *
-     * @param   room        A room data (from json)
-     *
-     * @param   bridge      Info on the bridge in question
-     */
-    private suspend fun getRoomLightsFromApi(
-        room: PHv2Room,
-        bridge: PhilipsHueBridgeInfo
-    ) : Set<PHv2Light> = withContext(Dispatchers.IO) {
-
-        // find the lights. they'll be part of the children
-        val lightSet = mutableSetOf<PHv2Light>()
-        room.children.forEach { child ->
-            if (child.rtype == RTYPE_DEVICE) {
-                try {
-                    val device = getLightInfoFromApi(child.rid, bridge)
-                    if (device == null) {
-                        Log.d(TAG, "device not found in getRoomLightsFromApi()! Skipping rid = ${child.rid}")
-                    }
-                    else if (device.data.isNotEmpty() && device.data[0].type == LIGHT) {
-                            lightSet.add(device.data[0])
-                    }
-
-                }
-                catch(e: Exception) {
-                    Log.e(TAG, "problem interpreting child in getRoomLightsApi().  Perhaps it's something weird (not a light)")
-                    e.printStackTrace()
-                }
-            }
-        }
-
-        return@withContext lightSet
-    }
-
-    /**
-     * Retrieves info about a room from its id.
-     *
-     * @param   roomId      The v2 id for this room.
-     *
-     * @param   bridge      The bridge that controls this room.  It needs to be
-     *                      connected and active.
-     *
-     * @return  The [PHv2Room] data associated with this room.
-     */
-    suspend fun getRoomInfoFromApi(
-        roomId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2Room = withContext(Dispatchers.IO) {
-
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_ROOMS/$roomId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token))
-            )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting room data!  roomId = $roomId, bridgeId = ${bridge.id}")
-            Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
-            // returning empty object
-            return@withContext PHv2Room(JSONObject())
-        }
-
-        val roomData = PHv2Room(response.body)
-        return@withContext roomData
-    }
-
-    /**
-     * Retrieves info about a specific device given its id.
-     * Returns null if not found.
-     */
-    private suspend fun getDeviceInfoFromApi(
-        deviceId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2Device? {
-
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_DEVICE/$deviceId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
-            trustAll = true     // todo: make more secure in future
-        )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "can't get device (id = $deviceId) from bridge!")
-            return null
-        }
-
-        // successful--process this info and return
-        return PHv2Device(response.body)
-    }
-
-    /**
-     * Retrieves info about a specific light, given its id.
-     * Returns null on error (light can't be found).
-     */
-    private suspend fun getLightInfoFromApi(
-        lightId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2LightIndividual? = withContext(Dispatchers.IO) {
-        // construct the url
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_LIGHTS/$lightId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
-            trustAll = true     // todo: be paranoid in the future
-        )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting light data!  lightId = $lightId, bridgeId = ${bridge.id}")
-            Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
-            return@withContext null
-        }
-
-        val lightData = PHv2LightIndividual(response.body)
-        return@withContext lightData
-    }
-
 }
 
 //-------------------------------------
@@ -1984,10 +1504,6 @@ enum class GetBridgeTokenErrorEnum {
 
 private const val TAG = "PhilipsHueModel"
 
-/** this prefix should appear before the numbers of the bridge's ip address when testing */
-private const val PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX = "https://"
-const val PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX = "http://"
-
 /** append this to the bridge's ip to get the debug screen */
 private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"
 
@@ -2004,38 +1520,4 @@ private const val PHILIPS_HUE_BRIDGE_DEVICE_TYPE = "sleepfuriously android clien
  */
 private const val PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX = "sleepfuriously_p"
 
-//----------------
-//  suffixes
-//
-
-/** This is v1. It should ONLY be used when getting the token/username from bridge. */
-private const val SUFFIX_API = "/api/"
-
-/** Gets info about the bridge */
-private const val SUFFIX_GET_BRIDGE = "/clip/v2/resource/bridge"
-
-/** Used to get all the rooms associated with a bridge.  Goes AFTER the token */
-private const val SUFFIX_GET_ROOMS = "/clip/v2/resource/room"
-
-/**
- * Used to get info about a the bridge's lights.
- *
- * To get info about a specific light, add a slash and put the id AFTER!
- */
-private const val SUFFIX_GET_LIGHTS = "/clip/v2/resource/light"
-
-/**
- * Gets all the light groups for this bridge.
- *
- * For a specific light group, add a slash and then the id.
- */
-private const val SUFFIX_GET_GROUPED_LIGHTS = "/clip/v2/resource/grouped_light"
-
-/**
- * Gets all the devices.  The usual addition to get just one device details.
- */
-private const val SUFFIX_GET_DEVICE = "/clip/v2/resource/device"
-
-/** The header key when using a token/username for Philips Hue API calls */
-private const val HEADER_TOKEN_KEY = "hue-application-key"
 
