@@ -17,12 +17,10 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Viewmodel for all the Philips Hue devices.
@@ -79,7 +77,7 @@ class PhilipsHueViewmodel : ViewModel() {
     /** access to philips hue data */
     private var philipsHueRepository = PhilipsHueRepository(viewModelScope)
 
-    /** access to the philips hue bridge and all that stuff that goes with it */
+    /** access to the philips hue bridge and all that stuff that goes with it todo: functionality needs replacing by repository */
     private var bridgeModel = PhilipsHueModel(coroutineScope = viewModelScope)
 
     /** This variable holds a new bridge while working on it.  Once filled in, it'll be added to the list */
