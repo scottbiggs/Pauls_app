@@ -122,8 +122,7 @@ fun ShowMainScreenPhilipsHue(
     ) {
         ShowMainPhilipsHueAddBridgeFab(
             modifier = Modifier
-                .padding(bottom = 18.dp)
-                .align(Alignment.BottomEnd),    // only works if parent is Box
+                .align(Alignment.TopEnd),    // only works if parent is Box
             viewmodel = philipsHueViewmodel,
         )
     }
@@ -542,7 +541,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
     if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
         ExtendedFloatingActionButton(
             modifier = modifier
-                .padding(top = 26.dp, end = 38.dp),
+                .padding(top = 8.dp, end = 38.dp),
             onClick = { viewmodel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
             icon = {
@@ -556,7 +555,7 @@ private fun ShowMainPhilipsHueAddBridgeFab(
     } else {
         FloatingActionButton(
             modifier = modifier
-                .padding(top = 16.dp, end = 38.dp),
+                .padding(top = 8.dp, end = 38.dp),
             onClick = { viewmodel.beginAddPhilipsHueBridge() },
             elevation = FloatingActionButtonDefaults.elevation(8.dp),
         ) {

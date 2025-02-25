@@ -586,10 +586,6 @@ private fun ManualInitWaiting(
     modifier: Modifier = Modifier
 ) {
 
-    BackHandler {
-        viewmodel.bridgeCancelTest()
-    }
-
     Box (
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

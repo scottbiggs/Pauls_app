@@ -519,14 +519,6 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
 
-    /**
-     * This will try to cancel any network testing that's going on (user hit a cancel
-     * button).
-     */
-    fun bridgeCancelTest() {
-        // todo
-    }
-
     //-------------------------
     //  private functions
     //-------------------------
