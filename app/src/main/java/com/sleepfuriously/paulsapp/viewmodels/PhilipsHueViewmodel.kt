@@ -14,6 +14,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -75,6 +76,9 @@ class PhilipsHueViewmodel : ViewModel() {
     /** when true, we are in the process of waiting for an important response from a bridge (probably) */
     var waitingForResponse = _waitingForResponse.asStateFlow()
 
+    /** access to philips hue data */
+    private var philipsHueRepository = PhilipsHueRepository(viewModelScope)
+
     /** access to the philips hue bridge and all that stuff that goes with it */
     private var bridgeModel = PhilipsHueModel(coroutineScope = viewModelScope)
 
@@ -89,34 +93,10 @@ class PhilipsHueViewmodel : ViewModel() {
         // When there is a change, pass that change along to philipsHueBridgesCompose
         // (this makes us now a producer).  Thus this viewmodel is an intermediary (both).
         viewModelScope.launch {
-            bridgeModel.bridgeFlowSet.collectLatest {
-//            bridgeModel.bridgeFlowSet.collect {
-                // hmmm, this doesn't seem to work???
-//                philipsHueBridgesCompose = it
-
-                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${System.identityHashCode(it)}")
-
-                // rebuilding a copy of the
-                val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
-                it.forEach { bridge ->
-                    newBridgeSet.add(bridge)
-                    Log.d(TAG, "Setting philipsHueBridgesCompose:")
-                    bridge.rooms.forEach { room ->
-                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
-                    }
-                }
-                philipsHueBridgesCompose = newBridgeSet
+            philipsHueRepository.bridgesSet.collectLatest {
+                philipsHueBridgesCompose = it
             }
         }
-
-        // example from my working test
-//        viewModelScope.launch {
-//            bridgeRepository.bridges.collectLatest {
-//                Log.d(TAG, "bridges = $it")
-//                composeBridgeSet = it
-//            }
-//        }
-
     }
 
     //-------------------------
