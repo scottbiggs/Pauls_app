@@ -19,8 +19,6 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.deletePref
-import com.sleepfuriously.paulsapp.model.getPrefsSet
-import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
@@ -316,7 +314,7 @@ class PhilipsHueModel(
 
             // 1. Load bridge ids from prefs
             //
-            val bridgeIdsFromPrefs = loadAllBridgeIdsFromPrefs()
+            val bridgeIdsFromPrefs = PhilipsHueBridgeStorage.loadAllBridgeIds(ctx)
             if (bridgeIdsFromPrefs.isNullOrEmpty()) {
                 return@runBlocking
             }
@@ -328,10 +326,10 @@ class PhilipsHueModel(
             bridgeIdsFromPrefs.forEach() { id ->
 
                 // get the IP for this bridge
-                val ip = loadBridgeIpFromPrefs(id)
+                val ip = PhilipsHueBridgeStorage.loadBridgeIp(id, ctx)
 
                 // get the token for this bridge
-                val token = loadBridgeTokenFromPrefs(id)
+                val token = PhilipsHueBridgeStorage.loadBridgeToken(id, ctx)
 
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
@@ -443,7 +441,7 @@ class PhilipsHueModel(
         _bridgeFlowSet.value += bridgeToAdd
 
         // update long-term data
-        saveBridge(bridgeToAdd)
+        PhilipsHueBridgeStorage.saveBridge(bridgeToAdd, true, ctx)
     }
 
 
@@ -611,17 +609,14 @@ class PhilipsHueModel(
         // 1) todo Tell the bridge to remove this app's username (token)
 
         // 2) Remove bridge data from our permanent storage
-        if (removeBridgeTokenPrefs(bridgeId) == false) {
+        if (PhilipsHueBridgeStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {
             Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
             return false
         }
 
-        if (removeBridgeIP(bridgeId) == false) {
-            Log.e(TAG, "Problem removing IP from bridgeId = $bridgeId")
-            return false
-        }
+        PhilipsHueBridgeStorage.removeBridgeIP(bridgeId, true, ctx)
 
-        if (removeBridgeId(bridgeId) == false) {
+        if (PhilipsHueBridgeStorage.removeBridgeId(bridgeId, true, ctx) == false) {
             Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
             return false
         }
@@ -1166,66 +1161,6 @@ class PhilipsHueModel(
     //~~~~~~~~~~~
 
     /**
-     * Loads all the known bridge ids from the prefs.
-     *
-     * @return      A Set of bridge ids (bridge ids are Strings).
-     *              The Set will be empty if none are found.
-     *              It'll be null if there was a different problem
-     *              (probably the prefs file wasn't created yet).
-     */
-    private suspend fun loadAllBridgeIdsFromPrefs() : Set<String>? {
-        val idSet = withContext(Dispatchers.IO) {
-            getPrefsSet(
-                ctx = ctx,
-                filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
-                key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY)
-        }
-        return idSet
-    }
-
-    /**
-     * Finds the token associated with the given bridge that was saved in
-     * the prefs.
-     *
-     * @param       bridgeId        Id of bridge
-     *
-     * @return      The token (username) that this app uses to communicate
-     *              with the bridge.
-     *              Returns empty string on error.
-     */
-    private suspend fun loadBridgeTokenFromPrefs(bridgeId: String) : String {
-
-        val key = assembleTokenKey(bridgeId)
-        val token = withContext(Dispatchers.IO) {
-            getPrefsString(ctx, key)
-        }
-
-        Log.d(TAG, "loadBridgeTokenFromPrefs($bridgeId) => $token")
-        return token ?: ""
-    }
-
-    /**
-     * Finds the IP that is stored for the given bridge that was saved in
-     * the prefs.
-     *
-     * @param   bridgeId        The id of bridge in question.
-     *
-     * @return      The IP string.  Returns empty string if bridge not found (or some
-     *              other error).
-     */
-    private suspend fun loadBridgeIpFromPrefs(bridgeId: String) : String {
-
-        val key = assembleIpKey(bridgeId)
-        val ip = withContext(Dispatchers.IO) {
-            getPrefsString(ctx, key)
-        }
-
-        Log.d(TAG, "loadBridgeIpFromPrefs($bridgeId) => $ip")
-        return ip ?: ""
-    }
-
-
-    /**
      * This takes a string, converts it to Gson, then looks around to
      * find the token (name) part.  This token is then returned.
      *
@@ -1304,299 +1239,10 @@ class PhilipsHueModel(
     //  update
     //~~~~~~~~~~~
 
-    /**
-     * Saves the id of the bridge in the list of bridge ids.  The id is needed
-     * to retrieve other long-term storage aspects about the bridge.
-     *
-     * Note
-     *      This should be called BEFORE saving the token or the IP for this
-     *      bridge.  It only makes sense!
-     *
-     * @param       newBridgeId     Will return error if this is not unique.
-     *
-     * @param       synchronize     When true (default is false), this will
-     *                              not return until the write is complete.
-     *                              This MUST be run outside of the Main thread
-     *                              when this happens!!!
-     *
-     * @return      True - successfully saved
-     *              False - some error prevented saving
-     */
-    private fun saveBridgeId(
-        newBridgeId: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        // make a Set of ids including the new one.
-        val idSet = mutableSetOf<String>()
-        _bridgeFlowSet.value.forEach { bridge ->
-            idSet.add(bridge.id)
-        }
-
-        // add the new id
-        idSet.add(newBridgeId)
-
-        // now save this in our shared prefs
-        savePrefsSet(
-            ctx = ctx,
-            filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
-            key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
-            synchronize = synchronize,
-            daSet = idSet
-        )
-        return true
-    }
-
-    /**
-     * Saves the ip of a bridge in long-term storage (the prefs).
-     * Overwrites any existing ip.
-     * Does nothing if the bridge can't be found.
-     *
-     * preconditions:
-     *      The bridge is already created.
-     *
-     * side effects:
-     *      - The ip of the bridge is changed locally as well as
-     *      saved in the prefs.
-     *
-     * @param   bridgeId    id of the bridge that we're working with
-     *
-     * @param   newIp   String representation of the ip to access the bridge
-     *                  locally.
-     *
-     * @param   synchronize     When true (default is false), this will
-     *                          not return until the write is complete.
-     *                          This MUST be run outside of the Main thread
-     *                          when this happens!!!
-     *
-     * @return      True - successfully saved
-     *              False - could not find the bridgeId
-     */
-    fun saveBridgeIp(
-        bridgeId: String,
-        newIp: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        // does this bridge exist?
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "can't find bridge $bridgeId in saveBridgeIpStr()!")
-            return false
-        }
-
-        // strip any prefix from this ip and save the info
-//        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX)
-        val justIp = newIp.substringAfter(PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX)
-        bridge.ip = justIp                      // local
-
-        val ipKey = assembleIpKey(bridgeId)
-        savePrefsString(ctx, ipKey, newIp, synchronize)      // long-term
-
-        return true
-    }
-
-
-    /**
-     * Saves the token into the specified bridge both locally and in long-term
-     * prefs storage.  If the bridge already exists then its token is overridden.
-     *
-     * preconditions
-     *      - The bridge must already exist
-     *
-     * side effects
-     *      - The local data for the bridge is changed to reflect the new token
-     *      as well as long-term storage.
-     *
-     * @param       bridgeId        Id of the bridge we want to change the token.
-     *
-     * @param       newToken        The token to replace the existing token with.
-     *
-     * @param       synchronize     When true (default is false), this will
-     *                              not return until the write is complete.
-     *                              This MUST be run outside of the Main thread
-     *                              when this happens!!!
-     *
-     * @return      True - successfully saved
-     *              False - could not find the bridgeId
-     */
-    private fun saveBridgeToken(
-        bridgeId: String,
-        newToken: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        // does this bridge exist?
-        val bridge = getBridge(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "can't find bridge $bridgeId in saveBridgeToken()!")
-            return false
-        }
-
-        bridge.token = newToken     // local save
-
-        val tokenKey = assembleTokenKey(bridgeId)
-        savePrefsString(ctx, tokenKey, newToken, synchronize)      // long-term
-
-        return true
-    }
-
-    /**
-     * Saves the data in the given bridge into long-term storage.
-     * This is pretty much the bridge id, the IP, and its token.
-     *
-     * Because this does multiple saves in a row, you need to call
-     * this off the main thread to avoid any possible race condition.
-     *
-     * @param       bridge      The bridge to save (complete).
-     *                          Warning: this id MUST BE UNIQUE if
-     *                          we are saving a NEW bridge!!!
-     *                          This does not check the uniqueness
-     *                          as I don't know if we're making a new
-     *                          bridge or updating an existing one.
-     *
-     * @return      True - successfully saved
-     *              False - some problem prevented saving
-     */
-    private suspend fun saveBridge(bridge: PhilipsHueBridgeInfo) :
-            Boolean = withContext(Dispatchers.IO) {
-
-        if (saveBridgeId(bridge.id) == false) {
-            Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
-            return@withContext false
-        }
-
-        if (saveBridgeIp(bridge.id, bridge.ip, true) == false) {
-            Log.e(TAG, "Can't save the IP of the bridge in saveBridge($bridge) - aborting!")
-            return@withContext false
-        }
-
-        if (saveBridgeToken(bridge.id, bridge.token, true) == false) {
-            Log.e(TAG, "Can't save the token of the bridge in saveBridge($bridge) - aborting!")
-            return@withContext false
-        }
-
-        return@withContext true
-    }
-
     //~~~~~~~~~~~
     //  delete
     //~~~~~~~~~~~
 
-    /**
-     * Removes the given token from our permanent storage.
-     * If the token does not already exist, then nothing is done.
-     *
-     * preconditions
-     *      - The bridge must already exist
-     *
-     * Note:    This does NOT remove the bridge token from our short-term
-     *  internal cache.  The caller is responsible for that.
-     *
-     * @param       bridgeId        Id of the bridge we want to change the token.
-     *
-     * @param       synchronize     When true (default is false), this will
-     *                              not return until the write is complete.
-     *                              This MUST be run outside of the Main thread
-     *                              when this happens!!!
-     *
-     * @return      True - successfully removed
-     *              False - could not find the bridgeId
-     */
-    private fun removeBridgeTokenPrefs(
-        bridgeId: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        if (getBridge(bridgeId) == null) {
-            Log.e(TAG, "unable to find bridge in removeBridgeToken(bridgeId = $bridgeId)")
-            return false
-        }
-
-        val tokenKey = assembleTokenKey(bridgeId)
-        deletePref(ctx, tokenKey, synchronize)
-        return true
-    }
-
-    /**
-     * Removes the given IP from our permanent storage.
-     * If the bridge does not exist, then nothing is done.
-     *
-     * Note:    This does NOT remove the bridge IP from our short-term
-     *  internal cache.  The caller is responsible for that.
-     *
-     * @param       bridgeId        Id of the bridge we want to change the token.
-     *
-     * @param       synchronize     When true (default is false), this will
-     *                              not return until the write is complete.
-     *                              This MUST be run outside of the Main thread
-     *                              when this happens!!!
-     *
-     * @return      True - successfully removed
-     *              False - could not find the bridgeId
-     */
-    private fun removeBridgeIP(
-        bridgeId: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        if (getBridge(bridgeId) == null) {
-            Log.e(TAG, "unable to find bridge in removeBridgeIP(bridgeId = $bridgeId)")
-            return false
-        }
-
-        val ipKey = assembleIpKey(bridgeId)
-        deletePref(ctx, ipKey, synchronize)
-        return true
-    }
-
-    /**
-     * Removes the bridge id from long-term storage (prefs).
-     *
-     * Note:    This does NOT remove the bridge data from our short-term
-     *  internal cache.  The caller is responsible for that.
-     *
-     * @param       bridgeId        Id of the bridge we want to remove.
-     *
-     * @param       synchronize     When true (default is false), this will
-     *                              not return until the write is complete.
-     *                              This MUST be run outside of the Main thread
-     *                              when this happens!!!
-     *
-     * @return      True - successfully removed
-     *              False - could not find the bridgeId
-     */
-    private fun removeBridgeId(
-        bridgeId: String,
-        synchronize: Boolean = false
-    ) : Boolean {
-
-        if (getBridge(bridgeId) == null) {
-            Log.e(TAG, "unable to find bridge in removeBridgeId(bridgeId = $bridgeId)")
-            return false
-        }
-
-        // Get the set of ids.  We'll have to change it
-        // and save that changed set.
-        val idSet = mutableSetOf<String>()
-        _bridgeFlowSet.value.forEach { bridge ->
-            if (bridge.id != bridgeId) {
-                // don't record THIS id!
-                idSet.add(bridge.id)
-            }
-        }
-
-        // now save this in our shared prefs, overwriting
-        // any previous set of IDs.
-        savePrefsSet(
-            ctx = ctx,
-            filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
-            key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
-            synchronize = synchronize,
-            daSet = idSet
-        )
-        return true
-    }
 
     //~~~~~~~~~~~
     //  util
@@ -2306,21 +1952,6 @@ class PhilipsHueModel(
         return@withContext lightData
     }
 
-    /**
-     * Returns the key needed to access the pref for a bridge's
-     * ip.
-     *
-     * @param   bridgeId        The id of the bridge in question.
-     */
-    private fun assembleIpKey(bridgeId: String) : String {
-        return PHILIPS_HUE_BRIDGE_IP_KEY_PREFIX + bridgeId
-    }
-
-    private fun assembleTokenKey(bridgeId: String) : String {
-        return PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX + bridgeId
-    }
-
-
 }
 
 //-------------------------------------
@@ -2355,7 +1986,7 @@ private const val TAG = "PhilipsHueModel"
 
 /** this prefix should appear before the numbers of the bridge's ip address when testing */
 private const val PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX = "https://"
-private const val PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX = "http://"
+const val PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX = "http://"
 
 /** append this to the bridge's ip to get the debug screen */
 private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"
@@ -2408,22 +2039,3 @@ private const val SUFFIX_GET_DEVICE = "/clip/v2/resource/device"
 /** The header key when using a token/username for Philips Hue API calls */
 private const val HEADER_TOKEN_KEY = "hue-application-key"
 
-
-//----------------
-//  prefs
-//
-
-/** the name of the file that holds all the philips hue bridge ids */
-private const val PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME = "ph_bridges_prefs"
-
-/** key for getting all the ids for all the bridges */
-private const val PHILIPS_HUE_BRIDGE_ALL_IDS_KEY = "ph_bridge_all_ids"
-
-/**
- * Prefix of key to get the token for the philips hue bridge from prefs.
- * The actual key is PHILIPS_HUE_BRIDGE_TOKEN_KEY + bridge_id
- */
-private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX = "ph_bridge_token_key"
-
-/** prefix of key to get ip from prefs (see [PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX]) */
-private const val PHILIPS_HUE_BRIDGE_IP_KEY_PREFIX = "ph_bridge_ip_key"

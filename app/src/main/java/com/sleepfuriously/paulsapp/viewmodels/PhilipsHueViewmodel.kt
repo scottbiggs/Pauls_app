@@ -190,9 +190,6 @@ class PhilipsHueViewmodel : ViewModel() {
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {
 
-            // fixme
-            delay(1000)
-
             //------------
             // 1.  check wifi
             //
@@ -223,79 +220,7 @@ class PhilipsHueViewmodel : ViewModel() {
             _iotTestingState.value = TestStatus.TEST_GOOD
             _iotTestingErrorMsg.value = ""
         }
-
     }
-
-    /**
-     * Call this to change the IP for an EXISTING philips hue bridge.
-     * If you want to set a new bridge, call [addPhilipsHueBridgeIp]
-     *
-     * NOTE
-     *  No testing is done for the bridge in question (other than that
-     *  it exists in our list).  The new ip could work, or it might not--this
-     *  function doesn't care (because we might need to change an ip to a
-     *  bridge that isn't around, or isn't turned on, etc.).
-     *
-     * @param   bridgeId        Id of the bridge to set the ip for
-     *
-     * @param   newIp           A new IP string.  This function will check
-     *                          for proper formatting.
-     *
-     * @param   synchronized    When true this function will not return until
-     *                          the data is finished saving in long-term memory.
-     *                          A coroutine outside of the main thread will be
-     *                          started to accomplish this task.
-     *                          Defaults to false (returns immediately), which
-     *                          may create a race condition if you do a lot of
-     *                          saves in a row.
-     *
-     * @return      True if all went well.
-     *              False if the bridge could not be found.  Nothing is done.
-     *
-     * side effects:
-     *      The bridge will be permanently changed to hold the new id
-     */
-    private fun setPhilipsHueIp(
-        bridgeId: String,
-        newIp: String,
-        synchronized: Boolean = false
-    ) : Boolean {
-
-        var result = true
-
-        // kind of a complicated way to get the result from a coroutine, sigh
-        if (synchronized) {
-            viewModelScope.launch {
-
-                // make sure we're off the main thread
-                result = withContext(Dispatchers.IO) {
-                    if (isValidBasicIp(newIp)) {
-                        bridgeModel.saveBridgeIp(bridgeId, newIp)
-                        true
-                    }
-                    else {
-                        Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
-                        false
-                    }
-                }
-            }
-        }
-
-        else {
-            // no coroutines needed
-            if (isValidBasicIp(newIp)) {
-                bridgeModel.saveBridgeIp(bridgeId, newIp)
-                result = true
-            }
-            else {
-                Log.e(TAG, "bad ip format in setPhilipsHueIp(bridgeId = $bridgeId, newIp = $newIp")
-                result = false
-            }
-        }
-
-        return result
-    }
-
 
     /**
      * Removes the specified bridge from our list.  Also tries to remove
