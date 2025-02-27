@@ -208,7 +208,7 @@ private fun DrawBridgeContents(
                             roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
                                 val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
                                 Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
-                                viewmodel.roomBrightnessChanged(
+                                viewmodel.changeRoomBrightness(
                                     (newIllumination * MAX_BRIGHTNESS).toInt(),
                                     newSwitchOn,
                                     room,
@@ -319,7 +319,7 @@ private fun DotDotDotBridgeMenu(
                 onClick = {
                     isDropDownExpanded = false
                     if (bridge.connected) {
-                        viewmodel.disconnectBridge(bridge)
+                        viewmodel.stopSseConnection(bridge)
                     }
                     else {
                         viewmodel.connectBridge(bridge)

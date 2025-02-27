@@ -125,35 +125,6 @@ class PhilipsHueModel(
     //-------------------------------------
 
     init {
-        properInit()
-
-        coroutineScope.launch {
-            while (true) {
-                phServerSentEvents.serverSentEvent.collect { sseEventPair ->
-                    interpretEvent(sseEventPair.first, sseEventPair.second)
-                }
-            }
-        }
-    }
-
-    /**
-     * This exists because kotlin sucks at inits.  Please don't
-     * call this function except during initialization.
-     *
-     * This loads any data that is stored in shared prefs.
-     *
-     * side effects
-     *  - [bridgeFlowSet] will contain data as in the shared prefs
-     */
-    private fun properInit() {
-
-        // idiot test to make sure this isn't run more than once.
-        if (initialized) {
-            Log.e(TAG, "Error: tried to initialize more than once!!!")
-            return
-        }
-        initialized = true
-
         //----------------
         //  1. Load bridge info from long-term storage
         //
@@ -249,6 +220,34 @@ class PhilipsHueModel(
             // update the flow for all the bridges
             _bridgeFlowSet.update { newBridgeSet }  // stateflow reflects changes
         }
+
+        coroutineScope.launch {
+            while (true) {
+                phServerSentEvents.serverSentEvent.collect { sseEventPair ->
+                    interpretEvent(sseEventPair.first, sseEventPair.second)
+                }
+            }
+        }
+    }
+
+    /**
+     * This exists because kotlin sucks at inits.  Please don't
+     * call this function except during initialization.
+     *
+     * This loads any data that is stored in shared prefs.
+     *
+     * side effects
+     *  - [bridgeFlowSet] will contain data as in the shared prefs
+     */
+    private fun properInit() {
+
+        // idiot test to make sure this isn't run more than once.
+        if (initialized) {
+            Log.e(TAG, "Error: tried to initialize more than once!!!")
+            return
+        }
+        initialized = true
+
     }
 
 
@@ -329,10 +328,10 @@ class PhilipsHueModel(
     //-------------------------------------
 
     /**
-     * The brightness of a room has changed.  Do the necessary work so that
-     * the bridge flow reports the change.
+     * The brightness of a room has changed (also includes on/off).
+     * Do the necessary work so that the bridge flow reports the change.
      */
-    suspend fun roomBrightnessChanged(
+    suspend fun updateRoomBrightness(
         newBrightness: Int,
         newOnStatus: Boolean,
         changedRoom: PhilipsHueRoomInfo,
@@ -473,7 +472,7 @@ class PhilipsHueModel(
      *
      * @param   event           Data structure describing the event.
      */
-    private suspend fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
+    private fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
 
         val eventBridge = getLoadedBridgeFromId(eventBridgeId)
         if (eventBridge == null) {
@@ -765,7 +764,6 @@ class PhilipsHueModel(
     /**
      * Alternate version that takes a bridge instead of an IP.
      */
-    @SuppressWarnings("WeakerAccess")
     suspend fun doesBridgeRespondToIp(bridge: PhilipsHueBridgeInfo) : Boolean {
         return doesBridgeRespondToIp(bridge.ip)
     }
