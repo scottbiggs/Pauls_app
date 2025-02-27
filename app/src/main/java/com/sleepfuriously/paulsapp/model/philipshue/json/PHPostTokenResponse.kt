@@ -42,7 +42,7 @@ package com.sleepfuriously.paulsapp.model.philipshue.json
  *
  * The POST to get a username (token) will be a json array.  It will
  * have just one item though (and that item will be either a
- * [PhilpsHueError] or a [PHPostTokenResponseSuccessItem].
+ * [PHPostTokenError] or a [PHPostTokenResponseSuccessItem].
  */
 class PHBridgePostTokenResponse : ArrayList<PHPostTokenResponseItem>()
 
@@ -53,14 +53,32 @@ class PHBridgePostTokenResponse : ArrayList<PHPostTokenResponseItem>()
  * one of these).  And Each of these will will either be an error
  * or a success--never both.  That's the way they designed it.
  *
- * @param   error       This is a json array of [PhilpsHueError] objects
+ * @param   error       This is a json array of [PHPostTokenError] objects
  *
  * @param   success     A json array of [PHPostTokenResponseSuccessItem] objects
  */
 data class PHPostTokenResponseItem(
-    val error: PhilpsHueError?,
+    val error: PHPostTokenError?,
     val success: PHPostTokenResponseSuccessItem?
-)
+) {
+    /**
+     * This is the class that represents an error JSON object as returned
+     * by a request to get a username/token from a bridge.
+     *
+     * It seems that this is pretty universal to all api errors, regardless
+     * of the original call.
+     *
+     * @param   type        Error type number
+     * @param   address     An address (not always supplied)
+     * @param   description A readable description of the error
+     */
+    data class PHPostTokenError(
+        val type: Int = -1,
+        val address: String = "",
+        val description: String = "no description"
+    )
+
+}
 
 
 data class PHPostTokenResponseSuccessItem(
@@ -95,3 +113,4 @@ data class PhilipsHueTokenRequestBody(
     val devicetype: String,
     val generateclientkey: Boolean = true
 )
+
