@@ -117,7 +117,7 @@ class PhilipsHueViewmodel : ViewModel() {
         changedRoom: PhilipsHueRoomInfo,
         changedBridge: PhilipsHueBridgeInfo
     ) {
-        philipsHueRepository.updateRoomBrightness(
+        philipsHueRepository.updatePhilipsHueRoomBrightness(
             newBrightness = newBrightness,
             newOnStatus = newOnStatus,
             changedRoom = changedRoom,
@@ -203,7 +203,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * If the bridgeId is invalid, then nothing is done (of course).
      */
     fun deleteBridge(bridgeId: String) {
-        if (philipsHueRepository.deleteBridge(bridgeId) == false) {
+        if (philipsHueRepository.deletePhilipsHueBridge(bridgeId) == false) {
             Log.e(TAG, "Unable to remove bridge $bridgeId from our Set of bridges!")
         }
     }
@@ -213,7 +213,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * this bridge.
      */
     fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
-        philipsHueRepository.stopSseConnection(bridge)
+        philipsHueRepository.stopPhilipsHueSseConnection(bridge)
     }
 
     /**
@@ -221,7 +221,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * server-sent events.
      */
     fun connectBridge(bridge: PhilipsHueBridgeInfo) {
-        philipsHueRepository.startSseConnection(bridge)
+        philipsHueRepository.startPhilipsHueSseConnection(bridge)
     }
 
 
@@ -332,7 +332,7 @@ class PhilipsHueViewmodel : ViewModel() {
             workingNewBridge!!.ip = newIp
 
             // is there actually a bridge there?
-            if (philipsHueRepository.doesBridgeRespondToIp(newIp) == false) {
+            if (philipsHueRepository.doesPhilipsHueBridgeRespondToIp(newIp) == false) {
                 Log.e(TAG, "bridge does not respond to ip in addPhilipsHueBridgeIp($newIp)")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP
                 _waitingForResponse.value = false
@@ -410,7 +410,7 @@ class PhilipsHueViewmodel : ViewModel() {
         val bridge = workingNewBridge ?: return        // yah, redundant.  But that's kotlin for ya!
 
         viewModelScope.launch(Dispatchers.IO) {
-            val registerResponse = philipsHueRepository.registerAppToBridge(bridge.ip)
+            val registerResponse = philipsHueRepository.registerAppToPhilipsHueBridge(bridge.ip)
             val token = registerResponse.first
             val err = registerResponse.second
 
@@ -483,7 +483,7 @@ class PhilipsHueViewmodel : ViewModel() {
             workingNewBridge?.labelName = v2bridge.getName()
 
             // Add this new bridge to our permanent data (and the Model).
-            philipsHueRepository.addBridge(workingNewBridge!!)
+            philipsHueRepository.addPhilipsHueBridge(workingNewBridge!!)
 
             // lastly signal that we're done with the new bridge stuff
             workingNewBridge = null
@@ -536,7 +536,7 @@ class PhilipsHueViewmodel : ViewModel() {
             }
 
             // check bridge is responding
-            if (philipsHueRepository.doesBridgeRespondToIp(ip) == false) {
+            if (philipsHueRepository.doesPhilipsHueBridgeRespondToIp(ip) == false) {
                 bridge.active = false
                 continue
             }
@@ -553,7 +553,7 @@ class PhilipsHueViewmodel : ViewModel() {
             }
 
             // check that token works
-            val tokenWorks = philipsHueRepository.doesBridgeAcceptToken(bridge.ip, token)
+            val tokenWorks = philipsHueRepository.doesPhilipsHueBridgeAcceptToken(bridge.ip, token)
             if (tokenWorks == false) {
                 continue
             }

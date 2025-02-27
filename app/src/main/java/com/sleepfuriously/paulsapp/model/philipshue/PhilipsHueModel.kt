@@ -90,12 +90,8 @@ import java.io.IOException
  * deleted by the user).
  *
  * As you can see, it's very important that all the ids are unique.
- * To insure this, call [generateNewId] when making a new bridge.  That
- * function will insure that the id is brand-spanking new.
- *
- * WARNING:
- *  The construction of this class can take a bit of time.
- *  Consider initializing this class within a coroutine.
+ * Philips Hue has a brilliant way of making sure all the bridges,
+ * devices, services, etc are all unique.  I just use those ids.
  */
 class PhilipsHueModel(
     private val ctx: Context = MyApplication.appContext,
@@ -230,26 +226,32 @@ class PhilipsHueModel(
         }
     }
 
-    /**
-     * This exists because kotlin sucks at inits.  Please don't
-     * call this function except during initialization.
-     *
-     * This loads any data that is stored in shared prefs.
-     *
-     * side effects
-     *  - [bridgeFlowSet] will contain data as in the shared prefs
-     */
-    private fun properInit() {
+    //-------------------------------------
+    //  starters & stoppers
+    //-------------------------------------
 
-        // idiot test to make sure this isn't run more than once.
-        if (initialized) {
-            Log.e(TAG, "Error: tried to initialize more than once!!!")
+    /**
+     * Connects the given bridge to this app, enabling this app to
+     * receive updates on changes to the Philips Hue world.
+     */
+    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
+
+        if (bridge.connected) {
+            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
             return
         }
-        initialized = true
 
+        phServerSentEvents.startSse(bridge)
     }
 
+    /**
+     * Stop receiving updates about the Philps Hue IoT for this bridge.
+     * If the bridge is not found, nothing is done.
+     */
+    fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
+        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ip}")
+        phServerSentEvents.cancelSSE(bridge.id)
+    }
 
     //-------------------------------------
     //  create
@@ -468,9 +470,12 @@ class PhilipsHueModel(
      * Working completely by side effect, this analyses the result of a server-
      * sent event and changes the contents of the bridge data appropriately.
      *
-     * @param   eventBridge     The bridge that the event relates to
+     * @param   eventBridgeId   The id of the bridge that the event relates to
      *
      * @param   event           Data structure describing the event.
+     *
+     * side effects
+     *  [bridgeFlowSet] - modified to reflect whatever changed according the the bridge's sse.
      */
     private fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
 
@@ -618,155 +623,6 @@ class PhilipsHueModel(
         }
     }
 
-    /**
-     * Goes through all the rooms in the given bridge.  If an id matches, then
-     * return that bridge.
-     *
-     * Null is returned of not found.
-     */
-    private fun findRoomFromId(
-        roomId: String, bridge: PhilipsHueBridgeInfo
-    ) : PhilipsHueRoomInfo? {
-        bridge.rooms.forEach { room ->
-            if (room.id == roomId) {
-                return room
-            }
-        }
-        return null
-    }
-
-    /**
-     * Another helper.  This finds the room that a light resides in.
-     * Returns null if not found.
-     */
-    private fun findRoomFromLight(
-        light: PhilipsHueLightInfo,
-        bridge: PhilipsHueBridgeInfo
-    ) : PhilipsHueRoomInfo? {
-        bridge.rooms.forEach { room ->
-            room.lights.forEach { maybeThisLight ->
-                if (maybeThisLight.lightId == light.lightId) {
-                    Log.d(TAG, "found the room that holds light (id = ${light.lightId}")
-                    return room
-                }
-            }
-        }
-        Log.d(TAG, "Could not find the room that holds light (id = ${light.lightId}. Sorry.")
-        return null
-    }
-
-
-    /**
-     * Goes through all the lights in this bridge and returns the one that
-     * matches the given id.  It also checks device ids FOR lights (as they
-     * are sometimes used interchangeably).
-     *
-     * Returns null if not found.
-     */
-    private fun findLightFromId(id: String, bridge: PhilipsHueBridgeInfo) : PhilipsHueLightInfo? {
-
-        // go through all the rooms
-        bridge.rooms.forEach { room ->
-            room.lights.forEach { light ->
-                if (light.lightId == id) {
-                    Log.d(TAG, "Found the light in findLightFromId(id = $id), yay!")
-                    return light
-                }
-                if (light.deviceId == id) {
-                    Log.d(TAG, "Found the light from its deviceId in findLightFromId(id = $id), whew!")
-                    return light
-                }
-            }
-        }
-        Log.d(TAG, "did not find light (id = $id) in findLightFromId().  Sigh.")
-        return null
-    }
-
-
-    /**
-     * Checks to see if the given bridge is active.
-     */
-    @SuppressWarnings("WeakerAccess")
-    suspend fun isBridgeActive(bridge: PhilipsHueBridgeInfo) : Boolean = withContext(Dispatchers.IO) {
-
-        if (doesBridgeRespondToIp(bridge) && doesBridgeAcceptToken(bridge)) {
-            return@withContext true
-        }
-        return@withContext false
-    }
-
-    /**
-     * Alternate version of [isBridgeActive].  This version only needs
-     * the ip and token (not the whole bridge).
-     */
-    suspend fun isBridgeActive(
-        bridgeIp: String,
-        bridgeToken: String
-    ) : Boolean = withContext(Dispatchers.IO) {
-        if ((doesBridgeRespondToIp(ip = bridgeIp)) &&
-            (doesBridgeAcceptToken(bridgeIp, bridgeToken))) {
-            return@withContext true
-        }
-
-        return@withContext false
-    }
-
-
-    /**
-     * Tests to see if a bridge is at the given ip.
-     *
-     * This just tests to see if the basic debug screen appears.
-     * The url is  http://<ip>/debug/clip.html
-     *
-     * @param   ip          The ip that may point to a philips hue bridge
-     *
-     * WARNING:
-     *  This must be called off the main thread as it access
-     *  the network.
-     */
-    suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
-
-        // exit with false if no ip or wrong format
-        if (ip.isEmpty() || (isValidBasicIp(ip) == false)){
-            Log.d(TAG, "doesBridgeRespondToIp($ip) - ip is empty or not valid! Aborting!")
-            return false
-        }
-
-        try {
-            val fullIp = PhilipsHueBridgeApi.createFullAddress(
-//                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-                prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
-                ip = ip,
-                suffix = PHILIPS_HUE_BRIDGE_TEST_SUFFIX
-            )
-            Log.v(TAG, "doesBridgeRespondToIp() requesting response from $fullIp")
-
-            val myResponse = synchronousGet(fullIp)
-
-            if (myResponse.isSuccessful) {
-                return true
-            }
-        }
-        catch (e: IOException) {
-            Log.e(TAG, "error when testing the bridge (IOException).  The ip ($ip) is probably bad.")
-            e.printStackTrace()
-            return false
-        }
-        catch (e: IllegalArgumentException) {
-            Log.e(TAG, "error when testing the bridge (IllegalArgumentException).  The ip (\"$ip\") is probably bad.")
-            e.printStackTrace()
-            return false
-        }
-
-        return false
-    }
-
-    /**
-     * Alternate version that takes a bridge instead of an IP.
-     */
-    suspend fun doesBridgeRespondToIp(bridge: PhilipsHueBridgeInfo) : Boolean {
-        return doesBridgeRespondToIp(bridge.ip)
-    }
 
     /**
      * This asks the bridge for a token (name).  This is part of the
@@ -799,7 +655,7 @@ class PhilipsHueModel(
 
         val response = synchronousPost(
             url = fullAddress,
-            bodyStr = generateGetTokenBody(),
+            bodyStr = generateGetTokenBody(ctx = ctx),
             trustAll = true     // fixme when we have full security going
         )
 
@@ -824,222 +680,6 @@ class PhilipsHueModel(
         }
     }
 
-
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // private data
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    /** This will be true after initialization. Needed to prevent accidentally double initialization. */
-    private var initialized = false
-
-
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //  private functions
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    //~~~~~~~~~~~
-    //  create
-    //~~~~~~~~~~~
-
-    /**
-     * Use this function to make an id for a newly discovered
-     * bridge.
-     *
-     * @return      An id string that's guaranteed to be unique from
-     *              all the other bridges
-     */
-    @Deprecated("no longer needed: use v2 id instead")
-    private fun generateNewId() : String {
-
-        // strategy: go through the id (as numbers) until we don't
-        // match an existing id.  Not very fast, O(n^2), sigh.
-
-        // create a Set of bridgeIds (in number form)
-        val bridgeIds = mutableIntSetOf()
-        _bridgeFlowSet.value.forEach { bridge ->
-            bridgeIds.add(bridge.id.toInt())
-        }
-
-        // start counting until we come up with a unique number
-        var id = 1
-        while (true) {
-            if (bridgeIds.contains(id) == false) {
-                return id.toString()
-            }
-            // try the next one (keep trying...we'll eventually succeed!)
-            id++
-        }
-    }
-
-
-    /**
-     * To obtain the token for accessing a bridge, we have to tell that
-     * bridge a name for this app (username).  This function makes
-     * sure that it's done in a consistent manner.
-     *
-     * The username is a constant + the ip of that particular bridge.
-     * This makes sure that we use different user names for each
-     * bridge (just in case there's some sort of confusion).
-     *
-     * Not sure if the user name needs to be remembered or not.  I guess
-     * I'll find out soon enough!  (The token: yeah, that needs to be
-     * remembered!)
-     */
-    private fun constructUserName(bridgeIp: String) : String {
-        return PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX + bridgeIp
-    }
-
-    /**
-     * Use this to generate the body for when trying to get a new
-     * token (username) from the bridge.
-     *
-     * @return  The json we're constructing will look something like this:
-     *      {"devicetype":"appName#instanceName", "generateclientkey":true}
-     *
-     * @param   appName         The name of the app (defaults to Pauls App)
-     *
-     * @param   instanceName    The name of the instance of this app.
-     *                          Since mulitple copies of this app may be
-     *                          accessing the same bridge, this needs to be
-     *                          a unique number.  Default should generate a
-     *                          very good one.
-     */
-    @SuppressLint("HardwareIds")
-    private fun generateGetTokenBody(
-        appName: String? = null,
-        instanceName: String? = null
-    ) : String {
-        val name = appName ?: ctx.getString(R.string.app_name)
-
-        // This tries to use the ANDROID_ID.  If it's null, then I just
-        // throw in a JellyBean (should only happen on jelly bean devices, hehe).
-        val instance = instanceName
-            ?: Secure.getString(ctx.contentResolver, Secure.ANDROID_ID)
-            ?: "jellybean"
-        return """{"devicetype": "$name#$instance", "generateclientkey":true}"""
-    }
-
-    //~~~~~~~~~~~
-    //  read
-    //~~~~~~~~~~~
-
-    /**
-     * Finds out if a bridge currently is active and responds to its token.
-     *
-     * @param       bridgeIp    Ip of the bridge in question.  Does not check to see
-     *                          if everything is right.
-     *
-     * @param       token       The token (username) to test.
-     *
-     * @return      True if the bridge is working and responds positively.
-     *              False otherwise.
-     */
-    suspend fun doesBridgeAcceptToken(bridgeIp: String, token: String) :
-            Boolean = withContext(Dispatchers.IO) {
-
-        // try getting the bridge's general info to see if the token works
-        val fullAddress = PhilipsHueBridgeApi.createFullAddress(
-            ip = bridgeIp,
-            suffix = SUFFIX_GET_BRIDGE,
-        )
-
-        // Just want a response, nothing fancy
-        val response = synchronousGet(
-            fullAddress,
-            header = Pair(HEADER_TOKEN_KEY, token),
-            trustAll = true
-        )
-        return@withContext response.isSuccessful
-
-    }
-
-    /**
-     * Alternate version of [doesBridgeAcceptToken]
-     */
-    suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo) :
-            Boolean = withContext(Dispatchers.IO) {
-        return@withContext doesBridgeAcceptToken(bridge.ip, bridge.token)
-    }
-
-    //~~~~~~~~~~~
-    //  update
-    //~~~~~~~~~~~
-
-    //~~~~~~~~~~~
-    //  delete
-    //~~~~~~~~~~~
-
-
-    //~~~~~~~~~~~
-    //  util
-    //~~~~~~~~~~~
-
-    /**
-     * Connects the given bridge to this app, enabling this app to
-     * receive updates on changes to the Philips Hue world.
-     */
-    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
-
-        if (bridge.connected) {
-            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
-            return
-        }
-
-        phServerSentEvents.startSse(bridge)
-    }
-
-    /**
-     * Stop receiving updates about the Philps Hue IoT for this bridge.
-     * If the bridge is not found, nothing is done.
-     */
-    fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ip}")
-        phServerSentEvents.cancelSSE(bridge.id)
-    }
-
-
-    /**
-     * Helper function.  From a list of [PHv2ResourceIdentifier]s, this finds the
-     * first that is of type [RTYPE_LIGHT], finds it's full info, and returns its
-     * [PhilipsHueRoomInfo] form.
-     *
-     * @return  Null if a light can't be found or there was some sort of error.
-     */
-    private suspend fun getLightInfoFromServiceList(
-        serviceList: List<PHv2ResourceIdentifier>,
-        bridge: PhilipsHueBridgeInfo
-    ) : PhilipsHueLightInfo? {
-
-        serviceList.forEach { service ->
-            if (service.rtype == RTYPE_LIGHT) {
-                // yep found it!
-                val v2ApiLight = PhilipsHueBridgeApi.getLightInfoFromApi(service.rid, bridge)
-                if (v2ApiLight == null) {
-                    Log.w(TAG, "Problem getting light in getLightInfoFromServiceList()!  rid = ${service.rid}")
-                    return null
-                }
-
-                if (v2ApiLight.errors.isNotEmpty()) {
-                    Log.w(TAG, "Error occurred getting light in getLightInfoFromServiceList()!")
-                    Log.w(TAG, "   error = ${v2ApiLight.errors[0]}")
-                }
-
-                // convert to our PhilipsHueLightInfo
-                return PhilipsHueLightInfo(
-                    lightId = v2ApiLight.data[0].id,
-                    deviceId = v2ApiLight.data[0].owner.rid,
-                    name = v2ApiLight.data[0].metadata.name,
-                    state = PhilipsHueLightState(
-                        on = v2ApiLight.data[0].on.on,
-                        bri = v2ApiLight.data[0].dimming.brightness
-                    ),
-                    type = v2ApiLight.data[0].type
-                )
-            }
-        }
-        // nothing found
-        return null
-    }
 
 }
 
@@ -1073,18 +713,3 @@ enum class GetBridgeTokenErrorEnum {
 
 private const val TAG = "PhilipsHueModel"
 
-/** append this to the bridge's ip to get the debug screen */
-private const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"
-
-/**
- * When registering this app with a bridge, we need to tell it what kind of device
- * this is.  Here's the string.
- */
-private const val PHILIPS_HUE_BRIDGE_DEVICE_TYPE = "sleepfuriously android client"
-
-/**
- * Device ids (usernames) are used to get the token from bridges.  The username will
- * be the following string + the ip of this bridge.  You can construct this
- * by calling [PhilipsHueModel.constructUserName].
- */
-private const val PHILIPS_HUE_BRIDGE_DEVICE_NAME_PREFIX = "sleepfuriously_p"

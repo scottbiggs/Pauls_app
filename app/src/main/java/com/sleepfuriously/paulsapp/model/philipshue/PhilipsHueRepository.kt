@@ -99,7 +99,7 @@ class PhilipsHueRepository(
      * NOTE
      *      This works for both version 1 and version 2 of the API.
      */
-    suspend fun registerAppToBridge(
+    suspend fun registerAppToPhilipsHueBridge(
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
         return model.registerAppToBridge(bridgeIp)
@@ -109,7 +109,7 @@ class PhilipsHueRepository(
      * Connects the given bridge to this app, enabling this app to
      * receive updates on changes to the Philips Hue world.
      */
-    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
+    fun startPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
         model.startSseConnection(bridge)
     }
 
@@ -124,7 +124,7 @@ class PhilipsHueRepository(
      *                          (the id will be set BY THIS FUNCTION).
      *                          The data is NOT checked for accuracy.
      */
-    suspend fun addBridge(
+    suspend fun addPhilipsHueBridge(
         newBridge: PhilipsHueNewBridge
     ) = withContext(Dispatchers.IO) {
         model.addBridge(newBridge)
@@ -158,8 +158,8 @@ class PhilipsHueRepository(
      *  This must be called off the main thread as it access
      *  the network.
      */
-    suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
-        return model.doesBridgeRespondToIp(ip)
+    suspend fun doesPhilipsHueBridgeRespondToIp(ip: String) : Boolean {
+        return doesBridgeRespondToIp(ip)
     }
 
     /**
@@ -173,8 +173,8 @@ class PhilipsHueRepository(
      * @return      True if the bridge is working and responds positively.
      *              False otherwise.
      */
-    suspend fun doesBridgeAcceptToken(bridgeIp: String, token: String) : Boolean {
-        return model.doesBridgeAcceptToken(bridgeIp, token)
+    suspend fun doesPhilipsHueBridgeAcceptToken(bridgeIp: String, token: String) : Boolean {
+        return doesBridgeAcceptToken(bridgeIp, token)
     }
 
     //-------------------------------
@@ -189,7 +189,7 @@ class PhilipsHueRepository(
      * Pass the call along to the Philips Hue model (after placing
      * this in a coroutine).
      */
-    fun updateRoomBrightness(
+    fun updatePhilipsHueRoomBrightness(
         newBrightness: Int,
         newOnStatus: Boolean,
         changedRoom: PhilipsHueRoomInfo,
@@ -215,7 +215,7 @@ class PhilipsHueRepository(
     /**
      * Tell the model to remove this bridge.  Permanently.
      */
-    fun deleteBridge(bridgeId: String): Boolean {
+    fun deletePhilipsHueBridge(bridgeId: String): Boolean {
         return model.deleteBridge(bridgeId)
     }
 
@@ -227,7 +227,7 @@ class PhilipsHueRepository(
      * Stop receiving updates about the Philps Hue IoT for this bridge.
      * If the bridge is not found, nothing is done.
      */
-    fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
+    fun stopPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
         model.disconnectFromBridge(bridge)
     }
 }
