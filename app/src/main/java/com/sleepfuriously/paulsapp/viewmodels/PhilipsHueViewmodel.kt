@@ -227,7 +227,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * server-sent events.
      */
     fun connectBridge(bridge: PhilipsHueBridgeInfo) {
-        bridgeModel.connectToBridge(bridge)
+        bridgeModel.startSseConnection(bridge)
     }
 
 

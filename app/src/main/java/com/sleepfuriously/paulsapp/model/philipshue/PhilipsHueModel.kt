@@ -5,21 +5,13 @@ import android.content.Context
 import android.provider.Settings.Secure
 import android.util.Log
 import androidx.collection.mutableIntSetOf
-import com.google.gson.Gson
 import com.sleepfuriously.paulsapp.model.philipshue.json.*
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Light
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceLightsAll
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.getTime
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,13 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.sse.EventSource
-import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
-import org.json.JSONArray
-import org.json.JSONException
 import java.io.IOException
 
 /**
@@ -130,142 +115,9 @@ class PhilipsHueModel(
     //  class data
     //-------------------------------------
 
-    /**
-     * Reference to Event Source--I use it to close the connections.
-     * Each item in the list is a Pair:
-     *      bridgeId : EventSource
-     */
-//    private val eventSourceList = mutableListOf<Pair<String, EventSource>>()
-    /** reference to Event Source--I use it to close the connection */
-    private lateinit var myEventSource : EventSource
+    /** Controls server-sent events (sse) */
+    private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
-
-    private val defaultListener = object : EventSourceListener() {
-        override fun onOpen(eventSource: EventSource, response: Response) {
-            super.onOpen(eventSource, response)
-            Log.d(TAG, "EventSourceListener: Connection Opened")
-            Log.i(TAG, "   time = ${getTime()}")
-
-            // todo - translate this info and put it in a flow so the
-            //  can display it
-            if (response.isSuccessful) {
-                val eventJsonString = response.body?.string()
-                Log.d(TAG, "sse - onOpen: json = $eventJsonString")
-
-                val bridge = getBridgeFromEventSource(eventSource)
-                if (bridge == null) {
-                    Log.e(TAG, "Unable to get bridge in listener.onOpen()!  Nothing to update!")
-                    return
-                }
-
-                // trying a new way to update a Set. Hope it works.
-                _bridgeFlowSet.update {
-                    val currentBridgeFlowSet = bridgeFlowSet.value.toMutableSet()
-                    currentBridgeFlowSet.remove(bridge)
-                    bridge.connected = true         // set connect status
-                    currentBridgeFlowSet.add(bridge)
-                    currentBridgeFlowSet
-                }
-
-            }
-            else {
-                Log.e(TAG, "problem with response in defaultListener.onOpen()!")
-                Log.e(TAG, "   code = ${response.code}")
-                Log.e(TAG, "   message = ${response.message}")
-                Log.e(TAG, "   request = ${response.request}")
-                Log.e(TAG, "   time = ${getTime()}")
-            }
-            response.body?.close()
-        }
-
-        override fun onClosed(eventSource: EventSource) {
-            super.onClosed(eventSource)
-            Log.d(TAG, "sse - onClosed() for eventSource ${eventSource.toString()}")
-            Log.i(TAG, "   time = ${getTime()}")
-
-            val bridge = getBridgeFromEventSource(eventSource)
-            if (bridge == null) {
-                Log.e(TAG, "Unable to get bridge in listener.onClosed()!")
-                return
-            }
-
-            _bridgeFlowSet.update {
-                val currentBridgeFlowSet = bridgeFlowSet.value.toMutableSet()
-                currentBridgeFlowSet.remove(bridge)
-                bridge.connected = false         // set connect status
-                currentBridgeFlowSet.add(bridge)
-                currentBridgeFlowSet
-            }
-        }
-
-        /**
-         * This is the event that the server sends us!!!!  YAY!
-         */
-        override fun onEvent(
-            eventSource: EventSource,
-            id: String?,
-            type: String?,
-            data: String
-        ) {
-//            super.onEvent(eventSource, id, type, data)
-            Log.d(TAG, "EventSourceListener: On Event Received!")
-            Log.d(TAG, "   eventSource = ${eventSource.toString()}")
-            Log.d(TAG, "   id = $id")
-            Log.d(TAG, "   type = $type")
-            Log.d(TAG, "   data = $data")
-            Log.i(TAG, "   time = ${getTime()}")
-
-            val bridge = getBridgeFromEventSource(eventSource)
-            if (bridge == null) {
-                Log.e(TAG, "Unable to find bridge in onEvent()!")
-                return
-            }
-
-            try {
-                val eventJsonArray = JSONArray(data)
-
-                coroutineScope.launch {
-                    // process each event
-                    for (i in 0 until eventJsonArray.length()) {
-                        val eventJsonObj = eventJsonArray.getJSONObject(i)
-                        val v2Event = PHv2ResourceServerSentEvent(eventJsonObj)
-                        interpretEvent(bridge, v2Event)
-                    }
-                }
-            }
-            catch (e: JSONException) {
-                Log.e(TAG, "Unable to parse event into json object: $data")
-                e.printStackTrace()
-                return
-            }
-        }
-
-        override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-            super.onFailure(eventSource, t, response)
-
-            Log.e(TAG, "EventSourceListener: On Failure():")
-            Log.e(TAG, "   response.isSuccessful = ${response?.isSuccessful}")
-            Log.e(TAG, "   response.code = ${response?.code}")
-            Log.e(TAG, "   response.request = ${response?.request.toString()}")
-            Log.e(TAG, "   response.body = ${response?.peekBody(10000)?.string()}")
-            Log.e(TAG, "   time = ${getTime()}")
-
-            val bridge = getBridgeFromEventSource(eventSource)
-            if (bridge == null) {
-                Log.e(TAG, "Unable to get bridge in listener.onFailure()!")
-            }
-            else {
-                _bridgeFlowSet.update {
-                    val currentBridgeFlowSet = bridgeFlowSet.value.toMutableSet()
-                    currentBridgeFlowSet.remove(bridge)
-                    bridge.connected = false         // set connect status
-                    currentBridgeFlowSet.add(bridge)
-                    currentBridgeFlowSet
-                }
-            }
-            response?.body?.close()
-        }
-    }
 
 
     //-------------------------------------
@@ -274,6 +126,14 @@ class PhilipsHueModel(
 
     init {
         properInit()
+
+        coroutineScope.launch {
+            while (true) {
+                phServerSentEvents.serverSentEvent.collect { sseEventPair ->
+                    interpretEvent(sseEventPair.first, sseEventPair.second)
+                }
+            }
+        }
     }
 
     /**
@@ -382,7 +242,7 @@ class PhilipsHueModel(
             // 3. Connect each active bridge so we can receive server-sent events
             newBridgeSet.forEach { bridge ->
                 if (bridge.active) {
-                    connectToBridge(bridge)
+                    startSseConnection(bridge)
                 }
             }
 
@@ -457,7 +317,7 @@ class PhilipsHueModel(
      *          Null if id is not found.
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun getBridge(bridgeId: String) : PhilipsHueBridgeInfo? {
+    fun getLoadedBridgeFromId(bridgeId: String) : PhilipsHueBridgeInfo? {
         val bridge = bridgeFlowSet.value.find { bridge ->
             bridge.id == bridgeId
         }
@@ -542,7 +402,7 @@ class PhilipsHueModel(
      */
     fun deleteBridge(bridgeId: String) : Boolean {
 
-        val bridgeToDelete = getBridge(bridgeId) ?: return false
+        val bridgeToDelete = getLoadedBridgeFromId(bridgeId) ?: return false
 
         // 1) todo Tell the bridge to remove this app's username (token)
 
@@ -613,7 +473,14 @@ class PhilipsHueModel(
      *
      * @param   event           Data structure describing the event.
      */
-    private suspend fun interpretEvent(eventBridge: PhilipsHueBridgeInfo, event: PHv2ResourceServerSentEvent) {
+    private suspend fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
+
+        val eventBridge = getLoadedBridgeFromId(eventBridgeId)
+        if (eventBridge == null) {
+            Log.e(TAG, "Can't find the bridge in interpretEvent()! Aborting!")
+            return
+        }
+
 
         Log.d(TAG, "interpretEvent()  eventBridge = ${eventBridge.id}")
         Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
@@ -816,16 +683,6 @@ class PhilipsHueModel(
         return null
     }
 
-
-    /**
-     * Grabs the bridge that uses this given eventSource.  If none can be found, this
-     * returns null.
-     */
-    private fun getBridgeFromEventSource(eventSource: EventSource) : PhilipsHueBridgeInfo? {
-        // The id of the bridge is conveniently stashed in the tag.
-        val bridgeId = eventSource.request().tag() as String
-        return getBridge(bridgeId)
-    }
 
     /**
      * Checks to see if the given bridge is active.
@@ -1123,30 +980,14 @@ class PhilipsHueModel(
      * Connects the given bridge to this app, enabling this app to
      * receive updates on changes to the Philips Hue world.
      */
-    fun connectToBridge(bridge: PhilipsHueBridgeInfo) {
+    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
 
         if (bridge.connected) {
             Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
             return
         }
 
-        val request = Request.Builder()
-            .url("https://${bridge.ip}/eventstream/clip/v2")
-            .header("Accept", "text/event-stream")
-            .addHeader("hue-application-key", bridge.token)
-            .tag(bridge.id)     // identifies this request (within the EventSource)
-            .build()
-
-        // not found. add it using the default listener
-        myEventSource = EventSources.createFactory(getAllTrustingSseClient())
-            .newEventSource(
-                request = request,
-                listener = defaultListener
-            )
-
-        // note: the connection is not complete yet; we just made an attempt at connecting.
-        // we'll know that the connection is successful in the onOpen() call in whatever
-        // is listening to server-sent events.
+        phServerSentEvents.startSse(bridge)
     }
 
     /**
@@ -1154,20 +995,8 @@ class PhilipsHueModel(
      * If the bridge is not found, nothing is done.
      */
     fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.ip}")
-
-        // find the right eventsource
-//        for (i in 0 until eventSourceList.size) {
-//            val eventSource = eventSourceList[i]
-//            if (eventSource.first == bridge.id) {
-//                eventSource.second.cancel()
-//                return
-//            }
-//        }
-//        Log.e(TAG, "Unable to find bridge in disconnectFromBridge(bridgeId = ${bridge.id}")
-
-        myEventSource.cancel()
-
+        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ip}")
+        phServerSentEvents.cancelSSE(bridge.id)
     }
 
 
