@@ -62,6 +62,7 @@ const val PRODUCT_DATA = "product_data"
 const val PRODUCT_NAME = "product_name"
 const val RED = "red"
 const val RID = "rid"
+const val ROOM = "room"
 const val RTYPE = "rtype"
 const val SAFETY = "safety"
 const val SERVICES = "services"
@@ -86,29 +87,52 @@ const val Y = "y"
 //  RTYPES
 //----------------------------
 
+const val RTYPE_AUTH_V1 = "auth_v1"
+const val RTYPE_BEHAVIOR_INSTANCE = "behavior_instance"
+const val RTYPE_BEHAVIOR_SCRIPT = "behavior_script"
+const val RTYPE_BRIDGE = "bridge"
+/** Some sort of reference to an entire bridge (a bridge group?) */
+const val RTYPE_BRIDGE_HOME = "bridge_home"
+const val RTYPE_BUTTON = "button"
+const val RTYPE_CAMERA_MOTION = "camera_motion"
+const val RTYPE_CONTACT = "contact"
+
 /** Identifies an [RTYPE] as a device instead of a service or something (could be a light!) */
 const val RTYPE_DEVICE = "device"
+const val RTYPE_DEVICE_POWER = "device_power"
+const val RTYPE_DEVICE_SOFTWARE_UPDATE = "device_software_update"
+const val RTYPE_ENTERTAINMENT = "entertainment"
+const val RTYPE_ENTERTAINMENT_CONFIGURATION = "entertainment_configuration"
+const val RTYPE_GEOFENCE_CLIENT = "geofence_client"
+const val RTYPE_GEOLOCATION = "geolocation"
+/** Denotes that this is a group of lights */
+const val RTYPE_GROUP_LIGHT = "grouped_light"
+const val RTYPE_GROUPED_LIGHT_LEVEL = "grouped_light_level"
+const val RTYPE_GROUPED_MOTION = "grouped_motion"
+const val RTYPE_HOMEKIT = "homekit"
 
 /** This one is actually a light! */
 const val RTYPE_LIGHT = "light"
 
-/** Denotes that this is a group of lights */
-const val RTYPE_GROUP_LIGHT = "grouped_light"
-
-/** Some sort of reference to an entire bridge (a bridge group?) */
-const val RTYPE_BRIDGE_HOME = "bridge_home"
+const val RTYPE_LIGHT_LEVEL = "light_level"
+const val RTYPE_MATTER = "matter"
+const val RTYPE_MATTER_FABRIC = "matter_fabric"
+const val RTYPE_MOTION = "motion"
 
 /** Another new type of group--don't know what to make of it yet */
 const val RTYPE_PRIVATE_GROUP = "private_group"
 
+const val RTYPE_PUBLIC_IMAGE = "public_image"
+const val RTYPE_RELATIVE_ROTARY = "relative_rotary"
 /** This one is obvious (finally something I can work with). */
 const val RTYPE_ROOM = "room"
 
-/** Identifies an [TYPE] as a device */
-const val TYPE_DEVICE = "device"
-
-//----------------------------
-//  TYPES
-//----------------------------
-
-const val ROOM = "room"
+const val RTYPE_SCENE = "scene"
+const val RTYPE_SERVICE_GROUP = "service_group"
+const val RTYPE_SMART_SCENE = "smart_scene"
+const val RTYPE_TAMPER = "tamper"
+const val RTYPE_TEMPERATURE = "temperature"
+const val RTYPE_ZGP_CONNECTIVITY = "zgp_connectivity"
+const val RTYPE_ZIGBEE_CONNECTIVITY = "zigbee_connectivity"
+const val RTYPE_ZIGBEE_DEVICE_DISCOVERY = "zigbee_device_discovery"
+const val RTYPE_ZONE = "zone"
