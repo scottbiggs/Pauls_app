@@ -7,7 +7,6 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHILIPS_HUE_BRIDGE_TEST_SUFFIX
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceIdentifier
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import kotlinx.coroutines.Dispatchers
@@ -303,3 +302,7 @@ suspend fun isBridgeActive(
 //-------------------------------------
 
 private const val TAG = "PhilipsHueUtils"
+
+/** append this to the bridge's ip to get the debug screen */
+const val PHILIPS_HUE_BRIDGE_TEST_SUFFIX = "/debug/clip.html"
+
