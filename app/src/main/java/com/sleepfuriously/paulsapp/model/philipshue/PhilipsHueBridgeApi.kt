@@ -26,7 +26,7 @@ import org.json.JSONObject
  *
  * NOTE
  *  The handling of first connecting to a bridge is done in a different
- *  place: todo:  PhilipsHueBridgeInit
+ *  place (right now [PhilipsHueModel]).
  */
 object PhilipsHueBridgeApi {
 
@@ -37,6 +37,40 @@ object PhilipsHueBridgeApi {
     //-------------------------
     //  read
     //-------------------------
+
+    /**
+     * This grabs everything that the bridge knows (as far as I can tell).
+     *
+     * @return  The data in String form.  Should be pretty easy to convert
+     *          to json.
+     *          If there's an http error, then null is returned. Check the
+     *          logs for detailed stuff.
+     *          NOTE: if the token is wrong or the format is wrong, a string
+     *          will be returned that can be parsed into an error with a meaningful
+     *          error message.
+     *
+     */
+    suspend fun getBridgeEverything(bridgeIp: String, token: String) : String? {
+
+        val fullAddress = "https://$bridgeIp/api/$token/config"
+
+        val response = synchronousGet(
+            url = fullAddress,
+//            header = Pair(HEADER_TOKEN_KEY, token),
+            trustAll = true,
+            debug = true
+        )
+
+        if (response.isSuccessful) {
+            return response.body
+        }
+        else {
+            // what we have here is a failure to communicate...
+            Log.e(TAG, "http problem in getBridgeEverything() (ip = ${bridgeIp}!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return null
+        }
+    }
 
     //------------
     //  bridge
