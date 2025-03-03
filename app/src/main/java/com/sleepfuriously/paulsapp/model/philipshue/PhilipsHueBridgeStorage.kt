@@ -7,8 +7,6 @@ import com.sleepfuriously.paulsapp.model.getPrefsSet
 import com.sleepfuriously.paulsapp.model.getPrefsString
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Controls storing and retrieving data about the bridges that
@@ -97,7 +95,7 @@ object PhilipsHueBridgeStorage {
      * @return      True - successfully saved
      *              False - some error prevented saving
      */
-    fun saveBridgeId(
+    private fun saveBridgeId(
         newBridgeId: String,
         synchronize: Boolean = false,
         ctx: Context,
@@ -142,7 +140,7 @@ object PhilipsHueBridgeStorage {
      * @return      True - successfully saved
      *              False - could not find the bridgeId
      */
-    fun saveBridgeIp(
+    private fun saveBridgeIp(
         bridgeId: String,
         newIp: String,
         synchronize: Boolean = false,
@@ -178,7 +176,7 @@ object PhilipsHueBridgeStorage {
      * @return      True - successfully saved
      *              False - could not find the bridgeId
      */
-    fun saveBridgeToken(
+    private fun saveBridgeToken(
         bridgeId: String,
         newToken: String,
         synchronize: Boolean = false,
@@ -214,7 +212,7 @@ object PhilipsHueBridgeStorage {
         ctx: Context
     ) : Boolean {
 
-        if (PhilipsHueBridgeStorage.saveBridgeId(bridge.id, synchronize, ctx) == false) {
+        if (saveBridgeId(bridge.id, synchronize, ctx) == false) {
             Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
             return false
         }

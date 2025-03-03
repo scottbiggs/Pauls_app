@@ -53,6 +53,7 @@ fun findRoomFromId(
  *
  * @return  Null if a light can't be found or there was some sort of error.
  */
+@Suppress("unused")
 private suspend fun getLightInfoFromServiceList(
     serviceList: List<PHv2ResourceIdentifier>,
     bridge: PhilipsHueBridgeInfo
@@ -94,6 +95,7 @@ private suspend fun getLightInfoFromServiceList(
  * Another helper.  This finds the room that a light resides in.
  * Returns null if not found.
  */
+@Suppress("unused")
 private fun findRoomFromLight(
     light: PhilipsHueLightInfo,
     bridge: PhilipsHueBridgeInfo

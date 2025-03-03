@@ -86,6 +86,7 @@ data class PHv2ResourceBridge(
      *
      * Will be null if this instance is an error.
      */
+    @Suppress("unused")
     fun getOwner() : PHv2ItemInArray? {
         return if (data.isEmpty()) {
             null
@@ -95,6 +96,7 @@ data class PHv2ResourceBridge(
         }
     }
 
+    @Suppress("unused")
     fun getTimeZone() : String {
         return if (data.isEmpty()) {
             ""
@@ -104,6 +106,7 @@ data class PHv2ResourceBridge(
         }
     }
 
+    @Suppress("unused")
     fun getType() : String {
         return if (data.isEmpty()) {
             ""

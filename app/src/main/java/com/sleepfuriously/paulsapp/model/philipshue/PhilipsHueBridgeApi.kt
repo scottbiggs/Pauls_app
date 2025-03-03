@@ -5,7 +5,6 @@ import com.sleepfuriously.paulsapp.model.MyResponse
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousDelete
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Error
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLightIndividual
@@ -142,37 +141,6 @@ object PhilipsHueBridgeApi {
         }
     }
 
-    /**
-     * Retrieves info about a specific device given its id.
-     * Returns null if not found.
-     *
-     * todo: is this a duplicate of [getDeviceIndividualFromApi]?
-     */
-    suspend fun getDeviceInfoFromApi(
-        deviceId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2Device? {
-
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_DEVICE/$deviceId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
-            trustAll = true     // todo: make more secure in future
-        )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "can't get device (id = $deviceId) from bridge!")
-            return null
-        }
-
-        // successful--process this info and return
-        return PHv2Device(response.body)
-    }
-
     //------------
     //  lights & grouped_lights
     //
@@ -226,6 +194,7 @@ object PhilipsHueBridgeApi {
      * @return  The [PHv2GroupedLight] that's within.  Null will
      *          be returned if no grouped lights are found.
      */
+    @Suppress("unused")
     private suspend fun getGroupedLightFromRoom(
         v2Room: PHv2Room,
         bridge: PhilipsHueBridgeInfo
@@ -344,44 +313,6 @@ object PhilipsHueBridgeApi {
         }
     }
 
-    /**
-     * Retrieves info about a room from its id.
-     *
-     * @param   roomId      The v2 id for this room.
-     *
-     * @param   bridge      The bridge that controls this room.  It needs to be
-     *                      connected and active.
-     *
-     * @return  The [PHv2Room] data associated with this room.
-     *
-     * todo is this a dupe of [getRoomIndividualFromApi]?
-     */
-    suspend fun getRoom(
-        roomId: String,
-        bridge: PhilipsHueBridgeInfo
-    ) : PHv2Room = withContext(Dispatchers.IO) {
-
-        val url = createFullAddress(
-            ip = bridge.ip,
-            suffix = "$SUFFIX_GET_ROOMS/$roomId"
-        )
-
-        val response = synchronousGet(
-            url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token))
-        )
-
-        if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting room data!  roomId = $roomId, bridgeId = ${bridge.id}")
-            Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
-            // returning empty object
-            return@withContext PHv2Room(JSONObject())
-        }
-
-        val roomData = PHv2Room(response.body)
-        return@withContext roomData
-    }
-
     //-------------------------
     //  update
     //-------------------------
@@ -396,7 +327,7 @@ object PhilipsHueBridgeApi {
      *
      * @param   bridge      The bridge in question.  MUST be active!
      *
-     * @param   elementId   The id for the [PhilipsHueWhitelistItem] that we want
+     * @param   elementId   The id for the PhilipsHueWhitelistItem that we want
      *                      to remove.
      *
      * @return  The response from the bridge's request.  Caller can decide what to

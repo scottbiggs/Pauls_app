@@ -76,7 +76,8 @@ import kotlinx.coroutines.withContext
  *
  * Now, how do we find the id of the bridges?  That's a great question!
  * The ids are stored in a different preference file:
- *      PHILIPS_HUE_BRIDGE_ID_FILENAME
+ *  [PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME]
+ *
  *
  * This file is a Set of strings that can be converted to Ints that
  * will be the IDs of all the bridges that this app has seen (unless
@@ -88,7 +89,11 @@ import kotlinx.coroutines.withContext
  */
 class PhilipsHueModel(
     private val ctx: Context = MyApplication.appContext,
-    private val coroutineScope: CoroutineScope
+
+    // This is only used in the constructor, so it doesn't have to be a real
+    // property.  Defining it here without a VAL makes its scope only during
+    // init(), so it can be cleaned up more quickly by the garbage collector.
+    coroutineScope: CoroutineScope
 ) {
 
     //-------------------------------------
@@ -96,6 +101,7 @@ class PhilipsHueModel(
     //-------------------------------------
 
     private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
+
     /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
     val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
 
@@ -106,7 +112,6 @@ class PhilipsHueModel(
 
     /** Controls server-sent events (sse) */
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
-
 
 
     //-------------------------------------
@@ -152,14 +157,12 @@ class PhilipsHueModel(
                     val jsonString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
                     if (jsonString.isEmpty()) {
                         Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
-                    }
-                    else {
+                    } else {
                         val v2Bridge = PHv2ResourceBridge(jsonString)
                         if (v2Bridge.hasData() == false) {
                             Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
                             Log.e(TAG, "   error = ${v2Bridge.getError()}")
-                        }
-                        else {
+                        } else {
                             // finally we can get the name!
                             name = v2Bridge.getName()
                         }
@@ -191,8 +194,7 @@ class PhilipsHueModel(
                     // 2a. Find rooms and add them to the bridge data
                     val roomsFromApi = PhilipsHueBridgeApi.getAllRooms(bridge)
                     bridge.rooms = PhilipsHueDataConverter.convertV2RoomAll(roomsFromApi, bridge)
-                }
-                else {
+                } else {
                     bridge.active = false
                 }
 
@@ -230,7 +232,10 @@ class PhilipsHueModel(
     fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
 
         if (bridge.connected) {
-            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
+            Log.e(
+                TAG,
+                "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}"
+            )
             return
         }
 
@@ -311,7 +316,7 @@ class PhilipsHueModel(
      *          Null if id is not found.
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun getLoadedBridgeFromId(bridgeId: String) : PhilipsHueBridgeInfo? {
+    fun getLoadedBridgeFromId(bridgeId: String): PhilipsHueBridgeInfo? {
         val bridge = bridgeFlowSet.value.find { bridge ->
             bridge.id == bridgeId
         }
@@ -340,7 +345,10 @@ class PhilipsHueModel(
             }
         }
         if (groupedLightId.isEmpty()) {
-            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!")
+            Log.e(
+                TAG,
+                "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!"
+            )
             return
         }
 
@@ -365,8 +373,7 @@ class PhilipsHueModel(
         // did it work?
         if (response.isSuccessful) {
             Log.d(TAG, "roomBrightnessChanged() PUT request successful!")
-        }
-        else {
+        } else {
             Log.e(TAG, "error sending PUT request in roomBrightnessChanged()!")
             Log.e(TAG, "response:")
             Log.e(TAG, "   code = ${response.code}")
@@ -394,7 +401,7 @@ class PhilipsHueModel(
      * @return      True - successfully removed bridge.
      *              False - bridge wasn't found.
      */
-    fun deleteBridge(bridgeId: String) : Boolean {
+    fun deleteBridge(bridgeId: String): Boolean {
 
         val bridgeToDelete = getLoadedBridgeFromId(bridgeId) ?: return false
 
@@ -422,13 +429,15 @@ class PhilipsHueModel(
         _bridgeFlowSet.value.forEach { bridge ->
             if (bridge.id != bridgeId) {
                 tmpBridges += bridge
-            }
-            else {
+            } else {
                 removed = true
             }
         }
         if (removed == false) {
-            Log.e(TAG,"Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!")
+            Log.e(
+                TAG,
+                "Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!"
+            )
             return false
         }
 
@@ -443,7 +452,8 @@ class PhilipsHueModel(
      * @return      True - all bridges were removed (even if there were none).
      *              False - error condition (although I don't know what).
      */
-    fun deleteAllBridges() : Boolean {
+    @Suppress("unused")
+    fun deleteAllBridges(): Boolean {
 
         var error = false
         _bridgeFlowSet.value.forEach { bridge ->
@@ -485,12 +495,6 @@ class PhilipsHueModel(
         Log.d(TAG, "interpretEvent()  event.eventId = ${event.eventId}")
         Log.d(TAG, "interpretEvent()  event.data = ${event.data}")
 
-        // if this is an error, we have nothing to do
-        if (event.type == "error") {
-            Log.w(TAG, "interpretEvent() - can't do anything with an error, skipping!")
-            return
-        }
-
         val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
 
         // rebuild the bridge list
@@ -504,18 +508,22 @@ class PhilipsHueModel(
 
                         interpretUpdateEvent(bridge, event)
                     }
+
                     "add" -> {
                         Log.e(TAG, "todo: implement interpeting ADD event")
                         TODO()
                     }
+
                     "delete" -> {
                         Log.e(TAG, "todo: implement interpeting DELETE event")
                         TODO()
                     }
+
                     "error" -> {
-                        Log.e(TAG, "todo: implement interpeting ERROR event")
-                        TODO()
+                        Log.e(TAG, "interpretEvent() - can't do anything with an error, skipping!")
+                        return
                     }
+
                     else -> {
                         Log.e(TAG, "Unknown event type!!! Aborting!")
                         return
@@ -559,10 +567,12 @@ class PhilipsHueModel(
                     val light = findLightFromId(eventDatum.owner!!.rid, bridge)
                     if (light == null) {
                         Log.e(TAG, "unable to find changed light in interpretEvent()!")
-                    }
-                    else {
+                    } else {
                         // yep, there is indeed a light. What changed?
-                        Log.d(TAG, "updating light event (id = ${light.lightId}, deviceId = ${light.deviceId})")
+                        Log.d(
+                            TAG,
+                            "updating light event (id = ${light.lightId}, deviceId = ${light.deviceId})"
+                        )
                         if (eventDatum.on != null) {
                             // On/Off changed.  Set the light approprately.
                             light.state.on = eventDatum.on.on
@@ -585,10 +595,12 @@ class PhilipsHueModel(
                             // todo
                             Log.e(TAG, "implement me!!!")
                         }
+
                         RTYPE_BRIDGE_HOME -> {
                             // todo
                             Log.e(TAG, "implement me!!!")
                         }
+
                         RTYPE_ROOM -> {
                             // Ah, the owner is a room.  Signal that room to change according to the event.
                             val roomId = eventDatum.owner.rid
@@ -600,9 +612,11 @@ class PhilipsHueModel(
                                 if (eventDatum.on != null) {
                                     room.on = eventDatum.on.on
                                 }
-                            }
-                            else {
-                                Log.e(TAG, "Error in interpretEvent()--can't find room that owns grouped_light event. Aborting!")
+                            } else {
+                                Log.e(
+                                    TAG,
+                                    "Error in interpretEvent()--can't find room that owns grouped_light event. Aborting!"
+                                )
                             }
                         }
                     }
@@ -642,7 +656,7 @@ class PhilipsHueModel(
      */
     suspend fun registerAppToBridge(
         bridgeIp: String
-    ) : Pair<String, GetBridgeTokenErrorEnum> {
+    ): Pair<String, GetBridgeTokenErrorEnum> {
 
         val fullAddress = PhilipsHueBridgeApi.createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
         Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
@@ -660,14 +674,12 @@ class PhilipsHueModel(
 
             if (token != null) {
                 return Pair(token, GetBridgeTokenErrorEnum.NO_ERROR)
-            }
-            else {
+            } else {
                 Log.e(TAG, "unable to parse body in requestTokenFromBridge($bridgeIp)")
                 Log.e(TAG, "   response => \n$response")
                 return Pair("", GetBridgeTokenErrorEnum.CANNOT_PARSE_RESPONSE_BODY)
             }
-        }
-        else {
+        } else {
             Log.e(TAG, "error: unsuccessful attempt to get token from bridge at ip $bridgeIp")
             Log.e(TAG, "   response => \n$response")
             return Pair("", GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE)

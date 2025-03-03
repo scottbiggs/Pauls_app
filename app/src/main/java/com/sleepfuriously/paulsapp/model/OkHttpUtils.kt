@@ -33,7 +33,7 @@ object OkHttpUtils {
     private val allTrustingOkHttpClient: OkHttpClient
 
     /** Use this client for the Server-sent Event messages (it has different time-outs) */
-    val allTrustingOkHttpSseClient: OkHttpClient
+    private val allTrustingOkHttpSseClient: OkHttpClient
 
 
     init {
@@ -41,16 +41,20 @@ object OkHttpUtils {
         val trustAllCerts = arrayOf<TrustManager>(
             @SuppressLint("CustomX509TrustManager")
             object : X509TrustManager {
+                @SuppressLint("TrustAllX509TrustManager")
                 override fun checkClientTrusted(chain: Array<X509Certificate?>?, authType: String?) {
                     // this is empty on purpose: I don't want this check executed
+                    Log.v(TAG, "checkClientTrust() called.  This is merely to prevent a warning")
                 }
 
+                @SuppressLint("TrustAllX509TrustManager")
                 override fun checkServerTrusted(chain: Array<X509Certificate?>?, authType: String?) {
+                    Log.v(TAG, "checkServerTrusted() called.  This is merely to prevent a warning")
                     // this is empty on purpose: I don't want this check executed
                 }
 
                 override fun getAcceptedIssuers(): Array<X509Certificate> {
-                    return arrayOf<X509Certificate>()
+                    return arrayOf()
                 }
             }
         )
@@ -88,6 +92,7 @@ object OkHttpUtils {
      * Returns a reference to a regular [OkHttpClient].  This one insists on
      * full security.
      */
+    @Suppress("unused")
     fun getClient() : OkHttpClient {
         return okHttpClient
     }
@@ -200,7 +205,7 @@ object OkHttpUtils {
         header: Pair<String, String>,
         trustAll: Boolean = false
     ): MyResponse = withContext(Dispatchers.IO)  {
-        val headerList = listOf<Pair<String, String>>(header)
+        val headerList = listOf(header)
         return@withContext synchronousGet(url, headerList, trustAll)
     }
 
@@ -259,7 +264,7 @@ object OkHttpUtils {
             )
         }
 
-        headerList.forEachIndexed() { i, header ->
+        headerList.forEachIndexed { i, header ->
             if (i == 0) {
                 if (header.first.isNotEmpty()) {
                     requestBuilder.header(header.first, header.second)
@@ -303,7 +308,7 @@ object OkHttpUtils {
         bodyStr: String,
         headerList: List<Pair<String, String>> = listOf(),
         trustAll: Boolean
-    ): MyResponse {
+    ): MyResponse = withContext(Dispatchers.IO) {
         Log.d(
             TAG,
             "synchronousPut( url = $url, body = $bodyStr, headers = $headerList, trustAll = $trustAll )"
@@ -321,7 +326,7 @@ object OkHttpUtils {
         } catch (e: IllegalArgumentException) {
             Log.e(TAG, "Can't make a real url with $url!")
             e.printStackTrace()
-            return MyResponse(
+            return@withContext MyResponse(
                 isSuccessful = false,
                 code = -1,
                 message = e.message ?: "",
@@ -330,7 +335,7 @@ object OkHttpUtils {
             )
         }
 
-        headerList.forEachIndexed() { i, header ->
+        headerList.forEachIndexed { i, header ->
             if (i == 0) {
                 if (header.first.isNotEmpty()) {
                     requestBuilder.header(header.first, header.second)
@@ -349,10 +354,10 @@ object OkHttpUtils {
             // two kinds of requests: unsafe and regular
             if (trustAll) {
                 myResponse = MyResponse(allTrustingOkHttpClient.newCall(request).execute())
-                return myResponse
+                return@withContext myResponse
             } else {
                 myResponse = MyResponse(okHttpClient.newCall(request).execute())
-                return myResponse
+                return@withContext myResponse
             }
 
         } catch (e: Exception) {
@@ -361,7 +366,7 @@ object OkHttpUtils {
                 "exception in synchronousPut($url, $bodyStr, $headerList, $trustAll)"
             )
             e.printStackTrace()
-            return MyResponse(
+            return@withContext MyResponse(
                 isSuccessful = false,
                 code = -1,
                 message = e.message ?: "",
@@ -382,6 +387,7 @@ object OkHttpUtils {
     ): MyResponse = withContext(Dispatchers.IO) {
 
         val body = if (bodyStr == null) {
+            Log.v(TAG, "syncrhonizeDelete(): bodyStr is null, passing null (this is to prevent warning)")
             null
         }
         else {
@@ -533,7 +539,7 @@ data class MyResponse(
 
             // add the headers one-by-one to header list
             val headerList = mutableListOf<Pair<String, String>>()
-            response.headers.forEach() { header ->
+            response.headers.forEach { header ->
                 val name = header.first
                 val value = header.second
                 headerList.add(Pair(name, value))

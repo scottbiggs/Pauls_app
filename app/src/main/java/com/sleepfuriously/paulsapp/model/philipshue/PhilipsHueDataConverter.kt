@@ -65,6 +65,7 @@ object PhilipsHueDataConverter {
     /**
      * Converts from a [PHv2Light] to a [PhilipsHueLightInfo].
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     fun convertV2Light(
         v2Light: PHv2Light
     ) : PhilipsHueLightInfo {
@@ -89,6 +90,7 @@ object PhilipsHueDataConverter {
      * [PhilipsHueLightInfo].  If there are errors, the set will
      * be empty.
      */
+    @Suppress("unused")
     private fun convertV2ResourceLightsAllToLightSet(
         v2ResourceLight: PHv2ResourceLightsAll,
     ) : Set<PhilipsHueLightInfo> {
@@ -113,7 +115,7 @@ object PhilipsHueDataConverter {
         // add it to our set.
         v2ResourceLight.data.forEach { data ->
             if (data.type == LIGHT) {
-                newLightSet.add(PhilipsHueDataConverter.convertV2Light(data))
+                newLightSet.add(convertV2Light(data))
             }
         }
         return newLightSet

@@ -146,18 +146,6 @@ class PhilipsHueRepository(
      *  This must be called off the main thread as it access
      *  the network.
      */
-    /**
-     * Tests to see if a bridge is at the given ip.
-     *
-     * This just tests to see if the basic debug screen appears.
-     * The url is  http://<ip>/debug/clip.html
-     *
-     * @param   ip          The ip that may point to a philips hue bridge
-     *
-     * WARNING:
-     *  This must be called off the main thread as it access
-     *  the network.
-     */
     suspend fun doesPhilipsHueBridgeRespondToIp(ip: String) : Boolean {
         return doesBridgeRespondToIp(ip)
     }

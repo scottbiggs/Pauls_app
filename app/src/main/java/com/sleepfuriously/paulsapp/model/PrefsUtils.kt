@@ -3,6 +3,8 @@ package com.sleepfuriously.paulsapp.model
 import android.content.Context
 import android.util.Log
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /*********************
  * Utility functions that deal with shared preferences.
@@ -122,20 +124,20 @@ suspend fun getLotsOfPrefsStrings(
     ctx: Context,
     keys: Set<String>,
     filename: String = PREFS_FILENAME
-) : Set<Pair<String, String?>> {
+) : Set<Pair<String, String?>> = withContext(Dispatchers.IO) {
 
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     val retVals = mutableSetOf<Pair<String, String?>>()
 
-    keys.forEach() { key ->
-        val pair = Pair<String, String?>(
+    keys.forEach { key ->
+        val pair = Pair(
             key,
             prefs.getString(key, null)
         )
         retVals.add(pair)
     }
 
-    return retVals
+    return@withContext retVals
 }
 
 
@@ -152,15 +154,16 @@ suspend fun getLotsOfPrefsStrings(
  *                          is the value.  Note that null is not allowed
  *                          for either.
  */
+@Suppress("unused")
 suspend fun saveLotsOfPrefsStrings(
     ctx: Context,
     setOfPairs: Set<Pair<String, String>>,
     filename: String = PREFS_FILENAME
-) {
+) = withContext(Dispatchers.IO) {
 
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(true) {
-        setOfPairs.forEach() { pair ->
+        setOfPairs.forEach { pair ->
             putString(pair.first, pair.second)
         }
     }
@@ -221,6 +224,7 @@ fun savePrefsInt(
 /**
  * Same as [getPrefsInt] but for longs.
  */
+@Suppress("unused")
 fun getPrefsLong(
     ctx: Context,
     key: String,
@@ -243,6 +247,7 @@ fun getPrefsLong(
 /**
  * Same as [savePrefsInt] but for longs.
  */
+@Suppress("unused")
 fun savePrefsLong(
     ctx: Context,
     key: String,
@@ -262,6 +267,7 @@ fun savePrefsLong(
  *
  * Returns [defaultBool] if not found.
  */
+@Suppress("unused")
 fun getPrefsBool(
     ctx: Context,
     key: String,
@@ -294,6 +300,7 @@ fun getPrefsBool(
  *                          Default is false, which is very fast and doesn't need
  *                          any special treatment.
  */
+@Suppress("unused")
 fun savePrefsBoolean(
     ctx: Context,
     key: String,
@@ -356,6 +363,7 @@ fun savePrefsSet(
 /**
  * Gets all the keys from a preferences file in the form of a Set.
  */
+@Suppress("unused")
 fun getAllKeys(ctx: Context, filename : String = PREFS_FILENAME) : MutableSet<String> {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     return prefs.all.keys
