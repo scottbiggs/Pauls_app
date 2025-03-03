@@ -1,6 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.MyResponse
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousDelete
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
@@ -38,43 +40,10 @@ object PhilipsHueBridgeApi {
     //  read
     //-------------------------
 
-    /**
-     * This grabs everything that the bridge knows (as far as I can tell).
-     *
-     * @return  The data in String form.  Should be pretty easy to convert
-     *          to json.
-     *          If there's an http error, then null is returned. Check the
-     *          logs for detailed stuff.
-     *          NOTE: if the token is wrong or the format is wrong, a string
-     *          will be returned that can be parsed into an error with a meaningful
-     *          error message.
-     *
-     */
-    suspend fun getBridgeEverything(bridgeIp: String, token: String) : String? {
-
-        val fullAddress = "https://$bridgeIp/api/$token/config"
-
-        val response = synchronousGet(
-            url = fullAddress,
-//            header = Pair(HEADER_TOKEN_KEY, token),
-            trustAll = true,
-            debug = true
-        )
-
-        if (response.isSuccessful) {
-            return response.body
-        }
-        else {
-            // what we have here is a failure to communicate...
-            Log.e(TAG, "http problem in getBridgeEverything() (ip = ${bridgeIp}!")
-            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
-            return null
-        }
-    }
-
     //------------
     //  bridge
     //
+
     /**
      * Gets all the information about a particular bridge.  This is straight
      * from the bridge itself.  It can easily be parsed with [PHv2ResourceBridge].
@@ -115,7 +84,7 @@ object PhilipsHueBridgeApi {
         bridgeIp: String,
         token: String
     ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = createFullAddress(
             ip = bridgeIp,
             suffix = SUFFIX_GET_BRIDGE
         )
@@ -150,7 +119,7 @@ object PhilipsHueBridgeApi {
         deviceRid: String,
         bridge: PhilipsHueBridgeInfo
     ) : PHv2ResourceDeviceIndividual = withContext(Dispatchers.IO) {
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = createFullAddress(
             ip = bridge.ip,
             suffix = "$SUFFIX_GET_DEVICE/$deviceRid"
         )
@@ -184,7 +153,7 @@ object PhilipsHueBridgeApi {
         bridge: PhilipsHueBridgeInfo
     ) : PHv2Device? {
 
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = createFullAddress(
             ip = bridge.ip,
             suffix = "$SUFFIX_GET_DEVICE/$deviceId"
         )
@@ -287,7 +256,7 @@ object PhilipsHueBridgeApi {
         bridge: PhilipsHueBridgeInfo
     ) : PHv2LightIndividual? = withContext(Dispatchers.IO) {
         // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = createFullAddress(
             ip = bridge.ip,
             suffix = "$SUFFIX_GET_LIGHTS/$lightId"
         )
@@ -309,7 +278,7 @@ object PhilipsHueBridgeApi {
     }
 
     //------------
-    //  roooms
+    //  rooms
     //
 
     /**
@@ -351,7 +320,7 @@ object PhilipsHueBridgeApi {
         bridge: PhilipsHueBridgeInfo
     ) : PHv2RoomIndividual = withContext(Dispatchers.IO) {
 
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = createFullAddress(
             ip = bridge.ip,
             suffix = "$SUFFIX_GET_ROOMS/$roomId"
         )
@@ -420,6 +389,38 @@ object PhilipsHueBridgeApi {
     //-------------------------
     //  delete
     //-------------------------
+
+    /**
+     * Removes the specified user/token from the bridge's whitelist.  This means
+     * that the token will no longer work.  You've been warned!
+     *
+     * @param   bridge      The bridge in question.  MUST be active!
+     *
+     * @param   elementId   The id for the [PhilipsHueWhitelistItem] that we want
+     *                      to remove.
+     *
+     * @return  The response from the bridge's request.  Caller can decide what to
+     *          do with the response (it'll say if it's successful or not).
+     */
+    @Deprecated("Philips Hue no longer supports this")
+    suspend fun removeAppTokenFromWhitelist(
+        bridge: PhilipsHueBridgeInfo,
+        elementId: String
+    ) : MyResponse {
+
+        // construct the full url.  It'll contain the token for this bridge and the
+        // id of the whitelist element to delete
+        val fullUrl = createFullAddress(
+            ip = bridge.ip,
+            suffix = "/api/${bridge.token}/config/whitelist/$elementId"
+        )
+
+        val response = synchronousDelete(
+            url = fullUrl,
+            trustAll = true
+        )
+        return response
+    }
 
     //-------------------------
     //  helpers

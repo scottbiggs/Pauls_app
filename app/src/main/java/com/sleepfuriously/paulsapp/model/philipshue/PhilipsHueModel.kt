@@ -1,17 +1,11 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.provider.Settings.Secure
 import android.util.Log
-import androidx.collection.mutableIntSetOf
 import com.sleepfuriously.paulsapp.model.philipshue.json.*
 import com.sleepfuriously.paulsapp.MyApplication
-import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
-import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.io.IOException
 
 /**
  * This is the model for the Philips Hue suite of Internet of Things.
@@ -405,7 +398,8 @@ class PhilipsHueModel(
 
         val bridgeToDelete = getLoadedBridgeFromId(bridgeId) ?: return false
 
-        // 1) todo Tell the bridge to remove this app's username (token)
+        // 1) Tell the bridge to remove this app's username (token)
+        //      UNABLE TO COMPLY:  Philps Hue removed this ability, so it cannot be implemented!
 
         // 2) Remove bridge data from our permanent storage
         if (PhilipsHueBridgeStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {

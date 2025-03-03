@@ -251,20 +251,36 @@ suspend fun doesBridgeRespondToIp(bridge: PhilipsHueBridgeInfo) : Boolean {
  *                          a unique number.  Default should generate a
  *                          very good one.
  */
-@SuppressLint("HardwareIds")
 fun generateGetTokenBody(
     appName: String? = null,
     instanceName: String? = null,
     ctx: Context
 ) : String {
-    val name = appName ?: ctx.getString(R.string.app_name)
+    val name = appName ?: getDefaultAppName(ctx)
+
+    val instance = instanceName ?: getDefaultInstanceName(ctx)
+    return """{"devicetype": "$name#$instance", "generateclientkey":true}"""
+}
+
+/**
+ * Figures out the default app name for this app.
+ */
+fun getDefaultAppName(ctx: Context) : String {
+    return ctx.getString(R.string.app_name)
+}
+
+/**
+ * Figures out the default instance for this app.  Uses hardware stuff
+ * so special permission is needed.
+ */
+@SuppressLint("HardwareIds")
+fun getDefaultInstanceName(ctx: Context) : String {
 
     // This tries to use the ANDROID_ID.  If it's null, then I just
     // throw in a JellyBean (should only happen on jelly bean devices, hehe).
-    val instance = instanceName
-        ?: Secure.getString(ctx.contentResolver, Secure.ANDROID_ID)
+    val instanceName = Secure.getString(ctx.contentResolver, Secure.ANDROID_ID)
         ?: "jellybean"
-    return """{"devicetype": "$name#$instance", "generateclientkey":true}"""
+    return instanceName
 }
 
 

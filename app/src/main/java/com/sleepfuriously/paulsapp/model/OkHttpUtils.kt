@@ -22,7 +22,6 @@ import javax.net.ssl.X509TrustManager
 object OkHttpUtils {
 
     /** reference to the okhttp library */
-//    private val okHttpClient = OkHttpClient()
     private val okHttpClient = OkHttpClient.Builder()
         .callTimeout(2, TimeUnit.SECONDS)
         .readTimeout(2, TimeUnit.SECONDS)
@@ -122,8 +121,13 @@ object OkHttpUtils {
     suspend fun synchronousGet(
         url: String,
         headerList: List<Pair<String, String>> = listOf(),
-        trustAll: Boolean = false
+        trustAll: Boolean = false,
+        debug: Boolean = false
     ): MyResponse = withContext(Dispatchers.IO)  {
+
+        if (debug) {
+            Log.d(TAG, "synchronousGet() for $url, headers = $headerList")
+        }
 
         val requestBuilder = Request.Builder()
 
@@ -162,6 +166,9 @@ object OkHttpUtils {
         }
 
         val request = requestBuilder.build()
+        if (debug) {
+            Log.d(TAG, "   request = $request")
+        }
 
         try {
             if (trustAll) {
@@ -351,7 +358,7 @@ object OkHttpUtils {
         } catch (e: Exception) {
             Log.e(
                 TAG,
-                "exception in synchronousPostRequest($url, $bodyStr, $headerList, $trustAll)"
+                "exception in synchronousPut($url, $bodyStr, $headerList, $trustAll)"
             )
             e.printStackTrace()
             return MyResponse(
@@ -363,6 +370,74 @@ object OkHttpUtils {
             )
         }
     }
+
+    /**
+     * Sends a DELETE method to the given url and returns the result.
+     */
+    suspend fun synchronousDelete(
+        url: String,
+        bodyStr: String? = null,
+        headerList: List<Pair<String, String>> = listOf(),
+        trustAll: Boolean
+    ): MyResponse = withContext(Dispatchers.IO) {
+
+        val body = if (bodyStr == null) {
+            null
+        }
+        else {
+            // convert to an actual RequestBody
+            bodyStr.toRequestBody("application/json; charset=utf-8".toMediaType())
+        }
+
+        val requestBuilder = Request.Builder()
+        try {
+            requestBuilder
+                .url(url)
+                .delete(body)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "synchronousDelete(): can't make a real url with $url!")
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
+
+        val request = requestBuilder.build()
+
+        try {
+            val myResponse: MyResponse
+
+            // two kinds of requests: unsafe and regular
+            if (trustAll) {
+                Log.d(TAG, "making DELETE call with all-trusting okhttpClient: $request")
+                myResponse = MyResponse(allTrustingOkHttpClient.newCall(request).execute())
+                return@withContext myResponse
+            } else {
+                Log.d(TAG, "making DELETE call with high-security okhttpClient: $request")
+                myResponse = MyResponse(okHttpClient.newCall(request).execute())
+                return@withContext myResponse
+            }
+
+        } catch (e: Exception) {
+            Log.e(
+                TAG,
+                "exception in synchronousDelete($url, $bodyStr, $headerList, $trustAll)"
+            )
+            e.printStackTrace()
+            return@withContext MyResponse(
+                isSuccessful = false,
+                code = -1,
+                message = e.message ?: "",
+                body = e.cause.toString(),
+                headers = listOf()
+            )
+        }
+    }
+
 
 }
 
