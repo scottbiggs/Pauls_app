@@ -153,11 +153,11 @@ class PhilipsHueModel(
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
                 if (isActive) {
-                    val jsonString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
-                    if (jsonString.isEmpty()) {
+                    val jsonBridgeResponseString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
+                    if (jsonBridgeResponseString.isEmpty()) {
                         Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
                     } else {
-                        val v2Bridge = PHv2ResourceBridge(jsonString)
+                        val v2Bridge = PHv2ResourceBridge(jsonBridgeResponseString)
                         if (v2Bridge.hasData() == false) {
                             Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
                             Log.e(TAG, "   error = ${v2Bridge.getError()}")
@@ -279,27 +279,33 @@ class PhilipsHueModel(
     ) = withContext(Dispatchers.IO) {
 
         // grab the id for this bridge
-        val responseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
+        val jsonResponseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
             bridgeIp = newBridge.ip,
             token = newBridge.token
         )
-        val v2BridgeResponse = PHv2ResourceBridge(responseStr)
-        if (v2BridgeResponse.hasData() == false) {
+        val v2Bridge = PHv2ResourceBridge(jsonResponseStr)
+        if (v2Bridge.hasData() == false) {
             Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
-            Log.e(TAG, "   error msg: ${v2BridgeResponse.getError()}")
+            Log.e(TAG, "   error msg: ${v2Bridge.getError()}")
             return@withContext
         }
-        val id = v2BridgeResponse.getId()
+
+        val id = v2Bridge.getId()
 
         val bridgeToAdd = PhilipsHueBridgeInfo(
             id = id,
             labelName = newBridge.labelName,
             ip = newBridge.ip,
-            token = newBridge.token,
+            token = newBridge.token,    // the name supplied in working bridge should be correct
             active = newBridge.active,
             rooms = mutableSetOf(),
             connected = false
         )
+
+        // find the rooms and THEN add the bridge to our list of bridges (finally)
+        val bridgeRooms = PhilipsHueBridgeApi.getAllRooms(bridgeToAdd)
+        bridgeToAdd.rooms = PhilipsHueDataConverter.convertV2RoomAll(bridgeRooms, bridgeToAdd)
+
         _bridgeFlowSet.value += bridgeToAdd
 
         // update long-term data
