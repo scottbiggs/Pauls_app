@@ -460,8 +460,9 @@ data class PHv2LightColorTemperature(
             if (parentJsonObject.has(COLOR_TEMPERATURE)) {
                 val phv2colorTempJsonObject = parentJsonObject.getJSONObject(COLOR_TEMPERATURE)
 
-                val mirek = phv2colorTempJsonObject.get(MIREK) as Int?
-                val mirekValid = phv2colorTempJsonObject.getBoolean(MIREK_VALID)
+
+                val mirek = phv2colorTempJsonObject.optInt(MIREK)
+                val mirekValid = phv2colorTempJsonObject.optBoolean(MIREK_VALID)
                 val mirekSchema = PHv2MirekSchema(phv2colorTempJsonObject)
 
                 return PHv2LightColorTemperature(
