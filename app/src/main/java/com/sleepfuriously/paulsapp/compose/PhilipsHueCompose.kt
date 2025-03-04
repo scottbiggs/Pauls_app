@@ -610,6 +610,7 @@ private fun DisplayPhilipsHueRoom(
         )
         Text(
             text = roomName,
+            minLines = 3,
             modifier = modifier
                 .padding(start = 16.dp)
         )
@@ -646,15 +647,19 @@ private fun DisplayPhilipsHueRoom(
                 .padding(vertical = 4.dp, horizontal = 18.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(veryDarkCoolGray)
+                .height(20.dp)
         )
 
-        Text(
-            text = stringResource(id = R.string.brightness, (illumination * MAX_BRIGHTNESS).roundToInt()),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
-                .align(Alignment.CenterHorizontally)
-        )
+        // displays the brightness in text and numbers
+//        Text(
+//            text = stringResource(id = R.string.brightness, (illumination * MAX_BRIGHTNESS).roundToInt()),
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(start = 20.dp, end = 20.dp)
+//                .align(Alignment.CenterHorizontally)
+//        )
+
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -662,7 +667,7 @@ private fun DisplayPhilipsHueRoom(
 private fun DrawLightBulb(imageId : Int, colorTint: Color) {
     Image(
         modifier = Modifier
-            .width(140.dp),
+            .width(110.dp),
         contentScale = ContentScale.Fit,
         painter = painterResource(imageId),
         colorFilter = ColorFilter.tint(colorTint),
@@ -769,4 +774,4 @@ private fun ManualInitWaitingPreview() {
 private const val TAG = "PhilipsHueCompose"
 
 /** The grid of rooms in the PH section, each room must be at least this wide */
-private const val MIN_PH_ROOM_WIDTH = 200
+private const val MIN_PH_ROOM_WIDTH = 130
