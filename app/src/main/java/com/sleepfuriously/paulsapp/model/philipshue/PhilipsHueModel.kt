@@ -101,7 +101,6 @@ class PhilipsHueModel(
     //-------------------------------------
 
     private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
-
     /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
     val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
 
@@ -219,6 +218,15 @@ class PhilipsHueModel(
                 }
             }
         }
+
+        coroutineScope.launch {
+            while (true) {
+                phServerSentEvents.openEvent.collect { pair ->
+                    Log.d(TAG, "collecting phServerSentEvents.openEvent. connect = ${pair.second}")
+                    interpretOpenEvent(pair.first, pair.second)
+                }
+            }
+        }
     }
 
     //-------------------------------------
@@ -232,10 +240,7 @@ class PhilipsHueModel(
     fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
 
         if (bridge.connected) {
-            Log.e(
-                TAG,
-                "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}"
-            )
+            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
             return
         }
 
@@ -245,6 +250,9 @@ class PhilipsHueModel(
     /**
      * Stop receiving updates about the Philps Hue IoT for this bridge.
      * If the bridge is not found, nothing is done.
+     *
+     * Should be no need to do any changes: the bridge itself should call onClosed()
+     * which will be processed.
      */
     fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
         Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ip}")
@@ -345,10 +353,7 @@ class PhilipsHueModel(
             }
         }
         if (groupedLightId.isEmpty()) {
-            Log.e(
-                TAG,
-                "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!"
-            )
+            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!")
             return
         }
 
@@ -434,10 +439,7 @@ class PhilipsHueModel(
             }
         }
         if (removed == false) {
-            Log.e(
-                TAG,
-                "Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!"
-            )
+            Log.e(TAG, "Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!")
             return false
         }
 
@@ -488,7 +490,6 @@ class PhilipsHueModel(
             Log.e(TAG, "Can't find the bridge in interpretEvent()! Aborting!")
             return
         }
-
 
         Log.d(TAG, "interpretEvent()  eventBridge = ${eventBridge.id}")
         Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
@@ -629,6 +630,42 @@ class PhilipsHueModel(
 
             } // when (eventDatum.type)
         }
+    }
+
+    /**
+     * A bridge connection for sse has either begun or ended.  Make changes
+     * accordingly.
+     *
+     * @param   bridgeId        The bridge that changed.
+     *
+     * @param   isOpen          true -> bridge connection started
+     *                          false -> bridge connection close
+     */
+    private fun interpretOpenEvent(bridgeId: String, isOpen: Boolean) {
+        Log.d(TAG, "interpretOpenEvent() bridgeId = $bridgeId, isOpen = $isOpen")
+        val bridge = getLoadedBridgeFromId(bridgeId)
+        if (bridge == null) {
+            Log.e(TAG, "Can't find bridge in interpretOpenEvent(). Aborting!")
+            return
+        }
+
+        // rebuild the bridge list
+        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+        bridgeFlowSet.value.forEach { aBridge ->
+            // Is this the bridge in question?
+            if (aBridge.id == bridgeId) {
+                // yes, make the change, but to a copy (so the flow works correctly)
+                Log.d(TAG, "Changing aBridge.connected from ${aBridge.connected} to $isOpen")
+                val bridgeCopy = aBridge.copy(connected = isOpen)
+                newBridgeList.add(bridgeCopy)
+            }
+            else {
+                newBridgeList.add(aBridge)
+            }
+        }
+        // assign new Set
+        Log.d(TAG, "   - bridgeFlowSet should change")
+        _bridgeFlowSet.update { newBridgeList.toSet() }
     }
 
 

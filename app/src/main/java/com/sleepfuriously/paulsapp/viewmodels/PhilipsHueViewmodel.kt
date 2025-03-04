@@ -209,19 +209,19 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * Tells the philips hue model to stop receiving server-sent events to
-     * this bridge.
-     */
-    fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
-        philipsHueRepository.stopPhilipsHueSseConnection(bridge)
-    }
-
-    /**
      * Tells the model to try to re-connect to this bridge so we can receive
      * server-sent events.
      */
     fun connectBridge(bridge: PhilipsHueBridgeInfo) {
         philipsHueRepository.startPhilipsHueSseConnection(bridge)
+    }
+
+    /**
+     * Tells the philips hue model to stop receiving server-sent events to
+     * this bridge.
+     */
+    fun disconnectBridge(bridge: PhilipsHueBridgeInfo) {
+        philipsHueRepository.stopPhilipsHueSseConnection(bridge)
     }
 
 

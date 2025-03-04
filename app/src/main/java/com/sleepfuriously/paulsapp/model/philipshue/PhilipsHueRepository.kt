@@ -47,12 +47,7 @@ class PhilipsHueRepository(
         // start consuming bridge flow from Model
         coroutineScope.launch {
             model.bridgeFlowSet.collectLatest {
-                Log.d(
-                    TAG,
-                    "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${
-                        System.identityHashCode(it)
-                    }"
-                )
+                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${System.identityHashCode(it)}")
 
                 // rebuilding a copy of the bridge set
                 val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
@@ -60,10 +55,7 @@ class PhilipsHueRepository(
                     newBridgeSet.add(bridge)
                     Log.d(TAG, "Setting bridge for flow:")
                     bridge.rooms.forEach { room ->
-                        Log.d(
-                            TAG,
-                            "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}"
-                        )
+                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
                     }
                 }
                 // producing flow

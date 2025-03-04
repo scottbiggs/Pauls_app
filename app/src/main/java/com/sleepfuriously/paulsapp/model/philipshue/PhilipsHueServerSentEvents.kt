@@ -64,7 +64,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
     //  data objects
     //---------------------------------
 
-    val defaultListener = object : EventSourceListener() {
+    private val defaultListener = object : EventSourceListener() {
         override fun onOpen(eventSource: EventSource, response: Response) {
             super.onOpen(eventSource, response)
             Log.d(TAG, "EventSourceListener: Connection Opened")
@@ -85,6 +85,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
                 }
 
                 coroutineScope.launch {
+                    Log.d(TAG, "onOpen() sending _openEvent: true")
                     _openEvent.send(Pair(bridgeId, true))
                 }
 /*
@@ -122,6 +123,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             }
 
             coroutineScope.launch {
+                Log.d(TAG, "onClosed() sending _openEvent: false")
                 _openEvent.send(Pair(bridgeId, false))
             }
         }
@@ -184,6 +186,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             }
             else {
                 coroutineScope.launch {
+                    Log.d(TAG, "onFailure() sending openEvent: false")
                     _openEvent.send(Pair(bridgeId, false))
                 }
 
@@ -216,6 +219,8 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
      * Begins connecing to the given bridge for server-sent events.
      */
     fun startSse(bridge: PhilipsHueBridgeInfo) {
+        Log.d(TAG, "startSse()")
+
         val request = Request.Builder()
             .url("https://${bridge.ip}/eventstream/clip/v2")
             .header("Accept", "text/event-stream")
@@ -223,29 +228,26 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             .tag(bridge.id)     // identifies this request (within the EventSource)
             .build()
 
-        // check to see if this bridge is already on our list
-        var myEventSource: Pair<String, EventSource>? = null
+        // Check to see if this bridge is already on our list.
+        // if so, remove it (we'll make a new one).
+        val foundEventSource: Pair<String, EventSource>? = null
         for(i in 0 until eventSourceList.size) {
             if (eventSourceList[i].first == bridge.id) {
-                // use this one instead of making a new one
-                myEventSource = eventSourceList[i]
                 eventSourceList.removeAt(i)
                 break
             }
         }
 
-        if (myEventSource == null) {
-            // not found. add it using the default listener
-            myEventSource = Pair(bridge.id,
-                EventSources.createFactory(getAllTrustingSseClient())   // todo: make secure
-                    .newEventSource(
-                        request = request,
-                        listener = defaultListener
-                    ))
-        }
+        // making new eventsource
+        val newEventSource = Pair(bridge.id,
+            EventSources.createFactory(getAllTrustingSseClient())   // todo: make secure
+                .newEventSource(
+                    request = request,
+                    listener = defaultListener
+                ))
 
         // add this to the list
-        eventSourceList.add(myEventSource)
+        eventSourceList.add(newEventSource)
 
         // note: the connection is not complete yet; we just made an attempt at connecting.
         // we'll know that the connection is successful in the onOpen() call in whatever
@@ -259,6 +261,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
         // find the right event source and cancel it.
         eventSourceList.forEach { eventSourcePair ->
             if (eventSourcePair.first == bridgeId) {
+                Log.d(TAG, "Canceling sse for bridge id = $bridgeId")
                 eventSourcePair.second.cancel()
                 // should I remove this eventsource? hmmm
                 return

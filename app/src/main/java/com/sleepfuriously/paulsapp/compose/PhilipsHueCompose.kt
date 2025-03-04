@@ -319,7 +319,7 @@ private fun DotDotDotBridgeMenu(
                 onClick = {
                     isDropDownExpanded = false
                     if (bridge.connected) {
-                        viewmodel.stopSseConnection(bridge)
+                        viewmodel.disconnectBridge(bridge)
                     }
                     else {
                         viewmodel.connectBridge(bridge)
