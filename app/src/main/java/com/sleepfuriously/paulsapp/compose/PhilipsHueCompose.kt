@@ -464,7 +464,7 @@ private fun ShowBridgeInfoDialog(
                                 DrawBridgeInfoLine(
                                     light.name,
                                     "$onStr, brightness = $brightness",
-                                    width = 150
+                                    width = 180
                                 )
                             }
                         }
