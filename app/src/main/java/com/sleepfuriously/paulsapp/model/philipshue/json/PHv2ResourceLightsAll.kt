@@ -508,7 +508,7 @@ data class PHv2MirekSchema(
 
 data class PHv2LightColor(
     /** CIE XY gamut position.  ranges [0..1] */
-    val xy: Pair<Double, Double>,
+    val xy: PHv2LightColorXY,
     val gamut: PHv2LightColorGamut = PHv2LightColorGamut(Pair(1.0, 1.0), Pair(1.0, 1.0), Pair(1.0, 1.0)),
     /** A, B, C or other. Used by older devices. */
     val gamutType: String
@@ -527,21 +527,30 @@ data class PHv2LightColor(
                 val colorJSONObject = parentJsonObject.getJSONObject(COLOR)
 
                 val xyJSONObject = colorJSONObject.getJSONObject(XY)
-                val x = xyJSONObject.get(X) as Double
-                val y = xyJSONObject.get(Y) as Double
-                val xy = Pair(x, y)
+                val x = xyJSONObject.getDouble(X).toFloat()
+                val y = xyJSONObject.getDouble(Y).toFloat()
 
                 val gamut = PHv2LightColorGamut(colorJSONObject)
                 val gamutType = colorJSONObject.getString(GAMUT_TYPE)
 
-                return PHv2LightColor(xy, gamut, gamutType)
+                return PHv2LightColor(PHv2LightColorXY(x, y), gamut, gamutType)
             }
             else {
-                return PHv2LightColor(Pair(1.0, 1.0), PHv2LightColorGamut(parentJsonObject), OTHER)
+                return PHv2LightColor(PHv2LightColorXY(1f, 1f), PHv2LightColorGamut(parentJsonObject), OTHER)
             }
         }
     }
 }
+
+/**
+ * CIE XY gamut position
+ */
+data class PHv2LightColorXY(
+    /** range [0..1] */
+    val x: Float,
+    /** range [0..1] */
+    val y: Float
+)
 
 data class PHv2LightColorGamut(
     val red: Pair<Double, Double>,
@@ -632,7 +641,7 @@ data class PHv2SupportedDynamicStatus(
 data class PHv2LightSignaling(
     /** all the signal that this light supports */
     val signalValues: List<String>,
-    val status: PHv2Status,
+    val status: PHv2LightStatus,
 ) {
     companion object {
         /**
@@ -653,7 +662,7 @@ data class PHv2LightSignaling(
                     signalValues.add(signalValuesJSONArray[i] as String)
                 }
 
-                val status = PHv2Status(signalingJSONObject)
+                val status = PHv2LightStatus(signalingJSONObject)
 
                 return PHv2LightSignaling(
                     signalValues = signalValues,
@@ -661,14 +670,14 @@ data class PHv2LightSignaling(
                 )
             }
             else {
-                return PHv2LightSignaling(listOf(), PHv2Status(parentJsonObject))
+                return PHv2LightSignaling(listOf(), PHv2LightStatus(parentJsonObject))
             }
         }
     }
 }
 
 /** indicates status of active signal. not available when inactive */
-data class PHv2Status(
+data class PHv2LightStatus(
     /** no_signal, on_off, on_off_color, alternating */
     val signal: String,
     /** datetime */
@@ -683,9 +692,9 @@ data class PHv2Status(
          * @param   parentJsonObject  A json object that CONTAINS a json object that is
          *                      the equivalent of this class.
          *
-         * @return  [PHv2Status] instance.  If not found, a basic instance is created.
+         * @return  [PHv2LightStatus] instance.  If not found, a basic instance is created.
          */
-        operator fun invoke(parentJsonObject: JSONObject) : PHv2Status {
+        operator fun invoke(parentJsonObject: JSONObject) : PHv2LightStatus {
             if (parentJsonObject.has(STATUS)) {
                 val statusJSONObject = parentJsonObject.getJSONObject(STATUS)
 
@@ -697,10 +706,10 @@ data class PHv2Status(
 //                    val
 //                }
 
-                return PHv2Status(signal, estimatedEnd)
+                return PHv2LightStatus(signal, estimatedEnd)
             }
             else {
-                return PHv2Status(NO_SIGNAL, EMPTY_STRING)
+                return PHv2LightStatus(NO_SIGNAL, EMPTY_STRING)
             }
         }
     }
