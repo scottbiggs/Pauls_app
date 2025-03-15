@@ -550,7 +550,16 @@ data class PHv2LightColorXY(
     val x: Float,
     /** range [0..1] */
     val y: Float
-)
+) {
+    companion object {
+        operator fun invoke(jsonObject: JSONObject) : PHv2LightColorXY {
+            return PHv2LightColorXY(
+                x = jsonObject.optDouble(X).toFloat(),
+                y = jsonObject.optDouble(Y).toFloat()
+            )
+        }
+    }
+}
 
 data class PHv2LightColorGamut(
     val red: Pair<Double, Double>,
