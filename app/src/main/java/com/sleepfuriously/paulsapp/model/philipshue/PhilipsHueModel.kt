@@ -8,6 +8,7 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -112,6 +113,11 @@ class PhilipsHueModel(
     /** Controls server-sent events (sse) */
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
+    /**
+     * Holds the scenes--one per bridge
+     * Each Pair consists a bridge id and a [PhilipsHueModelScenes].
+     */
+    private val scenes = mutableListOf<Pair<String, PhilipsHueModelScenes>>()
 
     //-------------------------------------
     //  initializations
@@ -191,7 +197,7 @@ class PhilipsHueModel(
                     bridge.active = true
 
                     // 2a. Find rooms and add them to the bridge data
-                    val roomsFromApi = PhilipsHueBridgeApi.getAllRooms(bridge)
+                    val roomsFromApi = PhilipsHueBridgeApi.getAllRoomsFromApi(bridge)
                     bridge.rooms = PhilipsHueDataConverter.convertV2RoomAll(roomsFromApi, bridge)
                 } else {
                     bridge.active = false
@@ -200,9 +206,17 @@ class PhilipsHueModel(
                 newBridgeSet.add(bridge)
             }
 
-            // 3. Connect each active bridge so we can receive server-sent events
+            // 3. For each active bridge get its scens and connect to it
+            //    so we can receive server-sent events
             newBridgeSet.forEach { bridge ->
                 if (bridge.active) {
+                    // get scenes for this bridge
+                    val scenes = coroutineScope.async(Dispatchers.IO) {
+                        Log.d(TAG, "collecting scenes for bridge ${bridge.labelName}")
+                        PhilipsHueModelScenes.getAllScenesFromApi(bridge)
+                    }
+                    bridge.scenes = scenes.await()
+
                     startSseConnection(bridge)
                 }
             }
@@ -228,6 +242,7 @@ class PhilipsHueModel(
             }
         }
     }
+
 
     //-------------------------------------
     //  starters & stoppers
@@ -303,7 +318,7 @@ class PhilipsHueModel(
         )
 
         // find the rooms and THEN add the bridge to our list of bridges (finally)
-        val bridgeRooms = PhilipsHueBridgeApi.getAllRooms(bridgeToAdd)
+        val bridgeRooms = PhilipsHueBridgeApi.getAllRoomsFromApi(bridgeToAdd)
         bridgeToAdd.rooms = PhilipsHueDataConverter.convertV2RoomAll(bridgeRooms, bridgeToAdd)
 
         _bridgeFlowSet.value += bridgeToAdd

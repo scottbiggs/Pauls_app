@@ -87,7 +87,6 @@ data class PHv2ResourceSceneIndividual(
  * The meat--info for a scene is described here.
  */
 data class PHv2Scene(
-    val type: String = "",
     val id: String,
     val idV1: String = "",
     /** "List of actions to be executed synchronously on recall" */
@@ -109,6 +108,38 @@ data class PHv2Scene(
     val autoDynamic: Boolean,
     val status: PHv2SceneStatus
 ) {
+
+    override fun equals(other: Any?): Boolean {
+        val otherScene = other as PHv2Scene
+        if (id != otherScene.id) return false
+        if (idV1 != otherScene.idV1) return false
+        if (actions.size != otherScene.actions.size) return false
+        actions.forEachIndexed { i, action ->
+            if (action != otherScene.actions[i]) return false
+        }
+        if (palette != otherScene.palette) return false
+        if (metadata != otherScene.metadata) return false
+        if (group != otherScene.group) return false
+        if (speed != otherScene.speed) return false
+        if (autoDynamic != otherScene.autoDynamic) return false
+        if (status != otherScene.status) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + idV1.hashCode()
+        result = 31 * result + actions.hashCode()
+        result = 31 * result + palette.hashCode()
+        result = 31 * result + metadata.hashCode()
+        result = 31 * result + group.hashCode()
+        result = 31 * result + speed.hashCode()
+        result = 31 * result + autoDynamic.hashCode()
+        result = 31 * result + status.hashCode()
+        return result
+    }
+
     companion object {
         /**
          * Alternate constructor: takes a json object representing a PHv2Scene.
@@ -129,7 +160,6 @@ data class PHv2Scene(
             }
 
             return PHv2Scene(
-                type = jsonObj.optString(TYPE, ""),
                 id = jsonObj.getString(ID),
                 idV1 = jsonObj.optString(ID_V1, ""),
                 actions = actions,
@@ -263,7 +293,7 @@ data class PHv2SceneDimming(
     companion object {
         operator fun invoke(jsonObj: JSONObject) : PHv2SceneDimming {
             return PHv2SceneDimming(
-                jsonObj.getJSONObject(DIMMING)
+                jsonObj.getInt(BRIGHTNESS)
             )
         }
     }
@@ -302,16 +332,26 @@ data class PHv2ScenePaletteEffects2Action(
 }
 
 data class PHv2ScenePaletteEffects2ActionParameters(
-    val color: PHv2LightColor,
-    val colorTemperature: PHv2SceneColorTemperature,
+    val color: PHv2LightColor? = null,
+    val colorTemperature: PHv2SceneColorTemperature? = null,
     /** range [0..1] */
     val speed: Float = 0f
 ) {
     companion object {
         operator fun invoke(jsonObj: JSONObject) : PHv2ScenePaletteEffects2ActionParameters {
+            val color = if (jsonObj.has(COLOR)) {
+                PHv2LightColor(jsonObj.getJSONObject(COLOR))
+            }
+            else { null }
+
+            val colorTemp = if (jsonObj.has(COLOR_TEMPERATURE)) {
+                PHv2SceneColorTemperature(jsonObj.getJSONObject(COLOR_TEMPERATURE))
+            }
+            else { null }
+
             return PHv2ScenePaletteEffects2ActionParameters(
-                color = PHv2LightColor(jsonObj.getJSONObject(COLOR)),
-                colorTemperature = PHv2SceneColorTemperature(jsonObj.getJSONObject(COLOR_TEMPERATURE)),
+                color = color,
+                colorTemperature = colorTemp,
                 speed = jsonObj.optDouble(SPEED, 0.0).toFloat()
             )
         }
@@ -412,13 +452,11 @@ data class PHv2SceneActionDetail(
 }
 
 data class PHv2SceneActionDetailOn(
-    val on: PHv2LightOn
+    val on: Boolean
 ) {
     companion object {
         operator fun invoke(jsonObj: JSONObject) : PHv2SceneActionDetailOn {
-            return PHv2SceneActionDetailOn(
-                on = PHv2LightOn(jsonObj.getJSONObject(ON))
-            )
+            return PHv2SceneActionDetailOn(on = jsonObj.getBoolean(ON))
         }
     }
 }
@@ -583,7 +621,7 @@ data class PHv2SceneColorTemperature(
     companion object {
         operator fun invoke(jsonObj: JSONObject) : PHv2SceneColorTemperature {
             return PHv2SceneColorTemperature(
-                jsonObj.getInt(MIREK)
+                jsonObj.optInt(MIREK)
             )
         }
     }

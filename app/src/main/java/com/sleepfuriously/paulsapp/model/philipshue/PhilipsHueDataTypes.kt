@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 
 /**
  * Information about a NEW bridge.  It's essentially the same
@@ -48,8 +49,8 @@ data class PhilipsHueBridgeInfo(
     var connected: Boolean,
     /** All the rooms controlled by this bridge */
     var rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
-    /** The body of the json info was returned by the bridge. defaults to "" */
-    var body: String = ""
+    /** all the scenes for this bridge */
+    var scenes: List<PHv2Scene> = mutableListOf()
 ) {
     /**
      * This should cause the flow to update correctly.
@@ -74,9 +75,6 @@ data class PhilipsHueBridgeInfo(
         if (connected != otherBridge.connected) {
             return false
         }
-        if (body != otherBridge.body) {
-            return false
-        }
         if (rooms.size != otherBridge.rooms.size) {
             return false
         }
@@ -85,6 +83,15 @@ data class PhilipsHueBridgeInfo(
                 return false
             }
         }
+        if (scenes.size != otherBridge.scenes.size) {
+            return false
+        }
+        scenes.forEachIndexed { i, scene ->
+            if (otherBridge.scenes[i] != scene) {
+                return false
+            }
+        }
+
         return true
     }
 
@@ -96,7 +103,6 @@ data class PhilipsHueBridgeInfo(
         result = 31 * result + active.hashCode()
         result = 31 * result + connected.hashCode()
         result = 31 * result + rooms.hashCode()
-        result = 31 * result + body.hashCode()
         return result
     }
 
@@ -112,7 +118,6 @@ data class PhilipsHueBridgeInfo(
                 token = newBridge.token,
                 active = newBridge.active,
                 connected = false,
-                body = newBridge.body
             )
         }
     }

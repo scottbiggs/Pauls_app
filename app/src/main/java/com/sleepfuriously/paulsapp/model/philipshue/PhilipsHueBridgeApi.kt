@@ -12,6 +12,8 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceDeviceIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceSceneIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2RoomIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
@@ -255,7 +257,7 @@ object PhilipsHueBridgeApi {
      *
      * @return      Set of all rooms found with this bridge
      */
-    suspend fun getAllRooms(bridge: PhilipsHueBridgeInfo) : PHv2ResourceRoomsAll {
+    suspend fun getAllRoomsFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceRoomsAll {
 
         val fullAddress = createFullAddress(
             prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
@@ -308,6 +310,79 @@ object PhilipsHueBridgeApi {
             Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2RoomIndividual(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
+    }
+
+    //------------
+    //  scenes
+    //
+
+    /**
+     * Gets just one scene from a bridge.
+     *
+     * @param   sceneId     The id for this scene
+     *
+     * @param   bridge      The bridge to question about this scene
+     *
+     * @return      The scene.  If an error, then the error component of the
+     *              data is filled in.
+     */
+    suspend fun getSceneIndividualFromApi(
+        sceneId: String,
+        bridge: PhilipsHueBridgeInfo
+    ) : PHv2ResourceSceneIndividual {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = "$SUFFIX_GET_SCENES/$sceneId"
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Parse the body into our data structure
+            return PHv2ResourceSceneIndividual(JSONObject(response.body))
+        }
+        else {
+            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return PHv2ResourceSceneIndividual(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
+    }
+
+    /**
+     * Returns the [PHv2ResourceScenesAll] from the specified bridge.  Errors
+     * will be embedded in the  returned data.
+     */
+    suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceScenesAll {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = SUFFIX_GET_SCENES
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Parse the body into our data structure
+            return PHv2ResourceScenesAll(JSONObject(response.body))
+        }
+        else {
+            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return PHv2ResourceScenesAll(
                 errors = listOf(PHv2Error(description = response.message))
             )
         }
@@ -417,6 +492,9 @@ const val SUFFIX_API = "/api/"
 
 /** Used to get all the rooms associated with a bridge.  Goes AFTER the token */
 const val SUFFIX_GET_ROOMS = "/clip/v2/resource/room"
+
+/** Suffix for gathering info about a scene from a bridge. */
+const val SUFFIX_GET_SCENES = "/clip/v2/resource/scene"
 
 /**
  * Used to get info about a the bridge's lights.
