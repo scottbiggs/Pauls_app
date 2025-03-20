@@ -4,6 +4,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.CoroutineScope
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,7 +42,7 @@ object PhilipsHueModelScenes {
      */
     suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Scene> {
         val newScenesList = mutableListOf<PHv2Scene>()
-        val v2ScenesAll: PHv2ResourceScenesAll = PhilipsHueBridgeApi.getAllScenesFromApi(bridge)
+        val v2ScenesAll = PhilipsHueBridgeApi.getAllScenesFromApi(bridge)
 
         if (v2ScenesAll.errors.isNotEmpty()) {
             Log.e(TAG, "Problem in getAllScenesFromApi()!")
@@ -71,6 +72,33 @@ object PhilipsHueModelScenes {
         return scene.data[0]
     }
 
+    /**
+     * Finds all the scenes used in a room.
+     *
+     * @param   roomId      The v2 id for this room
+     *
+     * @param   bridge      The bridge in question.  It should have all its scenes
+     *                      already loaded.
+     *
+     * preconditions
+     *  - The bridge MUST have its scenes already loaded.  This does NOT poll the
+     *  bridge to find the scenes directly.  Thus you need to call [getAllScenesFromApi]
+     *  first, store that info into the bridge, then call this function.
+     */
+    fun getAllScenesForRoom(
+        roomId: String,
+        bridge: PhilipsHueBridgeInfo
+    ) : List<PHv2Scene> {
+        // Go through all the scenes in the bridge.  If any have a group that
+        // matches the room id, we add it to the list.
+        val sceneList = mutableListOf<PHv2Scene>()
+        bridge.scenes.forEach { scene ->
+            if ((scene.group.rtype == ROOM) && (scene.group.rid == roomId)) {
+                sceneList.add(scene)
+            }
+        }
+        return sceneList
+    }
 
     //----------------------------
     //  private functions

@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
+import android.transition.Scene
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,13 +14,16 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -28,7 +32,7 @@ import kotlinx.coroutines.launch
 class PhilipsHueViewmodel : ViewModel() {
 
     //-------------------------
-    //  class data
+    //  flow data
     //-------------------------
 
     private val _wifiWorking = MutableStateFlow<Boolean?>(null)
@@ -81,6 +85,20 @@ class PhilipsHueViewmodel : ViewModel() {
     var workingNewBridge: PhilipsHueNewBridge? = null
         private set
 
+    private val _sceneDisplayStuff = MutableStateFlow<SceneData?>(null)
+    /**
+     * When not null, a room's info should be displayed.  That consists of:
+     * 1. The bridge controlling the room
+     * 2. The room itself
+     * 3. A list of all the scenes for this room
+     *  - todo: The lights for this room
+     */
+    var sceneDisplayStuff = _sceneDisplayStuff.asStateFlow()
+
+
+    //-------------------------
+    //  init
+    //-------------------------
 
     init {
         // Setup a coroutine that listens for changes (works as a consumer) to
@@ -491,6 +509,33 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
+    /**
+     * UI calls this to indicate that user wants to show the scenes for a
+     * given room.
+     *
+     * side effects
+     *  - [roomSceneInfo]   - Loaded with all the scenes that this room currently
+     *                        can access
+     *
+     *  - [displayScene]    - set to true
+     */
+    fun showScenes(bridge: PhilipsHueBridgeInfo, room: PhilipsHueRoomInfo) {
+        _sceneDisplayStuff.update {
+            Log.d(TAG, "showScenes(), room = ${room.name}")
+            val sceneList = philipsHueRepository.getScenesForRoom(room, bridge)
+            SceneData(bridge, room, sceneList)
+        }
+    }
+
+    /**
+     * Call when the user no longer needs to see scene info for a room.
+     *
+     *
+     */
+    fun dontShowScenes() {
+        Log.d(TAG, "dontShowScenes()")
+        _sceneDisplayStuff.update { null }
+    }
 
     //-------------------------
     //  private functions
@@ -571,6 +616,17 @@ class PhilipsHueViewmodel : ViewModel() {
 //-------------------------
 //  classes & enums
 //-------------------------
+
+/**
+ * Holds data that the UI needs to display all the scenes for a room.
+ */
+data class SceneData(
+    val bridge: PhilipsHueBridgeInfo,
+    val room: PhilipsHueRoomInfo,
+    val scenes: List<PHv2Scene>,
+//    val lights: List<PhilipsHueLightInfo>  todo
+)
+
 
 enum class TestStatus {
     /** test hos not taken place yet, nor has it been started */

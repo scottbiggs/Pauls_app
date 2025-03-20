@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.compose
 
 import android.util.Log
+import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,9 +25,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +39,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -56,6 +62,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -63,12 +70,12 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
-import kotlin.math.roundToInt
 
 /**
  * All the display stuff for the UI for the philips hue portion
@@ -91,8 +98,6 @@ fun ShowMainScreenPhilipsHue(
     philipsHueViewmodel: PhilipsHueViewmodel,
     bridges: Set<PhilipsHueBridgeInfo>
 ) {
-    Log.d(TAG, "running ShowMainScreenPhilipsHue()")
-
     // the content
     Column(
         modifier = modifier
@@ -120,7 +125,7 @@ fun ShowMainScreenPhilipsHue(
         modifier = Modifier
             .fillMaxSize(),
     ) {
-        ShowMainPhilipsHueAddBridgeFab(
+        DrawMainPhilipsHueAddBridgeFab(
             modifier = Modifier
                 .align(Alignment.TopEnd),    // only works if parent is Box
             viewmodel = philipsHueViewmodel,
@@ -214,6 +219,9 @@ private fun DrawBridgeContents(
                                     room,
                                     bridgeInfo
                                 )
+                            },
+                            showScenesFunction = {
+                                viewmodel.showScenes(bridgeInfo, room)
                             }
                         )
                     }
@@ -532,7 +540,7 @@ private fun DrawBridgeTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ShowMainPhilipsHueAddBridgeFab(
+private fun DrawMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel
 ) {
@@ -587,6 +595,7 @@ private fun DisplayPhilipsHueRoom(
     illumination: Float,
     lightSwitchOn: Boolean,
     roomChangeCompleteFunction: (newIllumination: Float, newSwitchOn: Boolean) -> Unit,
+    showScenesFunction: () -> Unit
 ) {
     // variables for displaying the lightbulb image
     val lightImage = getProperLightImage(illumination)    // changes while hand is sliding
@@ -602,26 +611,44 @@ private fun DisplayPhilipsHueRoom(
         )
 
     ) {
-        Text(
-            text = stringResource(R.string.room),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = modifier
-                .padding(top = 4.dp, start = 8.dp)
-        )
-        Text(
-            text = roomName,
-            minLines = 3,
-            modifier = modifier
+        Row {
+            Text(
+                text = stringResource(R.string.room),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .padding(top = 4.dp, start = 8.dp)
+            )
+            IconButton(
+                modifier = Modifier
+                    .size(22.dp)
+                    .padding(start = 4.dp),
+                onClick = showScenesFunction
+            ) {
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = stringResource(R.string.scenes_butt),
+                )
+            }
+
+        }
+
+        ClickableText(
+            text = AnnotatedString(roomName),
+            onClick = {
+                showScenesFunction.invoke()
+            },
+            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+            modifier = Modifier
                 .padding(start = 16.dp)
         )
 
         Row (
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth(),
             verticalAlignment = Alignment.Bottom
         ) {
             Switch(
-                modifier = modifier
+                modifier = Modifier
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
@@ -632,7 +659,7 @@ private fun DisplayPhilipsHueRoom(
 
             // This pushes the switch to the far left and the lightbulb to
             // the far right.
-            Spacer(modifier = modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
             DrawLightBulb(lightImage, lightImageColor)
         }
@@ -649,15 +676,6 @@ private fun DisplayPhilipsHueRoom(
                 .background(veryDarkCoolGray)
                 .height(20.dp)
         )
-
-        // displays the brightness in text and numbers
-//        Text(
-//            text = stringResource(id = R.string.brightness, (illumination * MAX_BRIGHTNESS).roundToInt()),
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(start = 20.dp, end = 20.dp)
-//                .align(Alignment.CenterHorizontally)
-//        )
 
         Spacer(modifier = Modifier.height(8.dp))
     }
@@ -713,59 +731,6 @@ private fun getLightColor(illumination: Float) : Color {
 //---------------------------------
 //  previews
 //---------------------------------
-
-/*
-@Preview(
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    widthDp = 1600, heightDp = 800
-)
-@Composable
-private fun ManualBridgeSetupStep2_landscapePreview() {
-
-    val ctx = LocalContext.current
-
-    Box(
-        modifier = Modifier
-            .width(MIN_PH_ROOM_WIDTH.dp)
-            .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
-    ) {
-        ManualBridgeSetupStep2(
-            PhilipsHueViewmodel(),
-            BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON
-        )
-    }
-}
-*/
-
-
-/*
-@Preview
-@Composable
-private fun ManualInitWaitingPreview() {
-    ManualInitWaiting(PhilipsHueViewmodel())
-}
-*/
-
-/*
-    @Preview (uiMode = Configuration.UI_MODE_NIGHT_YES)
-    @Composable
-    private fun DisplayPhilipsHueRoomPreview() {
-        Box(
-            modifier = Modifier
-                .width(MIN_PH_ROOM_WIDTH.dp)
-                .height((MIN_PH_ROOM_WIDTH * 1.5).dp)
-        ) {
-            DisplayPhilipsHueRoom(
-                roomName = "bedroom",
-                illumination = 0.5f,
-                lightSwitchOn = true
-            ) { _, _ ->
-                // not used in preview!
-            }
-        }
-    }
-*/
-
 
 //---------------------------------
 //  constants

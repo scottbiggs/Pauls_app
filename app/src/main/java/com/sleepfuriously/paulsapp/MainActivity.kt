@@ -56,12 +56,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sleepfuriously.paulsapp.compose.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.ShowMainScreenPhilipsHue
+import com.sleepfuriously.paulsapp.compose.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.SceneData
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
 import kotlin.math.roundToInt
 
@@ -129,6 +131,8 @@ class MainActivity : ComponentActivity() {
 
                 val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
 
+                val roomSceneData = philipsHueViewmodel.sceneDisplayStuff.collectAsStateWithLifecycle()
+
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
                     finish()
@@ -181,7 +185,8 @@ class MainActivity : ComponentActivity() {
                         FourPanes(
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
-                            philipsHueBridges = philipsHueBridges
+                            philipsHueBridges = philipsHueBridges,
+                            roomSceneData = roomSceneData.value
                         )
                     }
 
@@ -208,11 +213,13 @@ class MainActivity : ComponentActivity() {
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
+        roomSceneData:  SceneData?,
         philipsHueBridges: Set<PhilipsHueBridgeInfo>,
         modifier : Modifier = Modifier,
     ) {
 
         Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
+        Log.d(TAG, "roomSceneTriple = $roomSceneData")
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -290,12 +297,24 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        ShowMainScreenPhilipsHue(
-                            modifier = modifier,
-                            philipsHueViewmodel = philipsHueViewmodel,
-//                            bridges = philipsHueViewmodel.philipsHueBridgesCompose
-                            bridges = philipsHueBridges
-                        )
+                        if (roomSceneData == null) {
+                            // show regular PH stuff
+                            ShowMainScreenPhilipsHue(
+                                modifier = modifier,
+                                philipsHueViewmodel = philipsHueViewmodel,
+                                bridges = philipsHueBridges
+                            )
+                        }
+                        else {
+                            // show room/scene specific info
+                            ShowScenesForRoom(
+                                bridge = roomSceneData.bridge,
+                                room = roomSceneData.room,
+                                scenes = roomSceneData.scenes,
+                                viewmodel = philipsHueViewmodel,
+                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                            )
+                        }
                     }
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)

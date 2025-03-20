@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,6 +156,16 @@ class PhilipsHueRepository(
      */
     suspend fun doesPhilipsHueBridgeAcceptToken(bridgeIp: String, token: String) : Boolean {
         return doesBridgeAcceptToken(bridgeIp, token)
+    }
+
+    /**
+     * Finds all the scenes that can be displayed for this room.
+     */
+    fun getScenesForRoom(
+        room: PhilipsHueRoomInfo,
+        bridge: PhilipsHueBridgeInfo
+    ) : List<PHv2Scene> {
+        return PhilipsHueModelScenes.getAllScenesForRoom(room.id, bridge)
     }
 
     //-------------------------------
