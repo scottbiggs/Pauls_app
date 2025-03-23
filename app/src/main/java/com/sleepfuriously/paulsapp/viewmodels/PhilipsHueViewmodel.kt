@@ -529,12 +529,27 @@ class PhilipsHueViewmodel : ViewModel() {
 
     /**
      * Call when the user no longer needs to see scene info for a room.
-     *
-     *
      */
     fun dontShowScenes() {
         Log.d(TAG, "dontShowScenes()")
         _sceneDisplayStuff.update { null }
+    }
+
+    /**
+     * UI calls this when the user selects a scene to run for a given room.
+     * This in turn calls the repository to have the room changed.  The result
+     * should make the lights change and then bubble up (through a sse) and we'll
+     * see changes in our UI.
+     *
+     * Note
+     *  This does NOT cause the scenes info to go away.
+     */
+    fun sceneSelected(
+        bridge: PhilipsHueBridgeInfo,
+        room: PhilipsHueRoomInfo,
+        scene: PHv2Scene
+    ) {
+        philipsHueRepository.updateRoomScene(bridge, room, scene)
     }
 
     //-------------------------

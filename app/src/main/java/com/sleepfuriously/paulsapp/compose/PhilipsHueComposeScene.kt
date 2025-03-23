@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.compose
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,9 +61,19 @@ fun ShowScenesForRoom(
                     verticalArrangement = Arrangement.Top,
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    bridge.scenes.forEach { scene ->
+                    Log.d(TAG, "ShowScenesForRoom() - num scenes = ${scenes.size}")
+                    scenes.forEach { scene ->
                         item {
-                            Text("scene = ${scene.metadata.name}")
+                            Column {
+                                Text(scene.metadata.name)
+                                Button(
+                                    onClick = {
+                                        viewmodel.sceneSelected(bridge, room, scene)
+                                    }
+                                ) {
+                                    Text("select")
+                                }
+                            }
                         }
                     }
                 }

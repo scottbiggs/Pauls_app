@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -165,7 +166,7 @@ class PhilipsHueRepository(
         room: PhilipsHueRoomInfo,
         bridge: PhilipsHueBridgeInfo
     ) : List<PHv2Scene> {
-        return PhilipsHueModelScenes.getAllScenesForRoom(room.id, bridge)
+        return PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
     }
 
     //-------------------------------
@@ -193,6 +194,36 @@ class PhilipsHueRepository(
                 changedRoom = changedRoom,
                 changedBridge = changedBridge
             )
+        }
+    }
+
+    /**
+     * Another intermediary: tell the PH model to update a room so
+     * that it's displaying the given scene.
+     */
+    fun updateRoomScene(
+        bridge: PhilipsHueBridgeInfo,
+        room: PhilipsHueRoomInfo,
+        scene: PHv2Scene
+    ) {
+        // First check to make sure that this scene actually references the correct
+        // room.  If it doesn't, bail.
+        if ((scene.group.rtype != ROOM) || (scene.group.rid != room.id)) {
+            Log.e(TAG, "updateRoomScene() - room does not match with scene. Aborting!")
+            return
+        }
+
+        // Now that the scene and room matches, just tell the scene to turn on.  That's it.
+        coroutineScope.launch(Dispatchers.IO) {
+            val response = PhilipsHueBridgeApi.sendSceneToRoom(bridge, scene)
+            Log.d(TAG, "updateRoomScene() response:")
+            Log.d(TAG, "    successful = ${response.isSuccessful}")
+            Log.d(TAG, "    code = ${response.code}")
+            Log.d(TAG, "    message = ${response.message}")
+            Log.d(TAG, "    body = ${response.body}")
+            Log.d(TAG, "    headers = ${response.headers}")
+
+            // nothing else to do.  The bridge will update everything with an sse.
         }
     }
 

@@ -86,18 +86,69 @@ object PhilipsHueModelScenes {
      *  first, store that info into the bridge, then call this function.
      */
     fun getAllScenesForRoom(
-        roomId: String,
+        room: PhilipsHueRoomInfo,
         bridge: PhilipsHueBridgeInfo
     ) : List<PHv2Scene> {
+
+        Log.d(TAG, "getAllScenes() - room = ${room.name}")
+
         // Go through all the scenes in the bridge.  If any have a group that
         // matches the room id, we add it to the list.
         val sceneList = mutableListOf<PHv2Scene>()
         bridge.scenes.forEach { scene ->
-            if ((scene.group.rtype == ROOM) && (scene.group.rid == roomId)) {
+            Log.d(TAG, "                 scene = ${scene.metadata.name}")
+            if ((scene.group.rtype == ROOM) && (scene.group.rid == room.id)) {
                 sceneList.add(scene)
+                Log.d(TAG, "                 added!")
             }
         }
         return sceneList
+    }
+
+    /**
+     * This tells the bridge to change the current settings for the given room
+     * to now use the given scene.
+     *
+     * Note
+     *  This will happen synchronously, but has no return value (so the caller
+     *  can just put the call in a coroutine).  The results are reported by
+     *  the bridge itself in the form of a server-sent event.
+     *
+     * @param   bridge      The bridge that controls the room
+     *
+     * @param   room        The room to change.
+     *
+     * @param   newScene    The scene that the room should now display.  This scene
+     *                      should already be in the bridge's list of scenes.
+     */
+    suspend fun setRoomSceneToApi(
+       bridge: PhilipsHueBridgeInfo,
+       room: PhilipsHueRoomInfo,
+       newScene: PHv2Scene,
+    ) {
+        // Figure out the body for the api PUT request.  The body (as far as I can figure)
+        // is a json file that represents something...that tells the room to apply a
+        // new scene.  Hmmm.
+        //
+        //  This tells a light to change its brightness to full-bright:
+        //      {"dimming": {"brightness": 100}}
+        //
+        //  I think (from the docs?) it may look like this:
+        //      {"children": [
+        //          {
+        //              "rid": "<scene_id>",
+        //              "rtype": "scene"
+        //          }
+        //       ]
+        //      }
+        //
+        //  let's see if this works
+        //
+        //  scene (Nightlight), id = 0d330862-2a8a-47dc-addb-c78da1adc21d
+        //      nope, "invalid children"
+        //
+
+
     }
 
     //----------------------------

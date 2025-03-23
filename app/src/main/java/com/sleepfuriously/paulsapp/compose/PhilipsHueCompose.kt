@@ -1,7 +1,6 @@
 package com.sleepfuriously.paulsapp.compose
 
 import android.util.Log
-import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image

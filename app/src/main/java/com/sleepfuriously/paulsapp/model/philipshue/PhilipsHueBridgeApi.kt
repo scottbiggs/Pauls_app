@@ -4,6 +4,7 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.model.MyResponse
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousDelete
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Error
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
@@ -16,6 +17,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceSceneIndivi
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2RoomIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -392,6 +394,30 @@ object PhilipsHueBridgeApi {
     //  update
     //-------------------------
 
+    /**
+     * Sends a PUT request to the bridge to make this scene active.
+     * The scene knows which room (group) it's in.
+     *
+     * @return  The response from the PUT request.  No analysis is done.
+     */
+    suspend fun sendSceneToRoom(
+        bridge: PhilipsHueBridgeInfo,
+        sceneToDisplay: PHv2Scene
+    ) : MyResponse {
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = "$SUFFIX_PUT_ACTIVATE_SCENE/${sceneToDisplay.id}"
+        )
+
+        val response = synchronousPut(
+            url = url,
+            bodyStr = UPDATE_SCENE_BODY,
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+        return response
+    }
+
     //-------------------------
     //  delete
     //-------------------------
@@ -517,3 +543,15 @@ const val SUFFIX_GET_BRIDGE = "/clip/v2/resource/bridge"
  * For a specific light group, add a slash and then the id.
  */
 const val SUFFIX_GET_GROUPED_LIGHTS = "/clip/v2/resource/grouped_light"
+
+/** Suffix for making a scene active.  Needs to be followed by "/<scene_id>". */
+const val SUFFIX_PUT_ACTIVATE_SCENE = "/clip/v2/resource/scene"
+
+//----------------
+//  bodies (for POSTs and PUTs)
+//
+
+/**
+ * This body tells a scene to make itself active.
+ */
+const val UPDATE_SCENE_BODY = "{\"recall\": {\"action\": \"active\"}}"

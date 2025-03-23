@@ -94,12 +94,15 @@ data class PHv2Scene(
     /** can be null if no palettes are present */
     val palette: PHv2ScenePalette?,
     /** there is no documentation on this, except that it's required */
-//    val recall: Any,
+    val recall: Any? = null,
     val metadata: PHv2SceneMetadata,    // different from other metadata
     /**
      * Groups associated with this scene.  All services in the group are
-     * part of this scene. If the group is changed the scene is update
+     * part of this scene. If the group is changed the scene is updated.
      * (e.g. light added/removed)
+     *
+     * NOTE: this is a reference to the room (and presumably zone) that the
+     * scene is part of.
      */
     val group: PHv2ItemInArray,
     /** range [0..1] */
@@ -108,6 +111,19 @@ data class PHv2Scene(
     val autoDynamic: Boolean,
     val status: PHv2SceneStatus
 ) {
+    /**
+     * Returns the id of the room or zone (some sort of group) that this
+     * scene is part of. Same as [getZone].
+     */
+    fun getRoom() : String {
+        return group.rid
+    }
+
+    /** same as [getRoom] */
+    fun getZone() : String {
+        return group.rid
+    }
+
 
     override fun equals(other: Any?): Boolean {
         val otherScene = other as PHv2Scene
