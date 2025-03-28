@@ -83,6 +83,7 @@
 
     <string name="scenes_title">%1$s Scenes</string>
     <string name="scenes_butt">Scenes</string>
+    <string name="no_colored_lights_in_scene">no colors</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
