@@ -338,23 +338,6 @@ infix fun DoubleArray.dot(other: DoubleArray): Double {
 }
 
 
-/**
- * Finds the inverse color, which is essentially 255 - x where x is
- * the current r, g, and b components.  Yeah, really simple.
- */
-fun Color.inverse(): Color {
-    val newRed = if (red is Float) { 1f - red }
-    else { 255 - red }
-
-    val newGreen = if (green is Float) { 1f - green }
-    else { 255 - green }
-
-    val newBlue = if (blue is Float) { 1f - blue }
-    else { 255 - blue }
-
-    return Color(newRed, newGreen, newBlue)
-}
-
 //-------------------------------
 //  classes
 //-------------------------------

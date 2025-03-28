@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
@@ -152,7 +154,12 @@ fun ShowScenesForRoom(
                                         ColorCircle(color = rgb)
                                     }
                                     if (sceneColorSet.size == 0) {
-                                        Text(stringResource(R.string.no_colored_lights_in_scene))
+                                        Text(
+                                            stringResource(R.string.no_colored_lights_in_scene),
+                                            modifier = Modifier
+                                                .height(DEFAULT_SIZE_FOR_COLOR_CIRCLE.dp)
+                                                .wrapContentSize()  // centers text vertically
+                                        )
                                     }
                                 }
                             }
@@ -183,7 +190,7 @@ fun ColorCircle(
     size: Int = DEFAULT_SIZE_FOR_COLOR_CIRCLE,
 ) {
     // Create a border color.  It'll be black unless the color to show is
-    // pretty dark.  In that case use the inverse color for the border.
+    // pretty dark.  In that case use white for the border.
     var borderColor = Color.Black
     if (color.luminance() < 0.04) {
         borderColor = Color.White
@@ -247,4 +254,4 @@ private const val TAG = "PhilipsHueComposeScene"
 
 private const val MIN_PH_SCENE_WIDTH = 130
 
-private const val DEFAULT_SIZE_FOR_COLOR_CIRCLE = 24
+private const val DEFAULT_SIZE_FOR_COLOR_CIRCLE = 32
