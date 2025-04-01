@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.compose
 
 import android.annotation.SuppressLint
+import androidx.annotation.FloatRange
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -184,7 +186,6 @@ fun TextFieldAndButton(
  *
  * @param   dismissText     Text to put in the dismiss button.  Default is "dismiss".
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyYesNoDialog(
     modifier: Modifier = Modifier,
@@ -255,6 +256,57 @@ fun SliderReportWhenFinished(
         modifier = modifier
     )
 }
+
+/**
+ * Measuring policy for making overlapping rows.
+ *  from:  https://proandroiddev.com/custom-layouts-with-jetpack-compose-bc1bdf10f5fd
+ *
+ *  overlappingFactor decides how much of each child composable will be
+ *  visible before next one overlaps it 1.0 means completely visible,
+ *  0.7 means 70%, 0.5 means 50% visible and so on..
+ */
+fun overlappingRowMeasurePolicy(overlapFactor: Float) = MeasurePolicy { measurables, constraints ->
+    val placeables = measurables.map { measurable ->
+        measurable.measure(constraints)
+    }
+
+    // height is the tallest of all the placeables
+    val height = placeables.maxOf { it.height }
+    // width is all the placeables within their overlap
+    val width = (placeables.subList(1, placeables.size).sumOf { it.width } * overlapFactor + placeables[0].width).toInt()
+
+    layout(width, height) {
+        // Placement block with placement logic. Analogous to onLayout() in
+        // the view world.
+        var xPos = 0
+        for (placeable in placeables) {
+            placeable.placeRelative(xPos, 0, 0f)
+            xPos += (placeable.width * overlapFactor).toInt()
+        }
+    }
+}
+
+/**
+ * Row that will actually overlap the items.  Taken from:
+ *      https://proandroiddev.com/custom-layouts-with-jetpack-compose-bc1bdf10f5fd
+ *
+ * Uses [overlappingRowMeasurePolicy] to get the measuring right as original measuring
+ * does everything possible to avoid overlapping.
+ */
+@Composable
+fun OverlappingRow(
+    modifier: Modifier = Modifier,
+    @FloatRange(from = 0.1, to = 1.0) overlapFactor: Float = 0.5f,
+    content: @Composable () -> Unit
+) {
+    val measurePolicy = overlappingRowMeasurePolicy(overlapFactor)
+    Layout(
+        measurePolicy = measurePolicy,
+        content = content,
+        modifier = modifier
+    )
+}
+
 
 //--------------------------
 //  constants

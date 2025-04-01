@@ -8,9 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -116,16 +114,8 @@ fun ShowScenesForRoom(
                                     }
                             ) {
                                 Text(scene.metadata.name)
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                ) {
+                                OverlappingRow(overlapFactor = 0.6f) {
                                     // Find all the colors in this scene (don't count repeats, use a Set!)
-                                    // Oh yeah, always include white.
-//                                    val sceneColorSet = mutableSetOf(PHv2SceneCieXyGamutPosition(1f, 1f))
-
-                                    // for testing, I'm making a white, red, green, and blue first
                                     val sceneColorSet = mutableSetOf<MyColorXYBrightness>()
                                     scene.actions.forEach { action ->
                                         if (action.action.color != null) {
