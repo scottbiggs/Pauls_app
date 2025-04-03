@@ -12,9 +12,12 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLightIndivid
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceDeviceIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceGroupedLightsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceSceneIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceZoneIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceZonesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2RoomIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
@@ -148,6 +151,38 @@ object PhilipsHueBridgeApi {
     //------------
     //  lights & grouped_lights
     //
+
+    /**
+     * Asks the bridge to return ALL the grouped lights that it knows about.
+     *
+     * @return  Will return null on network error (bridge may be turned off, etc.)
+     *          Otherwise a grouped light resource is returned.  It may have errors
+     *          of its own, which will be described in the data structure.
+     */
+    suspend fun getAllGroupedLightsFromApi(bridge: PhilipsHueBridgeInfo)
+            : PHv2ResourceGroupedLightsAll? {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = SUFFIX_GET_GROUPED_LIGHTS
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            trustAll = true
+        )
+
+        // check for html errors
+        if (response.isSuccessful == false) {
+            Log.e(TAG, "unsuccessful attempt at getting ALL grouped_lights!  bridgeId = ${bridge.id}")
+            Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
+            return null
+        }
+
+        val groupedLights = PHv2ResourceGroupedLightsAll(JSONObject(response.body))
+        return groupedLights
+    }
 
     /**
      * Given an id for a light group, this goes to the bridge and
@@ -309,7 +344,7 @@ object PhilipsHueBridgeApi {
             return@withContext PHv2RoomIndividual(response.body)
         }
         else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "unable to get room from bridge (id = ${bridge.id})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2RoomIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -352,7 +387,7 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceSceneIndividual(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "unable to get scene from bridge (id = ${bridge.id})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceSceneIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -382,13 +417,87 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceScenesAll(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "unable to get scenes from bridge (id = ${bridge.id})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceScenesAll(
                 errors = listOf(PHv2Error(description = response.message))
             )
         }
     }
+
+    //------------
+    //  zones
+    //
+
+    /**
+     * Returns a [PHv2ResourceZonesAll] from the specified bridge.  Errors
+     * will be embedded in the  returned data.
+     */
+    suspend fun getAllZonesFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceZonesAll {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = SUFFIX_GET_ZONES
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Parse the body into our data structure
+            return PHv2ResourceZonesAll(JSONObject(response.body))
+        }
+        else {
+            Log.e(TAG, "unable to get zones from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return PHv2ResourceZonesAll(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
+    }
+
+    /**
+     * Gets just one zone from a bridge.
+     *
+     * @param   zoneId      The id for this zone
+     *
+     * @param   bridge      The bridge to question about this zone
+     *
+     * @return      The zone.  If an error, then the error component of the
+     *              data is filled in.
+     */
+    suspend fun getZoneIndividualFromApi(
+        zoneId: String,
+        bridge: PhilipsHueBridgeInfo
+    ) : PHv2ResourceZoneIndividual {
+
+        val url = createFullAddress(
+            ip = bridge.ip,
+            suffix = "$SUFFIX_GET_ZONES/$zoneId"
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Parse the body into our data structure
+            return PHv2ResourceZoneIndividual(JSONObject(response.body))
+        }
+        else {
+            Log.e(TAG, "unable to get zone from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return PHv2ResourceZoneIndividual(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
+    }
+
 
     //-------------------------
     //  update
@@ -521,6 +630,11 @@ const val SUFFIX_GET_ROOMS = "/clip/v2/resource/room"
 
 /** Suffix for gathering info about a scene from a bridge. */
 const val SUFFIX_GET_SCENES = "/clip/v2/resource/scene"
+
+/** Suffix for getting zone info from a bridge */
+const val SUFFIX_GET_ZONES = "/clip/v2/resource/zone"
+
+
 
 /**
  * Used to get info about a the bridge's lights.

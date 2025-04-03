@@ -23,7 +23,33 @@ data class PHv2ResourceGroupedLightsAll(
     val errors: List<PHv2Error> = listOf(),
     /** Holds info about this group.  Typically holds just one item */
     val data: List<PHv2GroupedLight> = listOf()
-)
+) {
+    companion object {
+        /**
+         * Alternate constructor: takes a json equivalent.
+         */
+        operator fun invoke(jsonObject: JSONObject) : PHv2ResourceGroupedLightsAll {
+            val errorsList = mutableListOf<PHv2Error>()
+            val dataList = mutableListOf<PHv2GroupedLight>()
+
+            if (jsonObject.has(ERRORS)) {
+                val errorsJsonArray = jsonObject.getJSONArray(ERRORS)
+                for (i in 0 until errorsJsonArray.length()) {
+                    errorsList.add(PHv2Error(errorsJsonArray.getJSONObject(i)))
+                }
+            }
+
+            if (jsonObject.has(DATA)) {
+                val dataJsonArray = jsonObject.getJSONArray(DATA)
+                for (i in 0 until dataJsonArray.length()) {
+                    dataList.add(PHv2GroupedLight(dataJsonArray.getJSONObject(i)))
+                }
+            }
+
+            return PHv2ResourceGroupedLightsAll(errorsList, dataList)
+        }
+    }
+}
 
 /**
  * Result from calling:

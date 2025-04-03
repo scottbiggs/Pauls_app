@@ -1,26 +1,11 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
-import kotlinx.coroutines.CoroutineScope
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * This part of the Philips Hue model just handles scenes.
- *
- * I'm experimenting with a little different way of organizing here.
- * The idea is this will hold all scene info.  When started, it'll
- * tap into the bridge (via [getAllScenesFromApi]) and find all the
- *
- * Note
- *      Each instance of this will handle scenes from just ONE bridge.
- *      The caller will need to keep track of the different bridges.
  */
 object PhilipsHueModelScenes {
 
@@ -75,7 +60,7 @@ object PhilipsHueModelScenes {
     /**
      * Finds all the scenes used in a room.
      *
-     * @param   roomId      The v2 id for this room
+     * @param   room        Room info for this room
      *
      * @param   bridge      The bridge in question.  It should have all its scenes
      *                      already loaded.
@@ -105,51 +90,6 @@ object PhilipsHueModelScenes {
         return sceneList
     }
 
-    /**
-     * This tells the bridge to change the current settings for the given room
-     * to now use the given scene.
-     *
-     * Note
-     *  This will happen synchronously, but has no return value (so the caller
-     *  can just put the call in a coroutine).  The results are reported by
-     *  the bridge itself in the form of a server-sent event.
-     *
-     * @param   bridge      The bridge that controls the room
-     *
-     * @param   room        The room to change.
-     *
-     * @param   newScene    The scene that the room should now display.  This scene
-     *                      should already be in the bridge's list of scenes.
-     */
-    suspend fun setRoomSceneToApi(
-       bridge: PhilipsHueBridgeInfo,
-       room: PhilipsHueRoomInfo,
-       newScene: PHv2Scene,
-    ) {
-        // Figure out the body for the api PUT request.  The body (as far as I can figure)
-        // is a json file that represents something...that tells the room to apply a
-        // new scene.  Hmmm.
-        //
-        //  This tells a light to change its brightness to full-bright:
-        //      {"dimming": {"brightness": 100}}
-        //
-        //  I think (from the docs?) it may look like this:
-        //      {"children": [
-        //          {
-        //              "rid": "<scene_id>",
-        //              "rtype": "scene"
-        //          }
-        //       ]
-        //      }
-        //
-        //  let's see if this works
-        //
-        //  scene (Nightlight), id = 0d330862-2a8a-47dc-addb-c78da1adc21d
-        //      nope, "invalid children"
-        //
-
-
-    }
 
     //----------------------------
     //  private functions

@@ -204,7 +204,7 @@ data class PHv2Room(
                 servicesList.add(service)
             }
 
-            val metadata = PHv2RoomMetadata(roomJsonObject)
+            val metadata = PHv2RoomMetadata(roomJsonObject.getJSONObject(METADATA))
 
             return PHv2Room(
                 type = type,
@@ -239,17 +239,15 @@ data class PHv2RoomMetadata(
     val archetype: String
 ) {
     companion object {
-        operator fun invoke(parentJsonObject: JSONObject) : PHv2RoomMetadata {
-            if (parentJsonObject.has(METADATA)) {
-                val metadataJsonObject = parentJsonObject.getJSONObject(METADATA)
-                val name = metadataJsonObject.getString(NAME)
-                val archetype = metadataJsonObject.getString(ARCHETYPE)
-
-                return PHv2RoomMetadata(name = name, archetype = archetype)
-            }
-            else {
-                return PHv2RoomMetadata(EMPTY_STRING, EMPTY_STRING)
-            }
+        /**
+         * Alternate constructor:   Takes a JSONObject that represents the actual
+         *                          data (not the parent)
+         */
+        operator fun invoke(jsonObj: JSONObject) : PHv2RoomMetadata {
+            return PHv2RoomMetadata(
+                name = jsonObj.getString(NAME),
+                archetype = jsonObj.getString(ARCHETYPE)
+            )
         }
     }
 }
