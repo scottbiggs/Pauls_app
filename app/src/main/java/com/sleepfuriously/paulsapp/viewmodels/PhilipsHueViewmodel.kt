@@ -514,10 +514,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * given room.
      *
      * side effects
-     *  - [roomSceneInfo]   - Loaded with all the scenes that this room currently
+     *  - [sceneDisplayStuff] - Loaded with all the scenes that this room currently
      *                        can access
-     *
-     *  - [displayScene]    - set to true
      */
     fun showScenes(bridge: PhilipsHueBridgeInfo, room: PhilipsHueRoomInfo) {
         _sceneDisplayStuff.update {
