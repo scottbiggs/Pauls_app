@@ -312,4 +312,33 @@ fun OverlappingRow(
 //  constants
 //--------------------------
 
+/** x component of CIE White in D65 */
+const val CIE_WHITE_X = 0.31271
+/** y component of CIE White in D65 */
+const val CIE_WHITE_Y = 0.32902
+/** Capital Y (called YY) component of CIE White in D65 */
+const val CIE_WHITE_YY = 1.0
+
+/** x component of CIE Red in D65 */
+const val CIE_RED_X = 0.64
+/** y component of CIE Red in D65 */
+const val CIE_RED_Y = 0.33
+/** Capital Y (called YY) component of CIE Red in D65 */
+const val CIE_RED_YY = 0.2126
+
+/** x component of CIE Green in D65 */
+const val CIE_GREEN_X = 0.3
+/** y component of CIE White in D65 */
+const val CIE_GREEN_Y = 0.6
+/** Capital Y (called YY) component of CIE White in D65 */
+const val CIE_GREEN_YY = 0.0722
+
+/** x component of CIE Blue in D65 */
+const val CIE_BLUE_X = 0.15
+/** y component of CIE Blue in D65 */
+const val CIE_BLUE_Y = 0.06
+/** Capital Y (called YY) component of CIE Blue in D65 */
+const val CIE_BLUE_YY = 0.0722
+
+
 private const val TAG = "GeneralCompose"
