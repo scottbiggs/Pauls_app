@@ -194,3 +194,20 @@ const val RTYPE_ZGP_CONNECTIVITY = "zgp_connectivity"
 const val RTYPE_ZIGBEE_CONNECTIVITY = "zigbee_connectivity"
 const val RTYPE_ZIGBEE_DEVICE_DISCOVERY = "zigbee_device_discovery"
 const val RTYPE_ZONE = "zone"
+
+
+//----------------------------
+//  SSE Types
+//----------------------------
+
+/** Signals this event is an ADD */
+const val EVENT_ADD = "add"
+
+/** Signals this event is an UPDATE (the most common) */
+const val EVENT_UPDATE = "update"
+
+/** Signals this event is a DELETE */
+const val EVENT_DELETE = "delete"
+
+/** Signals this event is an ERROR--don't know what to do with these */
+const val EVENT_ERROR = "error"

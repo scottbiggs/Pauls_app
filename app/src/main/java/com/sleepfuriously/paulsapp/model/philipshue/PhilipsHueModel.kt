@@ -519,23 +519,21 @@ class PhilipsHueModel(
             if (bridge.id == eventBridge.id) {
                 // Yes, this is the bridge.  What kind of event was it?
                 when (event.type) {
-                    "update" -> {
+                    EVENT_UPDATE -> {
                         Log.v(TAG, "interpeting UPDATE event")
 
                         interpretUpdateEvent(bridge, event)
                     }
 
-                    "add" -> {
-                        // todo: interpret ADD event!!!
-                        Log.e(TAG, "todo: implement interpeting ADD event")
+                    EVENT_ADD -> {
+                        interpretAddEvent(bridge, event)
                     }
 
-                    "delete" -> {
-                        // todo: interpret DELETE event!!!
-                        Log.e(TAG, "todo: implement interpeting DELETE event")
+                    EVENT_DELETE -> {
+                        interpretDeleteEvent(bridge, event)
                     }
 
-                    "error" -> {
+                    EVENT_ERROR -> {
                         Log.e(TAG, "interpretEvent() - can't do anything with an error, skipping!")
                         return
                     }
@@ -579,7 +577,7 @@ class PhilipsHueModel(
         event.data.forEach { eventDatum ->
             // What kind of device changed?
             when (eventDatum.type) {
-                "light" -> {
+                RTYPE_LIGHT -> {
                     val light = findLightFromId(eventDatum.owner!!.rid, bridge)
                     if (light == null) {
                         Log.e(TAG, "unable to find changed light in interpretEvent()!")
@@ -602,7 +600,7 @@ class PhilipsHueModel(
                     }
                 }
 
-                "grouped_light" -> {
+                RTYPE_GROUP_LIGHT -> {
                     Log.d(TAG, "updating grouped_light event. owner = ${eventDatum.owner}")
 
                     // figure out what rtype the owner of this grouped_light event is
@@ -638,13 +636,80 @@ class PhilipsHueModel(
                     }
                 }
 
-                "room" -> {
-                    Log.e(TAG, "Unhandled room event. Crashing now.")
-                    TODO()
+                RTYPE_ROOM -> {
+                    // todo: implement rooms
+                    Log.e(TAG, "sse updating room not implemented")
                 }
 
+                RTYPE_ZONE -> {
+                    // todo: implement zones
+                    Log.e(TAG, "sse updating zone not implemented")
+                }
             } // when (eventDatum.type)
         }
+    }
+
+    /**
+     * Interprets an ADD sse that was sent from a bridge.
+     *
+     * @param   bridge      The bridge that sent the event
+     *
+     * @param   event       The event it sent (should be an ADD)
+     *
+     * side effects
+     *  - aspects of this bridge will change based on the event.  For
+     *  example: a room's brightness and the status of its light can change.
+     */
+    fun interpretAddEvent(
+        bridge: PhilipsHueBridgeInfo,
+        event: PHv2ResourceServerSentEvent
+    ) {
+        // double check to make sure this is an Add event
+        if (event.type != EVENT_ADD) {
+            Log.e(TAG, "interpretAddEvent() trying to interpret something else: ${event.type}! Aborting.")
+            return
+        }
+
+        // go through the data and work on each
+        event.data.forEach { eventDatum ->
+            when (eventDatum.type) {
+                RTYPE_LIGHT -> {
+                    // todo: add light
+                    Log.e(TAG, "sse adding light not implemented")
+                }
+
+                RTYPE_GROUP_LIGHT -> {
+                    // todo: add grouped light
+                    Log.e(TAG, "sse adding grouped light not implemented")
+                }
+
+                RTYPE_ROOM -> {
+                    // todo: add room
+                    Log.e(TAG, "sse adding room not implemented")
+                }
+
+                RTYPE_ZONE -> {
+                    // todo add zoone
+                    Log.e(TAG, "sse adding zone not implemented")
+                }
+            }
+        }
+
+        // fixme
+        Log.e(TAG, "todo: implement interpeting ADD event")
+    }
+
+    /**
+     * Similar to [interpretUpdateEvent] and [interpretAddEvent], but for
+     * delete events.
+     */
+    fun interpretDeleteEvent(
+        bridge: PhilipsHueBridgeInfo,
+        event: PHv2ResourceServerSentEvent
+    ) {
+        // fixme
+        Log.e(TAG, "todo: implement interpeting DELETE event")
+
     }
 
     /**
