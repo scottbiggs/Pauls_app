@@ -50,6 +50,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -373,6 +374,22 @@ class MainActivity : ComponentActivity() {
                                 color = Color.White
                             )
                             // todo: show security
+
+                            // the version number
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize(),
+                                Alignment.BottomEnd
+                            ) {
+                                Log.d(TAG, "boxbox")
+                                // display version number in bottom right corner
+                                Text(
+                                    text = getVersionName(this@MainActivity),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(end = 4.dp, bottom = 2.dp),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }

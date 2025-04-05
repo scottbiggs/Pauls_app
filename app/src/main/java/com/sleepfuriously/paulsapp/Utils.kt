@@ -1,5 +1,8 @@
 package com.sleepfuriously.paulsapp
 
+import android.content.Context
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import java.time.ZonedDateTime
 
@@ -14,4 +17,25 @@ fun getTime(): String {
         TODO("VERSION.SDK_INT < O")
     }
     return "${zdt.hour}:${zdt.minute}:${zdt.second}"
+}
+
+
+fun getVersionName(context: Context): String {
+    val packageInfo: PackageInfo
+    try {
+        packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+    } catch (e: PackageManager.NameNotFoundException) {
+        throw RuntimeException(e)
+    }
+    return packageInfo.versionName
+}
+
+fun getVersionCode(context: Context): Int {
+    val packageInfo: PackageInfo
+    try {
+        packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+    } catch (e: PackageManager.NameNotFoundException) {
+        throw RuntimeException(e)
+    }
+    return packageInfo.versionCode
 }
