@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
 
 /**
  * This file holds compose functions that are generally useful
@@ -339,6 +340,15 @@ const val CIE_BLUE_X = 0.15
 const val CIE_BLUE_Y = 0.06
 /** Capital Y (called YY) component of CIE Blue in D65 */
 const val CIE_BLUE_YY = 0.0722
+
+/** defines gamut triangle for the monitor */
+val monitorGamut =
+    PHv2LightColorGamut(
+        red = Pair(0.68, 0.32),
+        green = Pair(0.265, 0.69),
+        blue = Pair(0.15, 0.06)
+    )
+
 
 
 private const val TAG = "GeneralCompose"

@@ -1,7 +1,6 @@
 package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
-import android.transition.Scene
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,7 +13,6 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
@@ -527,6 +525,9 @@ class PhilipsHueViewmodel : ViewModel() {
 
     /**
      * Call when the user no longer needs to see scene info for a room.
+     *
+     * side effects
+     *  - [sceneDisplayStuff] - set to null
      */
     fun dontShowScenes() {
         Log.d(TAG, "dontShowScenes()")

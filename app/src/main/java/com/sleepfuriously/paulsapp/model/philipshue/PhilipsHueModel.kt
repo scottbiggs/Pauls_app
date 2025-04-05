@@ -113,12 +113,6 @@ class PhilipsHueModel(
     /** Controls server-sent events (sse) */
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
-    /**
-     * Holds the scenes--one per bridge
-     * Each Pair consists a bridge id and a [PhilipsHueModelScenes].
-     */
-    private val scenes = mutableListOf<Pair<String, PhilipsHueModelScenes>>()
-
     //-------------------------------------
     //  initializations
     //-------------------------------------
@@ -148,7 +142,7 @@ class PhilipsHueModel(
             val workingBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
 
             // use these ids to load the ips & tokens from prefs
-            bridgeIdsFromPrefs.forEach() { id ->
+            bridgeIdsFromPrefs.forEach { id ->
 
                 // get the IP for this bridge
                 val ip = PhilipsHueBridgeStorage.loadBridgeIp(id, ctx)

@@ -60,15 +60,6 @@ fun ShowScenesForRoom(
     onDismiss: () -> Unit
 ) {
 
-    /** defines gamut triangle for the monitor */
-    val monitorGamut = remember {
-        PHv2LightColorGamut(
-            red = Pair(0.68, 0.32),
-            green = Pair(0.265, 0.69),
-            blue = Pair(0.15, 0.06)
-        )
-    }
-
     AlertDialog(
         modifier = Modifier
             .border(

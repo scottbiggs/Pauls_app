@@ -620,11 +620,10 @@ data class PHv2SceneActionDetailDynamics(
          */
         operator fun invoke(jsonObj: JSONObject) : PHv2SceneActionDetailDynamics {
 
-            if (jsonObj.has(DURATION)) {
-                return PHv2SceneActionDetailDynamics(jsonObj.getJSONObject(DURATION))
-            }
-            else {
-                return PHv2SceneActionDetailDynamics(0)
+            return if (jsonObj.has(DURATION)) {
+                PHv2SceneActionDetailDynamics(jsonObj.getJSONObject(DURATION))
+            } else {
+                PHv2SceneActionDetailDynamics(0)
             }
         }
     }
