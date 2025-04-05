@@ -526,13 +526,13 @@ class PhilipsHueModel(
                     }
 
                     "add" -> {
+                        // todo: interpret ADD event!!!
                         Log.e(TAG, "todo: implement interpeting ADD event")
-                        TODO()
                     }
 
                     "delete" -> {
+                        // todo: interpret DELETE event!!!
                         Log.e(TAG, "todo: implement interpeting DELETE event")
-                        TODO()
                     }
 
                     "error" -> {
