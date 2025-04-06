@@ -556,7 +556,7 @@ data class MyResponse(
     }
 }
 
-/** The max number of bytes that we'll look at for a [Response] body (100k) */
-private const val BODY_PEEK_SIZE = 100000L
+/** The max number of bytes that we'll look at for a [Response] body (5Mb) */
+const val BODY_PEEK_SIZE = 5000000L
 
 private const val TAG = "OkHttpUtils"

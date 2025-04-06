@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.getTime
+import com.sleepfuriously.paulsapp.model.BODY_PEEK_SIZE
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import kotlinx.coroutines.CoroutineScope
@@ -177,7 +178,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             Log.e(TAG, "   response.isSuccessful = ${response?.isSuccessful}")
             Log.e(TAG, "   response.code = ${response?.code}")
             Log.e(TAG, "   response.request = ${response?.request.toString()}")
-            Log.e(TAG, "   response.body = ${response?.peekBody(10000)?.string()}")
+            Log.e(TAG, "   response.body = ${response?.peekBody(BODY_PEEK_SIZE)?.string()}")
             Log.e(TAG, "   time = ${getTime()}")
 
             val bridgeId = getBridgeIdFromEventSource(eventSource)

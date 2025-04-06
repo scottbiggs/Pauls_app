@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import java.time.ZonedDateTime
 
 
@@ -14,6 +15,7 @@ fun getTime(): String {
     val zdt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         ZonedDateTime.now()
     } else {
+        Log.e(TAG, "getTime() - unhandled build version. Crashing now!")
         TODO("VERSION.SDK_INT < O")
     }
     return "${zdt.hour}:${zdt.minute}:${zdt.second}"
@@ -39,3 +41,5 @@ fun getVersionCode(context: Context): Int {
     }
     return packageInfo.versionCode
 }
+
+private const val TAG = "Utils"
