@@ -355,6 +355,7 @@ fun savePrefsSet(
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
+        clear()     // necessary (for reasons that are unclear to everyone!)
         putStringSet(key, daSet)
     }
 }

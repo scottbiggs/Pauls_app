@@ -29,7 +29,6 @@ class PhilipsHueRepository(
     //-------------------------------
 
     private val _bridgesSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
-
     /** the complete list of all the bridges and associated data */
     val bridgesSet = _bridgesSet.asStateFlow()
 

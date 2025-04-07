@@ -28,11 +28,14 @@ object PhilipsHueBridgeStorage {
      *              (probably the prefs file wasn't created yet).
      */
     fun loadAllBridgeIds(ctx: Context) : Set<String>? {
-        return getPrefsSet(
+        val prefs = getPrefsSet(
             ctx = ctx,
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY
         )
+        val numPrefs = prefs?.size ?: 0
+        Log.d(TAG, "loadAllBridgeIds() found $numPrefs bridges")
+        return prefs
     }
 
 
@@ -101,11 +104,15 @@ object PhilipsHueBridgeStorage {
         ctx: Context,
     ) : Boolean {
 
-        // make a Set of ids including the new one.
-        val idSet = mutableSetOf<String>()
+//        Log.d(TAG, "saveBridgeId() newBridgeId = $newBridgeId")
+
+        // get the current id set
+        val idSet = (loadAllBridgeIds(ctx) ?: setOf()) as MutableSet
+//        Log.d(TAG, "saveBridgeId() loaded current set: idSet size = ${idSet.size}, idSet = $idSet")
 
         // add the new id
         idSet.add(newBridgeId)
+//        Log.d(TAG, "saveBridgeId() added newBridge: idSet size = ${idSet.size}, idSet = $idSet")
 
         // now save this in our shared prefs
         savePrefsSet(
@@ -211,6 +218,7 @@ object PhilipsHueBridgeStorage {
         synchronize: Boolean = false,
         ctx: Context
     ) : Boolean {
+//        Log.d(TAG, "saveBridge(): ${bridge.id}")
 
         if (saveBridgeId(bridge.id, synchronize, ctx) == false) {
             Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
