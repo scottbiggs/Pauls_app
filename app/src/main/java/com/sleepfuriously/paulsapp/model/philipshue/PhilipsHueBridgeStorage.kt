@@ -104,15 +104,20 @@ object PhilipsHueBridgeStorage {
         ctx: Context,
     ) : Boolean {
 
-//        Log.d(TAG, "saveBridgeId() newBridgeId = $newBridgeId")
 
         // get the current id set
-        val idSet = (loadAllBridgeIds(ctx) ?: setOf()) as MutableSet
-//        Log.d(TAG, "saveBridgeId() loaded current set: idSet size = ${idSet.size}, idSet = $idSet")
+        val idSet = (loadAllBridgeIds(ctx) ?: setOf())
+
+        // create a new id set
+        val newIdSet = mutableSetOf<String>()
 
         // add the new id
-        idSet.add(newBridgeId)
-//        Log.d(TAG, "saveBridgeId() added newBridge: idSet size = ${idSet.size}, idSet = $idSet")
+        newIdSet.add(newBridgeId)
+
+        // and add the old bridges
+        idSet.forEach { id ->
+            newIdSet.add(id)
+        }
 
         // now save this in our shared prefs
         savePrefsSet(
@@ -120,7 +125,7 @@ object PhilipsHueBridgeStorage {
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
             synchronize = synchronize,
-            daSet = idSet
+            daSet = newIdSet
         )
         return true
     }
