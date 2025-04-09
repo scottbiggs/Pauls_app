@@ -1,4 +1,4 @@
-package com.sleepfuriously.paulsapp.compose
+package com.sleepfuriously.paulsapp.compose.philipshue
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -32,9 +31,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.OverlappingRow
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.xyToRgbWithBrightness

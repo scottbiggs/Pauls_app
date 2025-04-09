@@ -50,14 +50,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sleepfuriously.paulsapp.compose.ManualBridgeSetup
-import com.sleepfuriously.paulsapp.compose.ShowMainScreenPhilipsHue
-import com.sleepfuriously.paulsapp.compose.ShowScenesForRoom
+import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme

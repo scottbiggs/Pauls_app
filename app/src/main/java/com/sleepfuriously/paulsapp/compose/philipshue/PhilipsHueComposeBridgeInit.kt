@@ -1,4 +1,4 @@
-package com.sleepfuriously.paulsapp.compose
+package com.sleepfuriously.paulsapp.compose.philipshue
 
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.util.Log
@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.MainActivity
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
+import com.sleepfuriously.paulsapp.compose.TextFieldAndButton
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 

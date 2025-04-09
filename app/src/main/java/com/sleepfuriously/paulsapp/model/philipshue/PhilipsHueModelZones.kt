@@ -47,7 +47,6 @@ object PhilipsHueModelZones {
             zoneList.add(zone)
         }
         return zoneList
-
     }
 
 
