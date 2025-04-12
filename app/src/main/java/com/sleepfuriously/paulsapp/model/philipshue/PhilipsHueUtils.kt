@@ -62,7 +62,11 @@ private suspend fun getLightInfoFromServiceList(
     serviceList.forEach { service ->
         if (service.rtype == RTYPE_LIGHT) {
             // yep found it!
-            val v2ApiLight = PhilipsHueBridgeApi.getLightInfoFromApi(service.rid, bridge)
+            val v2ApiLight = PhilipsHueBridgeApi.getLightInfoFromApi(
+                lightId = service.rid,
+                bridgeIp = bridge.ipAddress,
+                bridgeToken = bridge.token
+            )
             if (v2ApiLight == null) {
                 Log.w(TAG, "Problem getting light in getLightInfoFromServiceList()!  rid = ${service.rid}")
                 return null
@@ -177,7 +181,7 @@ suspend fun doesBridgeAcceptToken(bridgeIp: String, token: String) :
  */
 suspend fun doesBridgeAcceptToken(bridge: PhilipsHueBridgeInfo) :
         Boolean = withContext(Dispatchers.IO) {
-    return@withContext doesBridgeAcceptToken(bridge.ip, bridge.token)
+    return@withContext doesBridgeAcceptToken(bridge.ipAddress, bridge.token)
 }
 
 /**
@@ -233,7 +237,7 @@ suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
  * Alternate version that takes a bridge instead of an IP.
  */
 suspend fun doesBridgeRespondToIp(bridge: PhilipsHueBridgeInfo) : Boolean {
-    return doesBridgeRespondToIp(bridge.ip)
+    return doesBridgeRespondToIp(bridge.ipAddress)
 }
 
 

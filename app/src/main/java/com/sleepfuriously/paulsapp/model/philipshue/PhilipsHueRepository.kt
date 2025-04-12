@@ -214,7 +214,11 @@ class PhilipsHueRepository(
 
         // Now that the scene and room matches, just tell the scene to turn on.  That's it.
         coroutineScope.launch(Dispatchers.IO) {
-            val response = PhilipsHueBridgeApi.sendSceneToRoom(bridge, scene)
+            val response = PhilipsHueBridgeApi.sendSceneToRoom(
+                bridgeIp = bridge.ipAddress,
+                bridgeToken = bridge.token,
+                sceneToDisplay = scene
+            )
             Log.d(TAG, "updateRoomScene() response:")
             Log.d(TAG, "    successful = ${response.isSuccessful}")
             Log.d(TAG, "    code = ${response.code}")

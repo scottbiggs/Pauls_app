@@ -223,7 +223,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
         Log.d(TAG, "startSse()")
 
         val request = Request.Builder()
-            .url("https://${bridge.ip}/eventstream/clip/v2")
+            .url("https://${bridge.ipAddress}/eventstream/clip/v2")
             .header("Accept", "text/event-stream")
             .addHeader("hue-application-key", bridge.token)
             .tag(bridge.id)     // identifies this request (within the EventSource)

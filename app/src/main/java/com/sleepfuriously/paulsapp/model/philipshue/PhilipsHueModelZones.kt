@@ -34,7 +34,10 @@ object PhilipsHueModelZones {
      */
     suspend fun getAllZonesFromApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Zone> {
         val zoneList = mutableListOf<PHv2Zone>()
-        val v2ZonesAll = PhilipsHueBridgeApi.getAllZonesFromApi(bridge)
+        val v2ZonesAll = PhilipsHueBridgeApi.getAllZonesFromApi(
+            bridgeIp = bridge.ipAddress,
+            bridgeToken = bridge.token
+        )
 
         if (v2ZonesAll.errors.isNotEmpty()) {
             Log.e(TAG, "Problem in getAllZonesFromApi()!")
@@ -55,7 +58,11 @@ object PhilipsHueModelZones {
      * null is returned.
      */
     suspend fun getIndividualZoneFromApi(zoneId: String, bridge: PhilipsHueBridgeInfo) : PHv2Zone? {
-        val zone = PhilipsHueBridgeApi.getZoneIndividualFromApi(zoneId, bridge)
+        val zone = PhilipsHueBridgeApi.getZoneIndividualFromApi(
+            zoneId = zoneId,
+            bridgeIp = bridge.ipAddress,
+            bridgeToken = bridge.token
+        )
         if (zone.errors.isNotEmpty()) {
             Log.e(TAG, "Problem in getZoneFromApi()!")
             Log.e(TAG, "   ${zone.errors[0].description}")
@@ -86,7 +93,11 @@ object PhilipsHueModelZones {
         val lightList = mutableListOf<PhilipsHueLightInfo>()
         zone.children.forEach { child ->
             if (child.rtype == RTYPE_LIGHT) {
-                val lightIndividual = PhilipsHueBridgeApi.getLightInfoFromApi(child.rid, bridge)
+                val lightIndividual = PhilipsHueBridgeApi.getLightInfoFromApi(
+                    lightId = child.rid,
+                    bridgeIp = bridge.ipAddress,
+                    bridgeToken = bridge.token
+                )
                 if (lightIndividual != null) {
 
                     if ((lightIndividual.errors.isNotEmpty()) || (lightIndividual.data.isEmpty())) {
@@ -128,7 +139,10 @@ object PhilipsHueModelZones {
 
         // For efficiency (so we hit the bridge only once) get all the grouped
         // lights for this bridge
-        val v2GroupedLights = PhilipsHueBridgeApi.getAllGroupedLightsFromApi(bridge)
+        val v2GroupedLights = PhilipsHueBridgeApi.getAllGroupedLightsFromApi(
+            bridgeIp = bridge.ipAddress,
+            bridgeToken = bridge.token
+        )
 
         // check for errors (no point continuing otherwise!)
         if (v2GroupedLights == null) {

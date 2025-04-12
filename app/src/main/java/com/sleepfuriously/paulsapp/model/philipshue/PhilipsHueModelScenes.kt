@@ -27,7 +27,10 @@ object PhilipsHueModelScenes {
      */
     suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Scene> {
         val newScenesList = mutableListOf<PHv2Scene>()
-        val v2ScenesAll = PhilipsHueBridgeApi.getAllScenesFromApi(bridge)
+        val v2ScenesAll = PhilipsHueBridgeApi.getAllScenesFromApi(
+            bridgeIp = bridge.ipAddress,
+            bridgeToken = bridge.token
+        )
 
         if (v2ScenesAll.errors.isNotEmpty()) {
             Log.e(TAG, "Problem in getAllScenesFromApi()!")
@@ -47,7 +50,11 @@ object PhilipsHueModelScenes {
      * null is returned.
      */
     suspend fun getIndividualSceneFromApi(sceneId: String, bridge: PhilipsHueBridgeInfo) : PHv2Scene? {
-        val scene = PhilipsHueBridgeApi.getSceneIndividualFromApi(sceneId, bridge)
+        val scene = PhilipsHueBridgeApi.getSceneIndividualFromApi(
+            sceneId = sceneId,
+            bridgeIp = bridge.ipAddress,
+            bridgeToken = bridge.token
+        )
         if (scene.errors.isNotEmpty()) {
             Log.e(TAG, "Problem in getSceneFromApi()!")
             Log.e(TAG, "   ${scene.errors[0].description}")

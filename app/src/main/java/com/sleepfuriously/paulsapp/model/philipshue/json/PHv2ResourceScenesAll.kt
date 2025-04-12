@@ -89,6 +89,8 @@ data class PHv2ResourceSceneIndividual(
 data class PHv2Scene(
     val id: String,
     val idV1: String = "",
+    /** optional, but should be there and it should be "scene" */
+    val type: String = "scene",
     /** "List of actions to be executed synchronously on recall" */
     val actions: List<PHv2SceneAction>,
     /** can be null if no palettes are present */
@@ -129,6 +131,7 @@ data class PHv2Scene(
         val otherScene = other as PHv2Scene
         if (id != otherScene.id) return false
         if (idV1 != otherScene.idV1) return false
+        if (type != otherScene.type) return false
         if (actions.size != otherScene.actions.size) return false
         actions.forEachIndexed { i, action ->
             if (action != otherScene.actions[i]) return false
@@ -178,6 +181,7 @@ data class PHv2Scene(
             return PHv2Scene(
                 id = jsonObj.getString(ID),
                 idV1 = jsonObj.optString(ID_V1, ""),
+                type = jsonObj.optString(TYPE, ""),
                 actions = actions,
                 palette = palette,
                 metadata = PHv2SceneMetadata(jsonObj.getJSONObject(METADATA)),

@@ -45,6 +45,16 @@ data class PHv2ResourceBridge(
     }
 
     /**
+     * Returns the data portion of the bridge.  All the good stuff is here.
+     *
+     * WARNING!     This could cause a BIG problem if there's an error.  You should
+     *              call hasData() first!!!!
+     */
+    fun getData() : PHv2Bridge {
+        return data[0]
+    }
+
+    /**
      * Returns the error message for this class.  If no error
      * then empty string is returned.
      */
@@ -76,7 +86,7 @@ data class PHv2ResourceBridge(
             ""
         }
         else {
-            data[0].bridgeName
+            data[0].printedNameOnDevice
         }
     }
 
@@ -171,7 +181,7 @@ data class PHv2Bridge(
     val idV1: String = EMPTY_STRING,
     val owner: PHv2ItemInArray,
     /** id as printed on the device */
-    val bridgeName: String,
+    val printedNameOnDevice: String,
     val timeZone: PHv2BridgeTimeZone
 ) {
     companion object {
@@ -200,7 +210,7 @@ data class PHv2Bridge(
                 id = id,
                 idV1 = idV1,
                 owner = owner,
-                bridgeName = name,
+                printedNameOnDevice = name,
                 timeZone = timeZone
             )
         }

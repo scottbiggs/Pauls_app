@@ -392,7 +392,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.ip),
-                            bridge.ip
+                            bridge.ipAddress
                         )
                     }
 

@@ -1,8 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
-import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 
 /**
  * Information about a NEW bridge.  It's essentially the same
@@ -40,7 +40,7 @@ data class PhilipsHueBridgeInfo(
     /** Name as printed on the bridge itself */
     var labelName : String,
     /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
-    var ip : String = "",
+    var ipAddress : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
     var token : String = "",
     /** When true, this bridge is in active use */
@@ -48,9 +48,11 @@ data class PhilipsHueBridgeInfo(
     /** Are we currently listening for events from this bridge? */
     var connected: Boolean,
     /** All the rooms controlled by this bridge */
-    var rooms: MutableSet<PhilipsHueRoomInfo> = mutableSetOf(),
+    var rooms: Set<PhilipsHueRoomInfo> = setOf(),
     /** all the scenes for this bridge */
-    var scenes: List<PHv2Scene> = mutableListOf()
+    var scenes: List<PHv2Scene> = listOf(),
+    /** all the zones for this bridge */
+    var zones: List<PHv2Zone> = listOf()
 ) {
     /**
      * This should cause the flow to update correctly.
@@ -63,7 +65,7 @@ data class PhilipsHueBridgeInfo(
         if (labelName != otherBridge.labelName) {
             return false
         }
-        if (ip != otherBridge.ip) {
+        if (ipAddress != otherBridge.ipAddress) {
             return false
         }
         if (token != otherBridge.token) {
@@ -91,6 +93,11 @@ data class PhilipsHueBridgeInfo(
                 return false
             }
         }
+        zones.forEachIndexed { i, zone ->
+            if (otherBridge.zones[i] != zone) {
+                return false
+            }
+        }
 
         return true
     }
@@ -98,11 +105,13 @@ data class PhilipsHueBridgeInfo(
     override fun hashCode(): Int {
         var result = id.hashCode()
         result = 31 * result + labelName.hashCode()
-        result = 31 * result + ip.hashCode()
+        result = 31 * result + ipAddress.hashCode()
         result = 31 * result + token.hashCode()
         result = 31 * result + active.hashCode()
         result = 31 * result + connected.hashCode()
         result = 31 * result + rooms.hashCode()
+        result = 31 * result + scenes.hashCode()
+        result = 31 * result + zones.hashCode()
         return result
     }
 
@@ -114,7 +123,7 @@ data class PhilipsHueBridgeInfo(
             return PhilipsHueBridgeInfo(
                 id = "",
                 labelName = newBridge.labelName,
-                ip = newBridge.ip,
+                ipAddress = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,
                 connected = false,

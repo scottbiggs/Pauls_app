@@ -171,7 +171,7 @@ class PhilipsHueModel(
                 val bridge = PhilipsHueBridgeInfo(
                     id = id,
                     labelName = name,
-                    ip = ip,
+                    ipAddress = ip,
                     token = token,
                     active = isActive,
                     connected = false
@@ -191,8 +191,15 @@ class PhilipsHueModel(
                     bridge.active = true
 
                     // 2a. Find rooms and add them to the bridge data
-                    val roomsFromApi = PhilipsHueBridgeApi.getAllRoomsFromApi(bridge)
-                    bridge.rooms = PhilipsHueDataConverter.convertV2RoomAll(roomsFromApi, bridge)
+                    val roomsFromApi = PhilipsHueBridgeApi.getAllRoomsFromApi(
+                        bridgeIp = bridge.ipAddress,
+                        bridgeToken = bridge.token
+                    )
+                    bridge.rooms = PhilipsHueDataConverter.convertV2RoomAll(
+                        phV2Rooms = roomsFromApi,
+                        bridgeIp = bridge.ipAddress,
+                        bridgeToken = bridge.token
+                    )
                 } else {
                     bridge.active = false
                 }
@@ -264,7 +271,7 @@ class PhilipsHueModel(
      * which will be processed.
      */
     fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ip}")
+        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ipAddress}")
         phServerSentEvents.cancelSSE(bridge.id)
     }
 
@@ -304,7 +311,7 @@ class PhilipsHueModel(
         val bridgeToAdd = PhilipsHueBridgeInfo(
             id = id,
             labelName = newBridge.labelName,
-            ip = newBridge.ip,
+            ipAddress = newBridge.ip,
             token = newBridge.token,    // the name supplied in working bridge should be correct
             active = newBridge.active,
             rooms = mutableSetOf(),
@@ -312,8 +319,15 @@ class PhilipsHueModel(
         )
 
         // find the rooms and THEN add the bridge to our list of bridges (finally)
-        val bridgeRooms = PhilipsHueBridgeApi.getAllRoomsFromApi(bridgeToAdd)
-        bridgeToAdd.rooms = PhilipsHueDataConverter.convertV2RoomAll(bridgeRooms, bridgeToAdd)
+        val bridgeRooms = PhilipsHueBridgeApi.getAllRoomsFromApi(
+            bridgeIp = bridgeToAdd.ipAddress,
+            bridgeToken = bridgeToAdd.token
+        )
+        bridgeToAdd.rooms = PhilipsHueDataConverter.convertV2RoomAll(
+            phV2Rooms = bridgeRooms,
+            bridgeIp = bridgeToAdd.ipAddress,
+            bridgeToken = bridgeToAdd.token
+        )
 
         _bridgeFlowSet.value += bridgeToAdd
 
@@ -378,7 +392,7 @@ class PhilipsHueModel(
 
         // construct the url
         val url = PhilipsHueBridgeApi.createFullAddress(
-            ip = changedBridge.ip,
+            ip = changedBridge.ipAddress,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
 

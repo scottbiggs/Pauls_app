@@ -6,12 +6,18 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Light
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceLightsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2RoomIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceZonesAll
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_DEVICE
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
@@ -63,12 +69,41 @@ object PhilipsHueDataConverter {
     }
 
     /**
+     * Converts a [PHv2ResourceBridge] to [PhilipsHueBridgeInfo]
+     *
+     * @param   v2Bridge        The data struct that was returned by the bridge
+     * @param   bridgeIp        Ip used to contact this bridge
+     * @param   token           Token (password) used to access this bridge
+     * @param   active          Is this bridge active? defaults to True.
+     * @param   connected       Is this bridge sending sse? Defaults to False.
+     *
+     * Note: Scenes, Rooms, and Zones are completely ignored as this info is not
+     * in [PHv2ResourceBridge].
+     */
+    fun convertV2Bridge(
+        v2Bridge: PHv2Bridge,
+        bridgeIp: String,
+        token: String,
+        active: Boolean = true,
+        connected: Boolean = false
+    ) : PhilipsHueBridgeInfo {
+        return PhilipsHueBridgeInfo(
+            id = v2Bridge.id,
+            ipAddress = bridgeIp,
+            labelName = v2Bridge.printedNameOnDevice,
+            token = token,
+            active = active,
+            connected = connected
+        )
+    }
+
+
+    /**
      * Converts from a [PHv2Light] to a [PhilipsHueLightInfo].
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun convertV2Light(
-        v2Light: PHv2Light
-    ) : PhilipsHueLightInfo {
+    fun convertV2Light(v2Light: PHv2Light) : PhilipsHueLightInfo {
+
         val state = PhilipsHueLightState(
             on = v2Light.on.on,
             bri = v2Light.dimming.brightness,
@@ -131,7 +166,8 @@ object PhilipsHueDataConverter {
      */
     suspend fun convertPHv2Room(
         v2Room: PHv2Room,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PhilipsHueRoomInfo = withContext(Dispatchers.IO) {
 
         // Do we have any grouped_lights?  This is a great short-cut.
@@ -156,7 +192,11 @@ object PhilipsHueDataConverter {
             }
 
             // The grouped_light has info on on/off and brightness
-            val groupedLight = PhilipsHueBridgeApi.getGroupedLightFromApi(groupedLightServices[0].rid, bridge)
+            val groupedLight = PhilipsHueBridgeApi.getGroupedLightFromApi(
+                groupId = groupedLightServices[0].rid,
+                bridgeIp = bridgeIp,
+                bridgeToken = bridgeToken
+            )
             var onOff = false
             var brightness = 0
             if ((groupedLight != null) && (groupedLight.errors.isEmpty())) {
@@ -169,12 +209,20 @@ object PhilipsHueDataConverter {
             v2Room.children.forEach { child ->
                 if (child.rtype == RTYPE_DEVICE) {
                     // is this device a light?  It's a light iff one of its services is rtype = "light".
-                    val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(child.rid, bridge)
+                    val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(
+                        deviceRid = child.rid,
+                        bridgeIp = bridgeIp,
+                        bridgeToken = bridgeToken
+                    )
                     if (device.data.isNotEmpty() && (device.data[0].type == DEVICE)) {
                         // yes, it's a device (probably a light)!  To make sure, search its services.
                         device.data[0].services.forEach { service ->
                             if (service.rtype == RTYPE_LIGHT) {
-                                val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(service.rid, bridge)
+                                val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(
+                                    lightId = service.rid,
+                                    bridgeIp = bridgeIp,
+                                    bridgeToken = bridgeToken
+                                )
                                 if (v2light != null) {
                                     val regularLight = PhilipsHueLightInfo(
                                         lightId = v2light.data[0].id,
@@ -230,7 +278,8 @@ object PhilipsHueDataConverter {
      */
     private suspend fun convertPHv2RoomIndividual(
         v2RoomIndividual: PHv2RoomIndividual,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PhilipsHueRoomInfo? = withContext(Dispatchers.IO) {
 
         // first check to make sure original data is valid.
@@ -238,7 +287,11 @@ object PhilipsHueDataConverter {
             return@withContext null
         }
 
-        return@withContext convertPHv2Room(v2RoomIndividual.data[0], bridge)
+        return@withContext convertPHv2Room(
+            v2Room = v2RoomIndividual.data[0],
+            bridgeIp = bridgeIp,
+            bridgeToken = bridgeToken
+        )
     }
 
 
@@ -247,15 +300,16 @@ object PhilipsHueDataConverter {
      *
      * @param   phV2Rooms       The data structure returned from the bridge about
      *                          its rooms.
-     *
-     * @param   bridge          Info about the bridge
+     * @param   bridgeIp        Ip of this bridge
+     * @param   bridgeToken     Token (password) for this bridge
      *
      * @return  A Set of information about the rooms translated from the input.
      */
     suspend fun convertV2RoomAll(
         phV2Rooms: PHv2ResourceRoomsAll,
-        bridge: PhilipsHueBridgeInfo
-    ) : MutableSet<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {
+        bridgeIp: String,
+        bridgeToken: String
+    ) : Set<PhilipsHueRoomInfo> = withContext(Dispatchers.IO) {
 
         val newRoomSet = mutableSetOf<PhilipsHueRoomInfo>()
 
@@ -271,12 +325,20 @@ object PhilipsHueDataConverter {
                 return@forEach      // this is the equivalent of continue (will skip this iteration)
             }
 
-            val v2RoomIndividual = PhilipsHueBridgeApi.getRoomIndividualFromApi(v2Room.id, bridge)
+            val v2RoomIndividual = PhilipsHueBridgeApi.getRoomIndividualFromApi(
+                roomId = v2Room.id,
+                bridgeIp = bridgeIp,
+                bridgeToken = bridgeToken
+            )
             if (v2RoomIndividual.errors.isNotEmpty()) {
                 Log.e(TAG, "convertV2RoomAll(): error getting individual room!")
             }
             else {
-                val room = convertPHv2RoomIndividual(v2RoomIndividual, bridge)
+                val room = convertPHv2RoomIndividual(
+                    v2RoomIndividual = v2RoomIndividual,
+                    bridgeIp = bridgeIp,
+                    bridgeToken = bridgeToken
+                )
                 if (room != null) {
                     newRoomSet.add(room)
                 }
@@ -286,6 +348,45 @@ object PhilipsHueDataConverter {
         return@withContext newRoomSet
     }
 
+
+    /**
+     * Converts a [PHv2ResourceScenesAll] to a list of [PHv2Scene].
+     *
+     * @return  All the scenes.  Could be an empty list.
+     */
+    fun convertV2ScenesAll(v2ScenesAll: PHv2ResourceScenesAll) : List<PHv2Scene> {
+
+        // the final return
+        val scenes = mutableListOf<PHv2Scene>()
+
+        // check for proper initial resource
+        if (v2ScenesAll.errors.isNotEmpty()) {
+            Log.e(TAG, "convertV2ScenesAll() is trying to convert data with an error!")
+            Log.e(TAG, "   error = ${v2ScenesAll.errors[0].description}")
+            return scenes
+        }
+
+        return v2ScenesAll.data
+    }
+
+
+    /**
+     * Converts a [PHv2ResourceZonesAll] to a list of [PHv2Zone].  Could be
+     * empty if no zones exist.
+     */
+    fun convertV2ZonesAll(v2ZonesAll: PHv2ResourceZonesAll) : List<PHv2Zone> {
+
+        val zones = mutableListOf<PHv2Zone>()
+
+        // being very careful
+        if (v2ZonesAll.errors.isNotEmpty()) {
+            Log.e(TAG, "convertV2SZonesAll() is trying to convert data with an error!")
+            Log.e(TAG, "   error = ${v2ZonesAll.errors[0].description}")
+            return zones
+        }
+
+        return v2ZonesAll.data
+    }
 }
 
 private const val TAG = "PhilipsHueDataConverter"

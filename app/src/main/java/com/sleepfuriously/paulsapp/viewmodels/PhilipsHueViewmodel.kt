@@ -588,7 +588,7 @@ class PhilipsHueViewmodel : ViewModel() {
         // and active.
         for (bridge in philipsHueBridgesCompose) {
             // does this bridge have an ip?
-            val ip = bridge.ip
+            val ip = bridge.ipAddress
             if (ip.isBlank()) {
                 bridge.active = false
                 continue
@@ -612,7 +612,7 @@ class PhilipsHueViewmodel : ViewModel() {
             }
 
             // check that token works
-            val tokenWorks = philipsHueRepository.doesPhilipsHueBridgeAcceptToken(bridge.ip, token)
+            val tokenWorks = philipsHueRepository.doesPhilipsHueBridgeAcceptToken(bridge.ipAddress, token)
             if (tokenWorks == false) {
                 continue
             }

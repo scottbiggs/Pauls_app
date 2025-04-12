@@ -230,7 +230,7 @@ object PhilipsHueBridgeStorage {
             return false
         }
 
-        if (saveBridgeIp(bridge.id, bridge.ip, synchronize, ctx) == false) {
+        if (saveBridgeIp(bridge.id, bridge.ipAddress, synchronize, ctx) == false) {
             Log.e(TAG, "Can't save the IP of the bridge in saveBridge($bridge) - aborting!")
             return false
         }

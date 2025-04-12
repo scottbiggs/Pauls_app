@@ -2,7 +2,6 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.MyResponse
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousDelete
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
@@ -123,15 +122,16 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getDeviceIndividualFromApi(
         deviceRid: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2ResourceDeviceIndividual = withContext(Dispatchers.IO) {
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_DEVICE/$deviceRid"
         )
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -140,7 +140,7 @@ object PhilipsHueBridgeApi {
             return@withContext PHv2ResourceDeviceIndividual(response.body)
         }
         else {
-            Log.e(TAG, "unable to get device from bridge (id = ${bridge.id}!")
+            Log.e(TAG, "getDeviceIndividualFromApi() unable to get device from bridge (ip = ${bridgeIp}!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2ResourceDeviceIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -159,23 +159,25 @@ object PhilipsHueBridgeApi {
      *          Otherwise a grouped light resource is returned.  It may have errors
      *          of its own, which will be described in the data structure.
      */
-    suspend fun getAllGroupedLightsFromApi(bridge: PhilipsHueBridgeInfo)
-            : PHv2ResourceGroupedLightsAll? {
+    suspend fun getAllGroupedLightsFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : PHv2ResourceGroupedLightsAll? {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = SUFFIX_GET_GROUPED_LIGHTS
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true
         )
 
         // check for html errors
         if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting ALL grouped_lights!  bridgeId = ${bridge.id}")
+            Log.e(TAG, "getAllGroupedLightsFromApi() unsuccessful attempt at getting ALL grouped_lights!  bridge ip = ${bridgeIp}")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             return null
         }
@@ -197,21 +199,22 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getGroupedLightFromApi(
         groupId: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2GroupedLightIndividual? = withContext(Dispatchers.IO) {
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupId"
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true
         )
 
         if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting grouped_lights!  groupId = $groupId, bridgeId = ${bridge.id}")
+            Log.e(TAG, "unsuccessful attempt at getting grouped_lights!  groupId = $groupId, bridge ip = ${bridgeIp}")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             // returning null
             return@withContext null
@@ -233,15 +236,17 @@ object PhilipsHueBridgeApi {
      * @return  The [PHv2GroupedLight] that's within.  Null will
      *          be returned if no grouped lights are found.
      */
-    @Suppress("unused")
     private suspend fun getGroupedLightFromRoom(
         v2Room: PHv2Room,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2GroupedLight? = withContext(Dispatchers.IO) {
         v2Room.children.forEach { child ->
             if (child.rtype == RTYPE_GROUP_LIGHT) {
                 val groupedLightIndividual = getGroupedLightFromApi(
-                    child.rid, bridge
+                    groupId = child.rid,
+                    bridgeIp = bridgeIp,
+                    bridgeToken = bridgeToken
                 )
 
                 // quick sanity check
@@ -261,22 +266,23 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getLightInfoFromApi(
         lightId: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2LightIndividual? = withContext(Dispatchers.IO) {
         // construct the url
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_LIGHTS/$lightId"
         )
 
         val response = synchronousGet(
             url = url,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
             trustAll = true     // todo: be paranoid in the future
         )
 
         if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting light data!  lightId = $lightId, bridgeId = ${bridge.id}")
+            Log.e(TAG, "getLightInfoFromApi() unsuccessful attempt at getting light data!  lightId = $lightId, bridge ip = ${bridgeIp}")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             return@withContext null
         }
@@ -294,18 +300,21 @@ object PhilipsHueBridgeApi {
      *
      * @return      Set of all rooms found with this bridge
      */
-    suspend fun getAllRoomsFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceRoomsAll {
+    suspend fun getAllRoomsFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : PHv2ResourceRoomsAll {
 
         val fullAddress = createFullAddress(
             prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = SUFFIX_GET_ROOMS
         )
 
         // get info from bridge
         val response = synchronousGet(
             url = fullAddress,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true
         )
 
@@ -325,17 +334,18 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getRoomIndividualFromApi(
         roomId: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2RoomIndividual = withContext(Dispatchers.IO) {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_ROOMS/$roomId"
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -344,7 +354,7 @@ object PhilipsHueBridgeApi {
             return@withContext PHv2RoomIndividual(response.body)
         }
         else {
-            Log.e(TAG, "unable to get room from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "getRoomIndividual() unable to get room from bridge!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2RoomIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -368,17 +378,18 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getSceneIndividualFromApi(
         sceneId: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2ResourceSceneIndividual {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_SCENES/$sceneId"
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -387,7 +398,7 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceSceneIndividual(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get scene from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "getSceneIndividualFromApi unable to get scene from bridge (ip = ${bridgeIp})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceSceneIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -399,16 +410,19 @@ object PhilipsHueBridgeApi {
      * Returns the [PHv2ResourceScenesAll] from the specified bridge.  Errors
      * will be embedded in the  returned data.
      */
-    suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceScenesAll {
+    suspend fun getAllScenesFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : PHv2ResourceScenesAll {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = SUFFIX_GET_SCENES
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -417,7 +431,7 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceScenesAll(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get scenes from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "getAllScenesFromApi() unable to get scenes from bridge (ip = ${bridgeIp})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceScenesAll(
                 errors = listOf(PHv2Error(description = response.message))
@@ -433,16 +447,19 @@ object PhilipsHueBridgeApi {
      * Returns a [PHv2ResourceZonesAll] from the specified bridge.  Errors
      * will be embedded in the  returned data.
      */
-    suspend fun getAllZonesFromApi(bridge: PhilipsHueBridgeInfo) : PHv2ResourceZonesAll {
+    suspend fun getAllZonesFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : PHv2ResourceZonesAll {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = SUFFIX_GET_ZONES
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -451,7 +468,7 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceZonesAll(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get zones from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "getAllZonesFromApi unable to get zones from bridge (ip = ${bridgeIp})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceZonesAll(
                 errors = listOf(PHv2Error(description = response.message))
@@ -471,17 +488,18 @@ object PhilipsHueBridgeApi {
      */
     suspend fun getZoneIndividualFromApi(
         zoneId: String,
-        bridge: PhilipsHueBridgeInfo
+        bridgeIp: String,
+        bridgeToken: String
     ) : PHv2ResourceZoneIndividual {
 
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_GET_ZONES/$zoneId"
         )
 
         val response = synchronousGet(
             url = url,
-            header = Pair(HEADER_TOKEN_KEY, bridge.token),
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
             trustAll = true     // fixme: change when using secure stuff
         )
 
@@ -490,7 +508,7 @@ object PhilipsHueBridgeApi {
             return PHv2ResourceZoneIndividual(JSONObject(response.body))
         }
         else {
-            Log.e(TAG, "unable to get zone from bridge (id = ${bridge.id})!")
+            Log.e(TAG, "getZoneIndividualFromApi() unable to get zone from bridge (ip = ${bridgeIp})!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return PHv2ResourceZoneIndividual(
                 errors = listOf(PHv2Error(description = response.message))
@@ -510,18 +528,19 @@ object PhilipsHueBridgeApi {
      * @return  The response from the PUT request.  No analysis is done.
      */
     suspend fun sendSceneToRoom(
-        bridge: PhilipsHueBridgeInfo,
+        bridgeIp: String,
+        bridgeToken: String,
         sceneToDisplay: PHv2Scene
     ) : MyResponse {
         val url = createFullAddress(
-            ip = bridge.ip,
+            ip = bridgeIp,
             suffix = "$SUFFIX_PUT_ACTIVATE_SCENE/${sceneToDisplay.id}"
         )
 
         val response = synchronousPut(
             url = url,
             bodyStr = UPDATE_SCENE_BODY,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridge.token)),
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
             trustAll = true     // fixme: change when using secure stuff
         )
         return response
@@ -530,38 +549,6 @@ object PhilipsHueBridgeApi {
     //-------------------------
     //  delete
     //-------------------------
-
-    /**
-     * Removes the specified user/token from the bridge's whitelist.  This means
-     * that the token will no longer work.  You've been warned!
-     *
-     * @param   bridge      The bridge in question.  MUST be active!
-     *
-     * @param   elementId   The id for the PhilipsHueWhitelistItem that we want
-     *                      to remove.
-     *
-     * @return  The response from the bridge's request.  Caller can decide what to
-     *          do with the response (it'll say if it's successful or not).
-     */
-    @Deprecated("Philips Hue no longer supports this")
-    suspend fun removeAppTokenFromWhitelist(
-        bridge: PhilipsHueBridgeInfo,
-        elementId: String
-    ) : MyResponse {
-
-        // construct the full url.  It'll contain the token for this bridge and the
-        // id of the whitelist element to delete
-        val fullUrl = createFullAddress(
-            ip = bridge.ip,
-            suffix = "/api/${bridge.token}/config/whitelist/$elementId"
-        )
-
-        val response = synchronousDelete(
-            url = fullUrl,
-            trustAll = true
-        )
-        return response
-    }
 
     //-------------------------
     //  helpers
