@@ -7,6 +7,7 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import okhttp3.Request
@@ -17,55 +18,56 @@ import okhttp3.sse.EventSources
 import org.json.JSONArray
 import org.json.JSONException
 
+
 /**
- * Controller and producer of server-sent events (sse) from the
- * philips hue bridges.
- *
- * The events will be consumed by [PhilipsHueRepository] which will
- * spit 'em out to whomever needs them.
+ * This is a more encapsulated version of collecting server-sent events (sse)
+ * than my first try.  This class only deals with one bridge, but can be
+ * instantiated as many times as needed.
  */
-class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
+class PhilipsHueSSE(
+    private val bridgeId: String,
+    private val bridgeIpAddress: String,
+    private val bridgeToken: String,
+    coroutineScope: CoroutineScope
+) : AutoCloseable {
 
     //---------------------------------
     //  flows
     //---------------------------------
 
-    private val _openEvent = Channel<Pair<String, Boolean>>()
+    private val _openEvent = Channel<Boolean>()
     /**
-     * An open event is sent when a bridge is first opened or closed
-     * to server-sent events.
-     * The pair is <Bridge Id, open/closed>  where open = true.
+     * An open event is sent when the bridge's sse is first opened or closed.
+     * True means that the bridge is connected and receiving server-sent events.
+     * Falst means that the bridge is not connected and no sse are flowing.
      */
     val openEvent = _openEvent.receiveAsFlow()
 
 
-    private val _serverSentEvent = Channel<Pair<String, PHv2ResourceServerSentEvent>>()
+    private val _serverSentEvent = Channel<PHv2ResourceServerSentEvent>()
     /**
-     * This channel sends events as they happen.  Event contains:
-     *  String - Id of the bridge
-     *  event - instance of [PHv2ResourceServerSentEvent]
+     * This channel sends events as they happen.  Each event contains
+     * an instance of [PHv2ResourceServerSentEvent].
      */
     val serverSentEvent = _serverSentEvent.receiveAsFlow()
 
 
     //---------------------------------
-    //  private data
+    //  private data & data objects
     //---------------------------------
 
     /**
-     * Reference to Event Source--I use it to close the connections.
-     * Each item in the list is a Pair:
-     *      bridgeId : EventSource
+     * Reference to the [EventSource]--I use it to close the connections.
+     * It'll be null if not in use.
      */
-    private val eventSourceList = mutableListOf<Pair<String, EventSource>>()
-//    /** reference to Event Source--I use it to close the connection */
-//    private lateinit var myEventSource : EventSource
+    private var eventSource : EventSource? = null
 
-    //---------------------------------
-    //  data objects
-    //---------------------------------
-
+    /**
+     * This is THE thing that listens for server-sent events.  It'll spit out
+     * the events as the bridge sends them (once it's set up).
+     */
     private val defaultListener = object : EventSourceListener() {
+
         override fun onOpen(eventSource: EventSource, response: Response) {
             super.onOpen(eventSource, response)
             Log.d(TAG, "EventSourceListener: Connection Opened")
@@ -87,20 +89,8 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
 
                 coroutineScope.launch {
                     Log.d(TAG, "onOpen() sending _openEvent: true")
-                    _openEvent.send(Pair(bridgeId, true))
+                    _openEvent.send(true)
                 }
-/*
-            todo: this code needs to be put in the receiver of the flow!!!
-
-                // trying a new way to update a Set. Hope it works.
-                _bridgeFlowSet.update {
-                    val currentBridgeFlowSet = bridgeFlowSet.value.toMutableSet()
-                    currentBridgeFlowSet.remove(bridge)
-                    bridge.connected = true         // set connect status
-                    currentBridgeFlowSet.add(bridge)
-                    currentBridgeFlowSet
-                }
- */
             }
             else {
                 Log.e(TAG, "problem with response in defaultListener.onOpen()!")
@@ -125,7 +115,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
 
             coroutineScope.launch {
                 Log.d(TAG, "onClosed() sending _openEvent: false")
-                _openEvent.send(Pair(bridgeId, false))
+                _openEvent.send(false)
             }
         }
 
@@ -138,7 +128,6 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             type: String?,
             data: String
         ) {
-//            super.onEvent(eventSource, id, type, data)
             Log.d(TAG, "EventSourceListener: On Event Received!")
             Log.d(TAG, "   eventSource = ${eventSource.toString()}")
             Log.d(TAG, "   id = $id")
@@ -160,7 +149,7 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
                     for (i in 0 until eventJsonArray.length()) {
                         val eventJsonObj = eventJsonArray.getJSONObject(i)
                         val v2Event = PHv2ResourceServerSentEvent(eventJsonObj)
-                        _serverSentEvent.send(Pair(bridgeId, v2Event))
+                        _serverSentEvent.send(v2Event)
                     }
                 }
             }
@@ -188,13 +177,73 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             else {
                 coroutineScope.launch {
                     Log.d(TAG, "onFailure() sending openEvent: false")
-                    _openEvent.send(Pair(bridgeId, false))
+                    _openEvent.send(false)
                 }
 
             }
             response?.body?.close()
         }
     }
+
+    //---------------------------------
+    //  constructors & initializations
+    //---------------------------------
+
+//    init {
+//        startSse()
+//    }
+
+
+    override fun close() {
+        // This is run whenever this instance goes out of scope (no longer is needed).
+        // I use this to clean up.
+        stopSSE()
+    }
+
+    //---------------------------------
+    //  public functions
+    //---------------------------------
+
+    /**
+     * Begins connecting to the bridge for server-sent events
+     */
+    fun startSse() {
+        Log.d(TAG, "startSse()")
+
+        val request = Request.Builder()
+            .url("https://${bridgeIpAddress}/eventstream/clip/v2")
+            .header("Accept", "text/event-stream")
+            .addHeader("hue-application-key", bridgeToken)
+            .tag(bridgeId)     // identifies this request (within the EventSource)
+            .build()
+
+        // making new eventsource
+        eventSource = EventSources.createFactory(getAllTrustingSseClient())     // todo: make secure
+            .newEventSource(
+                request = request,
+                listener = defaultListener
+            )
+
+        // note: the connection is not complete yet; we just made an attempt at connecting.
+        // we'll know that the connection is successful in the onOpen() call in whatever
+        // is listening to server-sent events.
+    }
+
+
+    /**
+     * Stop receive sse events for the given bridge.
+     *
+     * side effects
+     *  - [eventSource] is stopped (if it exists) and set to null
+     */
+    fun stopSSE() {
+        eventSource?.cancel()
+        eventSource = null
+    }
+
+    //---------------------------------
+    //  private functions
+    //---------------------------------
 
     /**
      * Grabs the id of thebridge that uses this given eventSource.  If none can be found, this
@@ -211,69 +260,19 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
     }
 
 
-
     //---------------------------------
-    //  functions
+    //  statics
     //---------------------------------
 
-    /**
-     * Begins connecing to the given bridge for server-sent events.
-     */
-    fun startSse(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "startSse()")
+    companion object {
 
-        val request = Request.Builder()
-            .url("https://${bridge.ipAddress}/eventstream/clip/v2")
-            .header("Accept", "text/event-stream")
-            .addHeader("hue-application-key", bridge.token)
-            .tag(bridge.id)     // identifies this request (within the EventSource)
-            .build()
 
-        // Check to see if this bridge is already on our list.
-        // if so, remove it (we'll make a new one).
-        val foundEventSource: Pair<String, EventSource>? = null
-        for(i in 0 until eventSourceList.size) {
-            if (eventSourceList[i].first == bridge.id) {
-                eventSourceList.removeAt(i)
-                break
-            }
-        }
+        // todo: all stuff that's similar to all instances will go here
 
-        // making new eventsource
-        val newEventSource = Pair(bridge.id,
-            EventSources.createFactory(getAllTrustingSseClient())   // todo: make secure
-                .newEventSource(
-                    request = request,
-                    listener = defaultListener
-                ))
 
-        // add this to the list
-        eventSourceList.add(newEventSource)
-
-        // note: the connection is not complete yet; we just made an attempt at connecting.
-        // we'll know that the connection is successful in the onOpen() call in whatever
-        // is listening to server-sent events.
     }
 
-    /**
-     * Stop receive sse events for the given bridge.
-     */
-    fun cancelSSE(bridgeId: String) {
-        // find the right event source and cancel it.
-        eventSourceList.forEach { eventSourcePair ->
-            if (eventSourcePair.first == bridgeId) {
-                Log.d(TAG, "Canceling sse for bridge id = $bridgeId")
-                eventSourcePair.second.cancel()
-                // should I remove this eventsource? hmmm
-                return
-            }
-        }
-    }
 
 }
 
-//---------------------------------
-//  constants
-//---------------------------------
-
-private const val TAG = "PhilipsHueServerSentEvents"
+private const val TAG = "PhilipsHueSSE"

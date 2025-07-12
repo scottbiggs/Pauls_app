@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
  * and the viewmodel.  This middle layer will receive flows and pass
  * them along.
  */
-class PhilipsHueRepository(
+class PhilipsHueRepositoryFoo(
     /**
      * Anything that takes a while should be done within this scope.
      */
@@ -28,9 +28,9 @@ class PhilipsHueRepository(
     //  flows to observe
     //-------------------------------
 
-    private val _bridgesSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
-    /** the complete list of all the bridges and associated data */
-    val bridgesSet = _bridgesSet.asStateFlow()
+    private val _bridgesList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
+    /** the complete list of all the bridges and associated data (comes from [PhilipsHueModel]) */
+    val bridgesList = _bridgesList.asStateFlow()
 
 
     //-------------------------------
@@ -47,20 +47,20 @@ class PhilipsHueRepository(
     init {
         // start consuming bridge flow from Model
         coroutineScope.launch {
-            model.bridgeFlowSet.collectLatest {
+            model.bridgeModelFlowList.collectLatest {
                 Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${System.identityHashCode(it)}")
 
                 // rebuilding a copy of the bridge set
-                val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+                val newBridgeList = mutableListOf<PhilipsHueBridgeModel>()
                 it.forEach { bridge ->
-                    newBridgeSet.add(bridge)
+                    newBridgeList.add(bridge)
                     Log.d(TAG, "Setting bridge for flow:")
-                    bridge.rooms.forEach { room ->
-                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
-                    }
+//                    bridge.rooms.forEach { room ->
+//                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
+//                    }
                 }
                 // producing flow
-                _bridgesSet.update { newBridgeSet }
+                _bridgesList.update { newBridgeList }
             }
         }
 
@@ -236,12 +236,10 @@ class PhilipsHueRepository(
 
     /**
      * Tell the model to remove this bridge.  Permanently.
+     * Results will be propogated through a flow.
      */
-    /**
-     * Tell the model to remove this bridge.  Permanently.
-     */
-    fun deletePhilipsHueBridge(bridgeId: String): Boolean {
-        return model.deleteBridge(bridgeId)
+    fun deletePhilipsHueBridge(bridgeId: String) {
+        model.deleteBridge(bridgeId)
     }
 
     /**

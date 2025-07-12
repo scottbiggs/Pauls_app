@@ -59,6 +59,7 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeModel
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -129,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
                 val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
-                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
+                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgeModelsCompose
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuff.collectAsStateWithLifecycle()
 
@@ -214,11 +215,11 @@ class MainActivity : ComponentActivity() {
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
         roomSceneData:  SceneData?,
-        philipsHueBridges: Set<PhilipsHueBridgeInfo>,
+        philipsHueBridges: List<PhilipsHueBridgeModel>,
         modifier : Modifier = Modifier,
     ) {
 
-        Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
+        Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgeModelsCompose.size}")
         Log.d(TAG, "roomSceneTriple = $roomSceneData")
 
         //-------------
@@ -380,7 +381,6 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxSize(),
                                 Alignment.BottomEnd
                             ) {
-                                Log.d(TAG, "boxbox")
                                 // display version number in bottom right corner
                                 Text(
                                     text = getVersionName(this@MainActivity),
@@ -497,8 +497,10 @@ class MainActivity : ComponentActivity() {
 
             // list known bridges
             Text("here the known bridges:")
-            viewmodel.philipsHueBridgesCompose.forEach { bridge ->
-                Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
+            viewmodel.philipsHueBridgeModelsCompose.forEach { bridgeModel ->
+                bridgeModel.bridge.value?.let { bridge ->
+                    Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
+                }
             }
 
 

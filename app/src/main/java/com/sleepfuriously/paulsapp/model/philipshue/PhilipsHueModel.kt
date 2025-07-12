@@ -8,11 +8,9 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
@@ -101,9 +99,15 @@ class PhilipsHueModel(
     //  flow data
     //-------------------------------------
 
-    private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
-    /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
-    val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
+//    private val _bridgeFlowSet = MutableStateFlow<Set<PhilipsHueBridgeInfo>>(setOf())
+//    /** Flow for the bridges. Collectors will be notified of changes to bridges from this. */
+//    val bridgeFlowSet = _bridgeFlowSet.asStateFlow()
+    private val _bridgeModelFlowList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
+    /**
+     * The main list of the bridges.  Changes to the list happen HERE!  Those changes
+     * will flow downstream to all sorts of places.
+     */
+    val bridgeModelFlowList = _bridgeModelFlowList.asStateFlow()
 
 
     //-------------------------------------
@@ -111,6 +115,7 @@ class PhilipsHueModel(
     //-------------------------------------
 
     /** Controls server-sent events (sse) */
+    // todo: move this to PhilipsHueBridgeModel
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
     //-------------------------------------
@@ -177,14 +182,41 @@ class PhilipsHueModel(
                     connected = false
                 )
 
-                // fixme: this is too early!  The bridgeFlowSet should be done once all the
-                //  bridges are completely figured out!
                 workingBridgeSet += bridge
             }
 
             // 2. Load data for each bridge (but only if it's active)
             //    To make sure that the flow works correctly we construct
             //    a brand-new set with all the data in it.
+
+            // 2. Load up the bridges and put them in our bridge list
+            val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
+            workingBridgeSet.forEach { workingBridge ->
+                tmpBridgeModels.add(PhilipsHueBridgeModel(
+                    bridgeId = workingBridge.id,
+                    bridgeIpAddress = workingBridge.ipAddress,
+                    bridgeToken = workingBridge.token,
+                    coroutineScope = coroutineScope
+                ))
+            }
+
+            // 3. update the flow
+            _bridgeModelFlowList.update {
+                Log.d(TAG, "updating _bridgeModelFlowList to $tmpBridgeModels, size = ${tmpBridgeModels.size}")
+                tmpBridgeModels.forEach { bridgeModel ->
+                    Log.d(TAG, "    id = ${bridgeModel.bridgeId}")
+                    Log.d(TAG, "    bridge.value = ${bridgeModel.bridge.value}")
+                }
+                tmpBridgeModels
+            }
+
+
+
+
+
+
+
+/*
             val newBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
             workingBridgeSet.forEach { bridge ->
                 if (isBridgeActive(bridge)) {
@@ -241,6 +273,8 @@ class PhilipsHueModel(
                     interpretOpenEvent(pair.first, pair.second)
                 }
             }
+
+ */
         }
     }
 
@@ -308,6 +342,29 @@ class PhilipsHueModel(
 
         val id = v2Bridge.getId()
 
+        val newBridgeModel = PhilipsHueBridgeModel(
+            bridgeId = id,
+            bridgeIpAddress = newBridge.ip,
+            bridgeToken = newBridge.token,
+            coroutineScope = CoroutineScope(coroutineContext)
+        )
+
+        _bridgeModelFlowList.update {
+            Log.d(TAG, "updating _bridgeModelFlowList(2) by adding $newBridgeModel")
+            bridgeModelFlowList.value + newBridgeModel
+        }
+
+        // update long-term data
+        PhilipsHueBridgeStorage.saveBridge(
+            bridgeId = id,
+            bridgeipAddress = newBridge.ip,
+            newToken = newBridge.token,
+            synchronize = true,
+            ctx = ctx
+        )
+
+/*
+
         val bridgeToAdd = PhilipsHueBridgeInfo(
             id = id,
             labelName = newBridge.labelName,
@@ -333,6 +390,7 @@ class PhilipsHueModel(
 
         // update long-term data
         PhilipsHueBridgeStorage.saveBridge(bridgeToAdd, true, ctx)
+*/
     }
 
 
@@ -354,10 +412,16 @@ class PhilipsHueModel(
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun getLoadedBridgeFromId(bridgeId: String): PhilipsHueBridgeInfo? {
-        val bridge = bridgeFlowSet.value.find { bridge ->
-            bridge.id == bridgeId
+
+        bridgeModelFlowList.value.forEach { testBridge ->
+            val testBridgeInfo = testBridge.bridge.value
+            if (testBridgeInfo != null) {
+                if (testBridgeInfo.id == bridgeId) {
+                    return testBridgeInfo
+                }
+            }
         }
-        return bridge
+        return null
     }
 
     //-------------------------------------
@@ -423,21 +487,19 @@ class PhilipsHueModel(
 
     /**
      * Removes a bridge, effectively deleting it from this app.
-     * If the bridge is currently active, we'll try to tell the bridge
-     * to let go this token (username) to free up bridge memory.
      *
      * This bridge will be removed from both the short-term and long-term
      * storage.  Yup, it's gone forever.
      *
-     * Since this does network communication, this needs to be called
-     * off the main thread.
-     *
-     * @return      True - successfully removed bridge.
-     *              False - bridge wasn't found.
+     * If the bridge can't be found, nothing is done (other than error msg).
      */
-    fun deleteBridge(bridgeId: String): Boolean {
+    fun deleteBridge(bridgeId: String) {
 
-        val bridgeToDelete = getLoadedBridgeFromId(bridgeId) ?: return false
+        // make sure that the bridge exists
+        if (getLoadedBridgeFromId(bridgeId) == null) {
+            Log.e(TAG, "unable to delete bridge id = $bridgeId")
+            return
+        }
 
         // 1) Tell the bridge to remove this app's username (token)
         //      UNABLE TO COMPLY:  Philps Hue removed this ability, so it cannot be implemented!
@@ -445,55 +507,54 @@ class PhilipsHueModel(
         // 2) Remove bridge data from our permanent storage
         if (PhilipsHueBridgeStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {
             Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
-            return false
+            return
         }
 
         PhilipsHueBridgeStorage.removeBridgeIP(bridgeId, true, ctx)
 
         if (PhilipsHueBridgeStorage.removeBridgeId(bridgeId, true, ctx) == false) {
             Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
-            return false
+            return
         }
 
         // 3) Remove bridge data from our temp storage.
         //  As this is a complicated data structure, we need to use a
         //  (kind of) complicated remove.
-        var tmpBridges = setOf<PhilipsHueBridgeInfo>()
-        var removed = false
-        _bridgeFlowSet.value.forEach { bridge ->
-            if (bridge.id != bridgeId) {
-                tmpBridges += bridge
-            } else {
-                removed = true
+        _bridgeModelFlowList.update {
+            // find the index of the bridge to remove
+            var index = -1
+            for (i in 0 until bridgeModelFlowList.value.size) {
+                if (bridgeModelFlowList.value[i].bridge.value?.id == bridgeId) {
+                    index = i
+                    break
+                }
+            }
+            if (index == -1) {
+                Log.e(TAG, "Unable to find bridge id = $bridgeId in deleteBridge(). Aborting!")
+                bridgeModelFlowList.value
+            }
+            else {
+                Log.d(TAG, "updating _bridgeModelFlowList by removing ${bridgeModelFlowList.value[index]}")
+                bridgeModelFlowList.value - bridgeModelFlowList.value[index]
             }
         }
-        if (removed == false) {
-            Log.e(TAG, "Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!")
-            return false
-        }
 
-        _bridgeFlowSet.value = tmpBridges
-        return true
-    }
-
-    /**
-     * This is the nuclear option.  Removes all the bridges for all time.
-     * This is essentially a reset of the app.
-     *
-     * @return      True - all bridges were removed (even if there were none).
-     *              False - error condition (although I don't know what).
-     */
-    @Suppress("unused")
-    fun deleteAllBridges(): Boolean {
-
-        var error = false
-        _bridgeFlowSet.value.forEach { bridge ->
-            if (deleteBridge(bridge.id) == false) {
-                Log.d(TAG, "removeAllBridges() unable to remove ${bridge.id}!")
-                error = true
-            }
-        }
-        return error
+//        var tmpBridges = setOf<PhilipsHueBridgeInfo>()
+//        var removed = false
+//        _bridgeFlowSet.value.forEach { bridge ->
+//            if (bridge.id != bridgeId) {
+//                tmpBridges += bridge
+//            } else {
+//                removed = true
+//            }
+//        }
+//        if (removed == false) {
+//            Log.e(TAG, "Unable to remove bridge $bridgeToDelete at the final stage of deleteBridge(bridgeId = $bridgeId)!")
+//            return false
+//        }
+//
+//        _bridgeFlowSet.value = tmpBridges
+//        return true
     }
 
 
@@ -501,266 +562,266 @@ class PhilipsHueModel(
     //  utils
     //-------------------------------------
 
-    /**
-     * Working completely by side effect, this analyses the result of a server-
-     * sent event and changes the contents of the bridge data appropriately.
-     *
-     * @param   eventBridgeId   The id of the bridge that the event relates to
-     *
-     * @param   event           Data structure describing the event.
-     *
-     * side effects
-     *  [bridgeFlowSet] - modified to reflect whatever changed according the the bridge's sse.
-     */
-    private fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
-
-        val eventBridge = getLoadedBridgeFromId(eventBridgeId)
-        if (eventBridge == null) {
-            Log.e(TAG, "Can't find the bridge in interpretEvent()! Aborting!")
-            return
-        }
-
-        Log.d(TAG, "interpretEvent()  eventBridge = ${eventBridge.id}")
-        Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
-        Log.d(TAG, "interpretEvent()  event.eventId = ${event.eventId}")
-        Log.d(TAG, "interpretEvent()  event.data = ${event.data}")
-
-        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-
-        // rebuild the bridge list
-        bridgeFlowSet.value.forEach { bridge ->
-            // Is this the bridge in question?
-            if (bridge.id == eventBridge.id) {
-                // Yes, this is the bridge.  What kind of event was it?
-                when (event.type) {
-                    EVENT_UPDATE -> {
-                        Log.v(TAG, "interpeting UPDATE event")
-
-                        interpretUpdateEvent(bridge, event)
-                    }
-
-                    EVENT_ADD -> {
-                        interpretAddEvent(bridge, event)
-                    }
-
-                    EVENT_DELETE -> {
-                        interpretDeleteEvent(bridge, event)
-                    }
-
-                    EVENT_ERROR -> {
-                        Log.e(TAG, "interpretEvent() - can't do anything with an error, skipping!")
-                        return
-                    }
-
-                    else -> {
-                        Log.e(TAG, "Unknown event type!!! Aborting!")
-                        return
-                    }
-                }
-            }
-
-            // creating new bridge list for the flow to work properly
-            newBridgeList.add(bridge)
-        }
-
-        // for debugging purposes...
-        Log.d(TAG, "-->Setting bridgeFlowSet to newBridgeSet. Viewmodel should be updating!")
-        newBridgeList.forEach { bridge ->
-            bridge.rooms.forEach { room ->
-                Log.d(TAG, "   ${room.name}: on = ${room.on}, bri = ${room.brightness}")
-            }
-        }
-        _bridgeFlowSet.update { newBridgeList.toSet() }
-    }
-
-    /**
-     * Interprets an UPDATE sse that was sent from a bridge.
-     *
-     * @param   bridge      The bridge that sent the event
-     *
-     * @param   event       The event it sent (should be an UPDATE)
-     *
-     * side effects
-     *  - aspects of this bridge will change based on the event.  For
-     *  example: a room's brightness and the status of its light can change.
-     */
-    private fun interpretUpdateEvent(
-        bridge: PhilipsHueBridgeInfo,
-        event: PHv2ResourceServerSentEvent
-    ) {
-        event.data.forEach { eventDatum ->
-            // What kind of device changed?
-            when (eventDatum.type) {
-                RTYPE_LIGHT -> {
-                    val light = findLightFromId(eventDatum.owner!!.rid, bridge)
-                    if (light == null) {
-                        Log.e(TAG, "unable to find changed light in interpretEvent()!")
-                    } else {
-                        // yep, there is indeed a light. What changed?
-                        Log.d(
-                            TAG,
-                            "updating light event (id = ${light.lightId}, deviceId = ${light.deviceId})"
-                        )
-                        if (eventDatum.on != null) {
-                            // On/Off changed.  Set the light approprately.
-                            light.state.on = eventDatum.on.on
-                        }
-
-                        if (eventDatum.dimming != null) {
-                            light.state.bri = eventDatum.dimming.brightness
-                        }
-
-                        // todo: handle other changes to light
-                    }
-                }
-
-                RTYPE_GROUP_LIGHT -> {
-                    Log.d(TAG, "updating grouped_light event. owner = ${eventDatum.owner}")
-
-                    // figure out what rtype the owner of this grouped_light event is
-                    when (eventDatum.owner?.rtype) {
-                        RTYPE_PRIVATE_GROUP -> {
-                            // todo
-                            Log.e(TAG, "implement me!!!")
-                        }
-
-                        RTYPE_BRIDGE_HOME -> {
-                            // todo
-                            Log.e(TAG, "implement me!!!")
-                        }
-
-                        RTYPE_ROOM -> {
-                            // Ah, the owner is a room.  Signal that room to change according to the event.
-                            val roomId = eventDatum.owner.rid
-                            val room = findRoomFromId(roomId, bridge)
-                            if (room != null) {
-                                if (eventDatum.dimming != null) {
-                                    room.brightness = eventDatum.dimming.brightness
-                                }
-                                if (eventDatum.on != null) {
-                                    room.on = eventDatum.on.on
-                                }
-                            } else {
-                                Log.e(
-                                    TAG,
-                                    "Error in interpretEvent()--can't find room that owns grouped_light event. Aborting!"
-                                )
-                            }
-                        }
-                    }
-                }
-
-                RTYPE_ROOM -> {
-                    // todo: implement rooms
-                    Log.e(TAG, "sse updating room not implemented")
-                }
-
-                RTYPE_ZONE -> {
-                    // todo: implement zones
-                    Log.e(TAG, "sse updating zone not implemented")
-                }
-            } // when (eventDatum.type)
-        }
-    }
-
-    /**
-     * Interprets an ADD sse that was sent from a bridge.
-     *
-     * @param   bridge      The bridge that sent the event
-     *
-     * @param   event       The event it sent (should be an ADD)
-     *
-     * side effects
-     *  - aspects of this bridge will change based on the event.  For
-     *  example: a room's brightness and the status of its light can change.
-     */
-    fun interpretAddEvent(
-        bridge: PhilipsHueBridgeInfo,
-        event: PHv2ResourceServerSentEvent
-    ) {
-        // double check to make sure this is an Add event
-        if (event.type != EVENT_ADD) {
-            Log.e(TAG, "interpretAddEvent() trying to interpret something else: ${event.type}! Aborting.")
-            return
-        }
-
-        // go through the data and work on each
-        event.data.forEach { eventDatum ->
-            when (eventDatum.type) {
-                RTYPE_LIGHT -> {
-                    // todo: add light
-                    Log.e(TAG, "sse adding light not implemented")
-                }
-
-                RTYPE_GROUP_LIGHT -> {
-                    // todo: add grouped light
-                    Log.e(TAG, "sse adding grouped light not implemented")
-                }
-
-                RTYPE_ROOM -> {
-                    // todo: add room
-                    Log.e(TAG, "sse adding room not implemented")
-                }
-
-                RTYPE_ZONE -> {
-                    // todo add zoone
-                    Log.e(TAG, "sse adding zone not implemented")
-                }
-            }
-        }
-
-        // fixme
-        Log.e(TAG, "todo: implement interpeting ADD event")
-    }
-
-    /**
-     * Similar to [interpretUpdateEvent] and [interpretAddEvent], but for
-     * delete events.
-     */
-    fun interpretDeleteEvent(
-        bridge: PhilipsHueBridgeInfo,
-        event: PHv2ResourceServerSentEvent
-    ) {
-        // fixme
-        Log.e(TAG, "todo: implement interpeting DELETE event")
-
-    }
-
-    /**
-     * A bridge connection for sse has either begun or ended.  Make changes
-     * accordingly.
-     *
-     * @param   bridgeId        The bridge that changed.
-     *
-     * @param   isOpen          true -> bridge connection started
-     *                          false -> bridge connection close
-     */
-    private fun interpretOpenEvent(bridgeId: String, isOpen: Boolean) {
-        Log.d(TAG, "interpretOpenEvent() bridgeId = $bridgeId, isOpen = $isOpen")
-        val bridge = getLoadedBridgeFromId(bridgeId)
-        if (bridge == null) {
-            Log.e(TAG, "Can't find bridge in interpretOpenEvent(). Aborting!")
-            return
-        }
-
-        // rebuild the bridge list
-        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-        bridgeFlowSet.value.forEach { aBridge ->
-            // Is this the bridge in question?
-            if (aBridge.id == bridgeId) {
-                // yes, make the change, but to a copy (so the flow works correctly)
-                Log.d(TAG, "Changing aBridge.connected from ${aBridge.connected} to $isOpen")
-                val bridgeCopy = aBridge.copy(connected = isOpen)
-                newBridgeList.add(bridgeCopy)
-            }
-            else {
-                newBridgeList.add(aBridge)
-            }
-        }
-        // assign new Set
-        Log.d(TAG, "   - bridgeFlowSet should change")
-        _bridgeFlowSet.update { newBridgeList.toSet() }
-    }
+//    /**
+//     * Working completely by side effect, this analyses the result of a server-
+//     * sent event and changes the contents of the bridge data appropriately.
+//     *
+//     * @param   eventBridgeId   The id of the bridge that the event relates to
+//     *
+//     * @param   event           Data structure describing the event.
+//     *
+//     * side effects
+//     *  [bridgeFlowSet] - modified to reflect whatever changed according the the bridge's sse.
+//     */
+//    private fun interpretEvent(eventBridgeId: String, event: PHv2ResourceServerSentEvent) {
+//
+//        val eventBridge = getLoadedBridgeFromId(eventBridgeId)
+//        if (eventBridge == null) {
+//            Log.e(TAG, "Can't find the bridge in interpretEvent()! Aborting!")
+//            return
+//        }
+//
+//        Log.d(TAG, "interpretEvent()  eventBridge = ${eventBridge.id}")
+//        Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
+//        Log.d(TAG, "interpretEvent()  event.eventId = ${event.eventId}")
+//        Log.d(TAG, "interpretEvent()  event.data = ${event.data}")
+//
+//        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+//
+//        // rebuild the bridge list
+//        bridgeFlowSet.value.forEach { bridge ->
+//            // Is this the bridge in question?
+//            if (bridge.id == eventBridge.id) {
+//                // Yes, this is the bridge.  What kind of event was it?
+//                when (event.type) {
+//                    EVENT_UPDATE -> {
+//                        Log.v(TAG, "interpeting UPDATE event")
+//
+//                        interpretUpdateEvent(bridge, event)
+//                    }
+//
+//                    EVENT_ADD -> {
+//                        interpretAddEvent(bridge, event)
+//                    }
+//
+//                    EVENT_DELETE -> {
+//                        interpretDeleteEvent(bridge, event)
+//                    }
+//
+//                    EVENT_ERROR -> {
+//                        Log.e(TAG, "interpretEvent() - can't do anything with an error, skipping!")
+//                        return
+//                    }
+//
+//                    else -> {
+//                        Log.e(TAG, "Unknown event type!!! Aborting!")
+//                        return
+//                    }
+//                }
+//            }
+//
+//            // creating new bridge list for the flow to work properly
+//            newBridgeList.add(bridge)
+//        }
+//
+//        // for debugging purposes...
+//        Log.d(TAG, "-->Setting bridgeFlowSet to newBridgeSet. Viewmodel should be updating!")
+//        newBridgeList.forEach { bridge ->
+//            bridge.rooms.forEach { room ->
+//                Log.d(TAG, "   ${room.name}: on = ${room.on}, bri = ${room.brightness}")
+//            }
+//        }
+//        _bridgeFlowSet.update { newBridgeList.toSet() }
+//    }
+//
+//    /**
+//     * Interprets an UPDATE sse that was sent from a bridge.
+//     *
+//     * @param   bridge      The bridge that sent the event
+//     *
+//     * @param   event       The event it sent (should be an UPDATE)
+//     *
+//     * side effects
+//     *  - aspects of this bridge will change based on the event.  For
+//     *  example: a room's brightness and the status of its light can change.
+//     */
+//    private fun interpretUpdateEvent(
+//        bridge: PhilipsHueBridgeInfo,
+//        event: PHv2ResourceServerSentEvent
+//    ) {
+//        event.data.forEach { eventDatum ->
+//            // What kind of device changed?
+//            when (eventDatum.type) {
+//                RTYPE_LIGHT -> {
+//                    val light = findLightFromId(eventDatum.owner!!.rid, bridge)
+//                    if (light == null) {
+//                        Log.e(TAG, "unable to find changed light in interpretEvent()!")
+//                    } else {
+//                        // yep, there is indeed a light. What changed?
+//                        Log.d(
+//                            TAG,
+//                            "updating light event (id = ${light.lightId}, deviceId = ${light.deviceId})"
+//                        )
+//                        if (eventDatum.on != null) {
+//                            // On/Off changed.  Set the light approprately.
+//                            light.state.on = eventDatum.on.on
+//                        }
+//
+//                        if (eventDatum.dimming != null) {
+//                            light.state.bri = eventDatum.dimming.brightness
+//                        }
+//
+//                        // todo: handle other changes to light
+//                    }
+//                }
+//
+//                RTYPE_GROUP_LIGHT -> {
+//                    Log.d(TAG, "updating grouped_light event. owner = ${eventDatum.owner}")
+//
+//                    // figure out what rtype the owner of this grouped_light event is
+//                    when (eventDatum.owner?.rtype) {
+//                        RTYPE_PRIVATE_GROUP -> {
+//                            // todo
+//                            Log.e(TAG, "implement me!!!")
+//                        }
+//
+//                        RTYPE_BRIDGE_HOME -> {
+//                            // todo
+//                            Log.e(TAG, "implement me!!!")
+//                        }
+//
+//                        RTYPE_ROOM -> {
+//                            // Ah, the owner is a room.  Signal that room to change according to the event.
+//                            val roomId = eventDatum.owner.rid
+//                            val room = findRoomFromId(roomId, bridge)
+//                            if (room != null) {
+//                                if (eventDatum.dimming != null) {
+//                                    room.brightness = eventDatum.dimming.brightness
+//                                }
+//                                if (eventDatum.on != null) {
+//                                    room.on = eventDatum.on.on
+//                                }
+//                            } else {
+//                                Log.e(
+//                                    TAG,
+//                                    "Error in interpretEvent()--can't find room that owns grouped_light event. Aborting!"
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                RTYPE_ROOM -> {
+//                    // todo: implement rooms
+//                    Log.e(TAG, "sse updating room not implemented")
+//                }
+//
+//                RTYPE_ZONE -> {
+//                    // todo: implement zones
+//                    Log.e(TAG, "sse updating zone not implemented")
+//                }
+//            } // when (eventDatum.type)
+//        }
+//    }
+//
+//    /**
+//     * Interprets an ADD sse that was sent from a bridge.
+//     *
+//     * @param   bridge      The bridge that sent the event
+//     *
+//     * @param   event       The event it sent (should be an ADD)
+//     *
+//     * side effects
+//     *  - aspects of this bridge will change based on the event.  For
+//     *  example: a room's brightness and the status of its light can change.
+//     */
+//    fun interpretAddEvent(
+//        bridge: PhilipsHueBridgeInfo,
+//        event: PHv2ResourceServerSentEvent
+//    ) {
+//        // double check to make sure this is an Add event
+//        if (event.type != EVENT_ADD) {
+//            Log.e(TAG, "interpretAddEvent() trying to interpret something else: ${event.type}! Aborting.")
+//            return
+//        }
+//
+//        // go through the data and work on each
+//        event.data.forEach { eventDatum ->
+//            when (eventDatum.type) {
+//                RTYPE_LIGHT -> {
+//                    // todo: add light
+//                    Log.e(TAG, "sse adding light not implemented")
+//                }
+//
+//                RTYPE_GROUP_LIGHT -> {
+//                    // todo: add grouped light
+//                    Log.e(TAG, "sse adding grouped light not implemented")
+//                }
+//
+//                RTYPE_ROOM -> {
+//                    // todo: add room
+//                    Log.e(TAG, "sse adding room not implemented")
+//                }
+//
+//                RTYPE_ZONE -> {
+//                    // todo add zoone
+//                    Log.e(TAG, "sse adding zone not implemented")
+//                }
+//            }
+//        }
+//
+//        // fixme
+//        Log.e(TAG, "todo: implement interpeting ADD event")
+//    }
+//
+//    /**
+//     * Similar to [interpretUpdateEvent] and [interpretAddEvent], but for
+//     * delete events.
+//     */
+//    fun interpretDeleteEvent(
+//        bridge: PhilipsHueBridgeInfo,
+//        event: PHv2ResourceServerSentEvent
+//    ) {
+//        // fixme
+//        Log.e(TAG, "todo: implement interpeting DELETE event")
+//
+//    }
+//
+//    /**
+//     * A bridge connection for sse has either begun or ended.  Make changes
+//     * accordingly.
+//     *
+//     * @param   bridgeId        The bridge that changed.
+//     *
+//     * @param   isOpen          true -> bridge connection started
+//     *                          false -> bridge connection close
+//     */
+//    private fun interpretOpenEvent(bridgeId: String, isOpen: Boolean) {
+//        Log.d(TAG, "interpretOpenEvent() bridgeId = $bridgeId, isOpen = $isOpen")
+//        val bridge = getLoadedBridgeFromId(bridgeId)
+//        if (bridge == null) {
+//            Log.e(TAG, "Can't find bridge in interpretOpenEvent(). Aborting!")
+//            return
+//        }
+//
+//        // rebuild the bridge list
+//        val newBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+//        bridgeFlowSet.value.forEach { aBridge ->
+//            // Is this the bridge in question?
+//            if (aBridge.id == bridgeId) {
+//                // yes, make the change, but to a copy (so the flow works correctly)
+//                Log.d(TAG, "Changing aBridge.connected from ${aBridge.connected} to $isOpen")
+//                val bridgeCopy = aBridge.copy(connected = isOpen)
+//                newBridgeList.add(bridgeCopy)
+//            }
+//            else {
+//                newBridgeList.add(aBridge)
+//            }
+//        }
+//        // assign new Set
+//        Log.d(TAG, "   - bridgeFlowSet should change")
+//        _bridgeFlowSet.update { newBridgeList.toSet() }
+//    }
 
 
     /**

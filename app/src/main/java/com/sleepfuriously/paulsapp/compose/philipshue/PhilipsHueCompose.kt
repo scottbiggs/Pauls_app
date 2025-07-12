@@ -55,6 +55,7 @@ import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeModel
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 
@@ -77,8 +78,10 @@ import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
     philipsHueViewmodel: PhilipsHueViewmodel,
-    bridges: Set<PhilipsHueBridgeInfo>
+    bridges: List<PhilipsHueBridgeModel>
 ) {
+    Log.d(TAG, "ShowMainScreenPhilpipsHue(). bridges.size = ${bridges.size}")
+
     // the content
     Column(
         modifier = modifier
@@ -95,8 +98,7 @@ fun ShowMainScreenPhilipsHue(
         )
 
         DrawBridgeContents(
-//            bridgeInfoSet = philipsHueViewmodel.philipsHueBridgesCompose,
-            bridges = bridges,
+            bridgeModels = bridges,
             viewmodel = philipsHueViewmodel
         )
     }
@@ -119,10 +121,13 @@ fun ShowMainScreenPhilipsHue(
 
 @Composable
 private fun DrawBridgeContents(
-    bridges: Set<PhilipsHueBridgeInfo>,
+    bridgeModels: List<PhilipsHueBridgeModel>,
     viewmodel: PhilipsHueViewmodel
 ) {
-    Log.d(TAG, "DrawBridgeContents() start")
+    Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridgeModels.size}")
+    bridgeModels.forEach { model ->
+        Log.d(TAG, "    ${model.bridge.value}")
+    }
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
     LazyVerticalGrid(
@@ -141,73 +146,77 @@ private fun DrawBridgeContents(
         //      - bridge info
         //      - delete bridge
         //  - grid of all the rooms on the bridge
-        bridges.forEach { bridgeInfo ->
-
-            item(span = { GridItemSpan(this.maxLineSpan) }) {
-                DrawBridgeSeparator(bridgeInfo, viewmodel)
-            }
-
-            // The first item (which has the name of the bridge)
-            // will take the entire row of a grid.
-            item(
-                span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        enabled = bridgeInfo.active,
-                        selected = bridgeInfo.connected,
-                        onClick = { },
-                    )
-                    DrawBridgeTitle(
-                        text = stringResource(
-                            id = R.string.ph_bridge_name,
-                            bridgeInfo.labelName
-                        )
-                    )
-                }
-            }
-
-            if (bridgeInfo.rooms.size == 0) {
-                // no rooms to display
+        bridgeModels.forEach { bridgeModel ->
+            val bridgeInfo = bridgeModel.bridge.value
+            if (bridgeInfo != null) {
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    Text(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 8.dp, end = 8.dp),
-                        text = noRoomsFound,
-                        style = MaterialTheme.typography.labelLarge,
-                        textAlign = TextAlign.Center
-                    )
+                    DrawBridgeSeparator(bridgeInfo, viewmodel)
                 }
-            } else {
-                // yes, there are rooms to display
-                Log.d(TAG, "DrawBridgeContents: updating display of ${bridgeInfo.rooms.size} rooms")
-                bridgeInfo.rooms.forEach { room ->
-                    Log.d(TAG, "DrawBridgeContents() - drawing room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
-                    item {
-                        DisplayPhilipsHueRoom(
-                            roomName = room.name,
-                            illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
-                            lightSwitchOn = room.on,
-                            roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
-                                val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
-                                Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
-                                viewmodel.changeRoomBrightness(
-                                    (newIllumination * MAX_BRIGHTNESS).toInt(),
-                                    newSwitchOn,
-                                    room,
-                                    bridgeInfo
-                                )
-                            },
-                            showScenesFunction = {
-                                viewmodel.showScenes(bridgeInfo, room)
-                            }
+
+                // The first item (which has the name of the bridge)
+                // will take the entire row of a grid.
+                item(
+                    span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            enabled = bridgeInfo.active,
+                            selected = bridgeInfo.connected,
+                            onClick = { },
+                        )
+                        DrawBridgeTitle(
+                            text = stringResource(
+                                id = R.string.ph_bridge_name,
+                                bridgeInfo.labelName
+                            )
                         )
                     }
                 }
+
+                if (bridgeInfo.rooms.isEmpty()) {
+                    // no rooms to display
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 8.dp, end = 8.dp),
+                            text = noRoomsFound,
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    // yes, there are rooms to display
+                    Log.d(TAG, "DrawBridgeContents: updating display of ${bridgeInfo.rooms.size} rooms")
+                    bridgeInfo.rooms.forEach { room ->
+                        Log.d(TAG, "DrawBridgeContents() - drawing room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
+                        item {
+                            DisplayPhilipsHueRoom(
+                                roomName = room.name,
+                                illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
+                                lightSwitchOn = room.on,
+                                roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
+                                    val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
+                                    Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
+                                    viewmodel.changeRoomBrightness(
+                                        (newIllumination * MAX_BRIGHTNESS).toInt(),
+                                        newSwitchOn,
+                                        room,
+                                        bridgeInfo
+                                    )
+                                },
+                                showScenesFunction = {
+                                    viewmodel.showScenes(bridgeInfo, room)
+                                }
+                            )
+                        }
+                    }
+                }
+
             }
+
         }
     }
 
@@ -527,7 +536,7 @@ private fun DrawMainPhilipsHueAddBridgeFab(
 ) {
     // Add button to add a new bridge (if there are no active bridges, then
     // show the extended FAB)
-    if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
+    if (viewmodel.philipsHueBridgeModelsCompose.isEmpty()) {
         ExtendedFloatingActionButton(
             modifier = modifier
                 .padding(top = 8.dp, end = 38.dp),

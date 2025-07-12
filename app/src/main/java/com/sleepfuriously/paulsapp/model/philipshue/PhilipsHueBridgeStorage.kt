@@ -219,24 +219,26 @@ object PhilipsHueBridgeStorage {
      *              False - some problem prevented saving
      */
     fun saveBridge(
-        bridge: PhilipsHueBridgeInfo,
+        bridgeId: String,
+        bridgeipAddress: String,
+        newToken: String,
         synchronize: Boolean = false,
         ctx: Context
     ) : Boolean {
 //        Log.d(TAG, "saveBridge(): ${bridge.id}")
 
-        if (saveBridgeId(bridge.id, synchronize, ctx) == false) {
-            Log.e(TAG, "Problem saving id in saveBridge($bridge) - aborting!")
+        if (saveBridgeId(bridgeId, synchronize, ctx) == false) {
+            Log.e(TAG, "Problem saving id in saveBridge(id = $bridgeId) - aborting!")
             return false
         }
 
-        if (saveBridgeIp(bridge.id, bridge.ipAddress, synchronize, ctx) == false) {
-            Log.e(TAG, "Can't save the IP of the bridge in saveBridge($bridge) - aborting!")
+        if (saveBridgeIp(bridgeId, bridgeipAddress, synchronize, ctx) == false) {
+            Log.e(TAG, "Can't save the IP of the bridge in saveBridge(id = $bridgeId) - aborting!")
             return false
         }
 
-        if (saveBridgeToken(bridge.id, bridge.token, synchronize, ctx) == false) {
-            Log.e(TAG, "Can't save the token of the bridge in saveBridge($bridge) - aborting!")
+        if (saveBridgeToken(bridgeId, newToken, synchronize, ctx) == false) {
+            Log.e(TAG, "Can't save the token of the bridge in saveBridge(id = $bridgeId) - aborting!")
             return false
         }
 

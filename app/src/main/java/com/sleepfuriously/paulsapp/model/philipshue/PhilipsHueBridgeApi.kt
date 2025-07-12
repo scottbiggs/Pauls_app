@@ -580,7 +580,7 @@ object PhilipsHueBridgeApi {
     ) : String {
 
         val fullAddress = "${prefix}$ip${suffix}"
-        Log.i(TAG,"fullAddress created. -> $fullAddress")
+        Log.i(TAG,"createFullddress() -> $fullAddress")
         return fullAddress
     }
 
