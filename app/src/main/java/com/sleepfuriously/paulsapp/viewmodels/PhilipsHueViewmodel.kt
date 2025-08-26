@@ -13,7 +13,6 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
@@ -71,9 +70,14 @@ class PhilipsHueViewmodel : ViewModel() {
      */
 //    var philipsHueBridgesCompose by mutableStateOf<List<PhilipsHueBridgeInfo>>(mutableListOf())
 //        private set
-    var philipsHueBridgeModelsCompose by mutableStateOf<List<PhilipsHueBridgeModel>>(mutableListOf())
-        private set
+//    var philipsHueBridgeModelsCompose by mutableStateOf<List<PhilipsHueBridgeModel>>(mutableListOf())
+//        private set
 
+    /**
+     * The bridges that are to be displayed in the views
+     */
+    var philipsHueBridgesCompose by mutableStateOf<List<PhilipsHueBridgeInfo>>(mutableListOf())
+        private set
 
     private val _crashNow = MutableStateFlow(false)
     /** when true, the Activity should call finish() */
@@ -119,11 +123,15 @@ class PhilipsHueViewmodel : ViewModel() {
             phModel = PhilipsHueModel(coroutineScope = viewModelScope)
             phModel.bridgeModelFlowList.collectLatest { bridgeModelList ->
                 Log.d(TAG, "collecting latest phModel.BridgeModelFlowList. size = ${bridgeModelList.size}")
+                val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModelList.forEach { model ->
                     Log.d(TAG, "    $model")
                     Log.d(TAG, "    -> ${model.bridge.value}")
+                    model.bridge.value?.let {
+                        tmpBridgeList.add(it)
+                    }
                 }
-                philipsHueBridgeModelsCompose = bridgeModelList
+                philipsHueBridgesCompose = tmpBridgeList
             }
         }
     }
@@ -180,7 +188,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * Runs all the initalization tests of the IoT devices.
      *
      * preconditions
-     *  [philipsHueBridgeModelsCompose] is active and working
+     *  [philipsHueBridgesCompose] is active and working
      *
      * side effects
      *   [_iotTestingState]      set to true when this is done
@@ -618,42 +626,54 @@ class PhilipsHueViewmodel : ViewModel() {
         _philipsHueTestStatus.value = TestStatus.TESTING
         _iotTestingErrorMsg.value = ""
 
+
+//        if (philipsHueBridgeModelsCompose.isEmpty()) {
+//            // nothing to do if there are no bridges. signal done w/ no problems.
+//            _philipsHueTestStatus.value = TestStatus.TEST_GOOD
+//            return
+//        }
         // Get all the bridges.
-        if (philipsHueBridgeModelsCompose.isEmpty()) {
-            // nothing to do if there are no bridges. signal done w/ no problems.
+        if (philipsHueBridgesCompose.isEmpty()) {
+            // no bridges--nothing to do.  signal done with no problems.
             _philipsHueTestStatus.value = TestStatus.TEST_GOOD
             return
         }
 
         // check each bridge one by one to see if its info is current
         // and active.
-        for (bridge in philipsHueBridgeModelsCompose) {
+//        for (bridge in philipsHueBridgeModelsCompose) {
+        for (bridge in philipsHueBridgesCompose) {
             // does this bridge have an ip?
-            val ip = bridge.bridgeIpAddress
+//            val ip = bridge.bridgeIpAddress
+            val ip = bridge.ipAddress
             if (ip.isBlank()) {
-                bridge.bridge.value?.active = false
+                bridge.active = false
                 continue
             }
 
             // check bridge is responding
-            if (doesBridgeRespondToIp(bridge.bridgeIpAddress) == false) {
-                bridge.bridge.value?.active = false
+//            if (doesBridgeRespondToIp(bridge.bridgeIpAddress) == false) {
+            if (doesBridgeRespondToIp(bridge.ipAddress) == false) {
+                bridge.active = false
                 continue
             }
 
             // At this point, the bridge is definitely active.  We may or
             // may not have a token that works though!
-            bridge.bridge.value?.active = true
+//            bridge.bridge.value?.active = true
+            bridge.active = true
 
             // Do we have a token?
-            val token = bridge.bridge.value?.token ?: ""
+//            val token = bridge.bridge.value?.token ?: ""
+            val token = bridge.token
             if (token.isBlank()) {
                 // no token, done with this bridge
                 continue
             }
 
             // check that token works
-            if (doesBridgeAcceptToken(bridge.bridgeIpAddress, token) == false) {
+//            if (doesBridgeAcceptToken(bridge.bridgeIpAddress, token) == false) {
+            if (doesBridgeAcceptToken(bridge.ipAddress, token) == false) {
                 continue
             }
 //            val tokenWorks = philipsHueRepository.doesPhilipsHueBridgeAcceptToken(bridge.ipAddress, token)

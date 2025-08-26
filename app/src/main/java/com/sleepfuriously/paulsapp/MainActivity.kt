@@ -130,7 +130,8 @@ class MainActivity : ComponentActivity() {
                 val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
                 val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
-                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgeModelsCompose
+//                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgeModelsCompose
+                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuff.collectAsStateWithLifecycle()
 
@@ -215,12 +216,13 @@ class MainActivity : ComponentActivity() {
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
         roomSceneData:  SceneData?,
-        philipsHueBridges: List<PhilipsHueBridgeModel>,
+//        philipsHueBridges: List<PhilipsHueBridgeModel>,
+        philipsHueBridges: List<PhilipsHueBridgeInfo>,
         modifier : Modifier = Modifier,
     ) {
 
-        Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgeModelsCompose.size}")
-        Log.d(TAG, "roomSceneTriple = $roomSceneData")
+        Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
+        Log.d(TAG, "roomSceneData = $roomSceneData")
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -497,10 +499,13 @@ class MainActivity : ComponentActivity() {
 
             // list known bridges
             Text("here the known bridges:")
-            viewmodel.philipsHueBridgeModelsCompose.forEach { bridgeModel ->
-                bridgeModel.bridge.value?.let { bridge ->
-                    Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
-                }
+//            viewmodel.philipsHueBridgeModelsCompose.forEach { bridgeModel ->
+//                bridgeModel.bridge.value?.let { bridge ->
+//                    Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
+//                }
+//            }
+            viewmodel.philipsHueBridgesCompose.forEach { bridge ->
+                Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
             }
 
 
