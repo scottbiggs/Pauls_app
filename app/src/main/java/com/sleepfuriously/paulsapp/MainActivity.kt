@@ -59,7 +59,6 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeModel
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -505,7 +504,7 @@ class MainActivity : ComponentActivity() {
 //                }
 //            }
             viewmodel.philipsHueBridgesCompose.forEach { bridge ->
-                Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
+                Text("   bridge ${bridge.v2Id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
             }
 
 

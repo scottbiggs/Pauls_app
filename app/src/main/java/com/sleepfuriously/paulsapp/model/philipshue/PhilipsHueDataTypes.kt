@@ -5,6 +5,12 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 
 /**
+ * todo - this file should be renamed PhilipsHueInterpretedDataTypes
+ *  remember to rename the [TAG] too
+ */
+
+
+/**
  * Information about a NEW bridge.  It's essentially the same
  * as [PhilipsHueBridgeInfo], but without a few things that
  * aren't needed while constructing a bridge.
@@ -36,30 +42,30 @@ data class PhilipsHueNewBridge(
  */
 data class PhilipsHueBridgeInfo(
     /** unique identifier for this bridge which comes from the philips hue v2 id*/
-    var id : String,
+    val v2Id : String,
     /** Name as printed on the bridge itself */
     var labelName : String,
     /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
-    var ipAddress : String = "",
+    val ipAddress : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
-    var token : String = "",
+    val token : String = "",
     /** When true, this bridge is in active use */
     var active : Boolean = false,
     /** Are we currently listening for events from this bridge? */
     var connected: Boolean,
     /** All the rooms controlled by this bridge */
-    var rooms: Set<PhilipsHueRoomInfo> = setOf(),
+    val rooms: Set<PhilipsHueRoomInfo> = setOf(),
     /** all the scenes for this bridge */
-    var scenes: List<PHv2Scene> = listOf(),
+    val scenes: List<PHv2Scene> = listOf(),
     /** all the zones for this bridge */
-    var zones: List<PHv2Zone> = listOf()
+    val zones: List<PHv2Zone> = listOf()
 ) {
     /**
      * This should cause the flow to update correctly.
      */
     override fun equals(other: Any?): Boolean {
         val otherBridge = other as PhilipsHueBridgeInfo
-        if (id != otherBridge.id) {
+        if (v2Id != otherBridge.v2Id) {
             return false
         }
         if (labelName != otherBridge.labelName) {
@@ -103,7 +109,7 @@ data class PhilipsHueBridgeInfo(
     }
 
     override fun hashCode(): Int {
-        var result = id.hashCode()
+        var result = v2Id.hashCode()
         result = 31 * result + labelName.hashCode()
         result = 31 * result + ipAddress.hashCode()
         result = 31 * result + token.hashCode()
@@ -121,7 +127,7 @@ data class PhilipsHueBridgeInfo(
          */
         operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
             return PhilipsHueBridgeInfo(
-                id = "",
+                v2Id = "",
                 labelName = newBridge.labelName,
                 ipAddress = newBridge.ip,
                 token = newBridge.token,

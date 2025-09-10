@@ -16,6 +16,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
@@ -108,6 +109,8 @@ class PhilipsHueViewmodel : ViewModel() {
     /** access to philips hue model */
     private lateinit var phModel : PhilipsHueModel
 
+    /** access to repository */
+    private var phRepository = PhilipsHueRepository(viewModelScope)
 
     //-------------------------
     //  init
@@ -126,7 +129,7 @@ class PhilipsHueViewmodel : ViewModel() {
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModelList.forEach { model ->
                     Log.d(TAG, "    $model")
-                    Log.d(TAG, "    -> ${model.bridge.value}")
+                    Log.d(TAG, "    -> ${model.bridge}")
                     model.bridge.value?.let {
                         tmpBridgeList.add(it)
                     }
@@ -513,7 +516,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // Get the name of the bridge (I'm using the printed name on the bridge itself)
             val v2bridge = PhilipsHueBridgeApi.getBridge(
-                bridgeIp = workingNewBridge!!.ip,
+                bridgeIpStr = workingNewBridge!!.ip,
                 token = workingNewBridge!!.token
             )
             if (v2bridge.hasData() == false) {

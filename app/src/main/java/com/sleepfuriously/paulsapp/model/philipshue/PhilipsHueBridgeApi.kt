@@ -5,13 +5,16 @@ import com.sleepfuriously.paulsapp.model.MyResponse
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Error
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLightIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceDeviceIndividual
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceDevicesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceGroupedLightsAll
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceLightsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceSceneIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceScenesAll
@@ -84,13 +87,16 @@ object PhilipsHueBridgeApi {
      *
      * This call is useful when you don't much info about the bridge yet.
      * You'll get that info here!
+     *
+     * @return  On error, error portion of [PHv2ResourceBridge] will be
+     *          filled in.
      */
     suspend fun getBridge(
-        bridgeIp: String,
+        bridgeIpStr: String,
         token: String
     ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {
         val url = createFullAddress(
-            ip = bridgeIp,
+            ip = bridgeIpStr,
             suffix = SUFFIX_GET_BRIDGE
         )
         val response = synchronousGet(
@@ -103,7 +109,7 @@ object PhilipsHueBridgeApi {
             return@withContext PHv2ResourceBridge(response.body)
         }
         else {
-            Log.e(TAG, "unable to get bridge info (ip = ${bridgeIp}!")
+            Log.e(TAG, "unable to get bridge info (ip = ${bridgeIpStr}!")
             Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
             return@withContext PHv2ResourceBridge(
                 errors = listOf(PHv2Error(description = response.message))
@@ -114,6 +120,49 @@ object PhilipsHueBridgeApi {
     //------------
     //  devices
     //
+
+    /**
+     * Gets all devices from a bridge.
+     *
+     * @return      List of all the devices on the given bridge or empty list
+     *              if none are found (including unresponsive bridge).
+     */
+    suspend fun getAllDevicesFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : List<PHv2Device> = withContext(Dispatchers.IO) {
+
+        val url = createFullAddress(
+            ip = bridgeIp,
+            suffix = SUFFIX_GET_DEVICE
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Make a list of the devices.
+            val deviceList = mutableListOf<PHv2Device>()
+
+            val devicesAll = PHv2ResourceDevicesAll(response.body)
+            devicesAll.data.forEach { device ->
+                deviceList.add(device)
+            }
+            Log.d(TAG, "getAllDevicesFromApi() return ${deviceList.size} devices")
+            return@withContext deviceList
+        }
+        else {
+            Log.e(TAG, "getAllDevicesFromApi() bad response from bridge (ip = ${bridgeIp}!")
+            Log.e(TAG, "   error code = ${response.code}")
+            Log.e(TAG, "   error message = ${response.message}")
+            return@withContext listOf()
+        }
+
+    }
+
     /**
      * Given a device's id (or RID), this will retrieve the data from
      * the bridge.  Essentially just sets up the API call for you.
@@ -258,6 +307,38 @@ object PhilipsHueBridgeApi {
         }
         // not found
         return@withContext null
+    }
+
+    /**
+     * Gets all the lights for the given bridge
+     */
+    suspend fun getAllLightsFromApi(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : PHv2ResourceLightsAll {
+
+        val url = createFullAddress(
+            ip = bridgeIp,
+            suffix = SUFFIX_GET_LIGHTS
+        )
+
+        val response = synchronousGet(
+            url = url,
+            header = Pair(HEADER_TOKEN_KEY, bridgeToken),
+            trustAll = true     // fixme: change when using secure stuff
+        )
+
+        if (response.isSuccessful) {
+            // We got a valid response.  Parse the body into our data structure
+            return PHv2ResourceLightsAll(JSONObject(response.body))
+        }
+        else {
+            Log.e(TAG, "getAllLightsFromApi() unable to get lights from bridge (ip = ${bridgeIp})!")
+            Log.e(TAG, "   error code = ${response.code}, error message = ${response.message}")
+            return PHv2ResourceLightsAll(
+                errors = listOf(PHv2Error(description = response.message))
+            )
+        }
     }
 
     /**

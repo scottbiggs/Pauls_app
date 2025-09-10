@@ -1,10 +1,15 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertPHv2Room
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLights
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Light
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_DELETE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ERROR
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_UPDATE
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +25,11 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_PRIVATE_GROUP
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ROOM
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
+import kotlinx.coroutines.withContext
 
 /**
- * Separates the bridge from the Philips Hue model.
+ * Represents a single Philips Hue bridge.  Communication to and from the bridge
+ * goes here.
  *
  * Usage
  *  - Instantiate with info that this can use to find the bridge (just an ID,
@@ -31,9 +38,9 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
  *
  *  - Receive flow.  Once the bridge is setup, it will start a stateflow to [bridge],
  *  which will notify all listeners about the state of the bridge.  Any changes will
- *  be sent through the flow.  Null means that there is no bridge (yet).
+ *  be sent through the flow.  Null means that the bridge is still gathering data.
  *
- *  - Connect SSE.  This tells the bridge to start receive server-sent events
+ *  - Connect SSE.  This tells the bridge to start receiving server-sent events
  *  to this class.  It's done automatically the first time if initialization was
  *  successful.  Disconnect with [disconnectSSE] and reconnect with [connectSSE].
  *  Use the [bridge] flow variable to see if the bridge is currently connected.
@@ -60,10 +67,44 @@ class PhilipsHueBridgeModel(
     //  flow data
     //-------------------------------------
 
-    private val _bridge = MutableStateFlow<PhilipsHueBridgeInfo?>(null)
+    private val _bridge = MutableStateFlow<PhilipsHueBridgeInfo>(
+        PhilipsHueBridgeInfo(
+            v2Id = bridgeId,
+            labelName = "",     // todo make sure this is retrieved bridge itself later
+            ipAddress = bridgeIpAddress,
+            token = bridgeToken,
+            active = false,
+            connected = false,
+            rooms = emptySet(),
+            scenes = emptyList(),
+            zones = emptyList()
+        ))
     /** Flow for this bridge. Collectors will be notified of changes to this bridge. */
     val bridge = _bridge.asStateFlow()
 
+    private val _devices = MutableStateFlow<List<PHv2Device>>(emptyList())
+    /** master list of all devices on this bridge */
+    val devices = _devices.asStateFlow()
+
+    private val _lights = MutableStateFlow<List<PhilipsHueLightInfo>>(emptyList())
+    /** master list of all lights for this bridge */
+    val lights = _lights.asStateFlow()
+
+    private val _groupedLights = MutableStateFlow<List<PHv2GroupedLight>>(emptyList())
+    /** master list of all the light groups for this bridge */
+    val groupedLights = _groupedLights.asStateFlow()
+
+    private val _rooms = MutableStateFlow<List<PhilipsHueRoomInfo>>(listOf())
+    /** list of rooms for this bridge */
+    val rooms = _rooms.asStateFlow()
+
+    private val _scenes = MutableStateFlow<List<PHv2Scene>>(listOf())
+    /** list of all scenes for this bridge */
+    val scenes = _scenes.asStateFlow()
+
+    private val _zones = MutableStateFlow<List< PHv2Zone>>(listOf())
+    /** list of all zones for this bridge */
+    val zones = _zones.asStateFlow()
 
     //-------------------------------------
     //  class data
@@ -89,53 +130,37 @@ class PhilipsHueBridgeModel(
         coroutineScope: CoroutineScope
     ) : PhilipsHueBridgeModel {
         return PhilipsHueBridgeModel(
-            bridgeId = bridgeInfo.id,
-            bridgeIpAddress = bridgeInfo.id,
+            bridgeId = bridgeInfo.v2Id,
+            bridgeIpAddress = bridgeInfo.v2Id,
             bridgeToken = bridgeInfo.token,
             coroutineScope = coroutineScope
         )
     }
 
+
     /**
-     * Called every time this class is instantiated.  Does NOT do the work of
-     * retrieving info from the long-term storage (that stuff is done in [PhilipsHueBridgeStorage]).
+     * Called every time this class is instantiated.  Does NOT do the
+     * work of retrieving info from the long-term storage (that stuff
+     * is done in [PhilipsHueBridgeStorage]).
      */
     init {
         Log.d(TAG, "init() begin")
         coroutineScope.launch(Dispatchers.IO) {
 
-            // grab the bridge data, but only if the bridge is active
-            if (isBridgeActive(
-                bridgeIp = bridgeIpAddress,
-                bridgeToken = bridgeToken
-            )) {
-                _bridge.update {
-                    Log.d(TAG, "init(): gathering data from bridge")
-                    val tmpBridge = loadAllBridgeDataFromApi()
+            refresh()
 
-                    // start sse (but only if the bridge is actually here!)
-                    if (tmpBridge != null) {
-                        // initialize server-sent events.
-                        Log.d(TAG, "init(): initializing sse")
-                        phSse = PhilipsHueSSE(
-                            bridgeId = bridgeId,
-                            bridgeIpAddress = bridgeIpAddress,
-                            bridgeToken = bridgeToken,
-                            coroutineScope = coroutineScope
-                        )
-                        Log.d(TAG, "init(): connecting sse")
-                        connectSSE()
-                    }
-                    else {
-                        Log.d(TAG, "init(): tmpBridge is null! Nothing to do, sigh.")
-                    }
+            // start sse, but only if the bridge is active
+            if (bridge.value.active) {
 
-                    // finally return the new bridge data structure so it can flow
-                    Log.d(TAG, "init(): initial update of _bridge with tmpBridge")
-                    tmpBridge
-                }
-
-                // and finally start collecting the server-sent events
+                // initialize server-sent events.
+                Log.d(TAG, "init(): initializing sse")
+                phSse = PhilipsHueSSE(
+                    bridgeId = bridgeId,
+                    bridgeIpAddress = bridgeIpAddress,
+                    bridgeToken = bridgeToken,
+                    coroutineScope = coroutineScope
+                )
+                connectSSE()
                 Log.d(TAG, "init(): collecting sse")
                 while (true) {
                     phSse.serverSentEvent.collect { sseEvent ->
@@ -145,20 +170,6 @@ class PhilipsHueBridgeModel(
                     phSse.openEvent.collect { openEvent ->
                         interpretOpenEvent(openEvent)
                     }
-                }
-            }
-            else {
-                // the bridge is not active
-                _bridge.update {
-                    Log.d(TAG, "init(): bridge not active. Creating dummy bridge.")
-                    PhilipsHueBridgeInfo(
-                        id = bridgeId,
-                        labelName = bridgeId,
-                        ipAddress = bridgeIpAddress,
-                        token = bridgeToken,
-                        active = false,
-                        connected = false,
-                    )
                 }
             }
         }
@@ -195,6 +206,95 @@ class PhilipsHueBridgeModel(
     //-------------------------------------
     //  public functions
     //-------------------------------------
+
+    /**
+     * Checks the bridge status and refreshes all the bridge data using the
+     * api.
+     *
+     * NOTE:
+     *  Does NOT do anything with the sse (server-sent events)!
+     *
+     * side effects
+     *  - numerous!!!
+     */
+    suspend fun refresh() = withContext(Dispatchers.IO) {
+
+        Log.d(TAG, "refresh(): gathering data from bridge")
+
+        // check to see if the bridge is active
+        if (isBridgeActive(
+                bridgeIpStr = bridgeIpAddress,
+                bridgeToken = bridgeToken
+            )
+        ) {
+            //
+            // yep, active. so let's update our flows
+            //
+
+            _devices.update {
+                PhilipsHueBridgeApi.getAllDevicesFromApi(
+                    bridgeIp = bridgeIpAddress,
+                    bridgeToken = bridgeToken
+                )
+            }
+
+            _lights.update {
+                val v2LightsList = PhilipsHueBridgeApi.getAllLightsFromApi(
+                    bridgeIp = bridgeIpAddress,
+                    bridgeToken = bridgeToken
+                )
+
+                val newLightList = mutableListOf<PhilipsHueLightInfo>()
+                v2LightsList.data.forEach { v2Light ->
+                    newLightList.add(convertV2Light(v2Light))
+                }
+                newLightList
+            }
+
+            _groupedLights.update {
+                val apiGroup = PhilipsHueBridgeApi.getAllGroupedLightsFromApi(
+                    bridgeIp = bridgeIpAddress,
+                    bridgeToken = bridgeToken
+                )
+
+                if (apiGroup != null) {
+                    convertV2GroupedLights(
+                        v2GroupedLists = apiGroup,
+                        bridgeIp = bridgeIpAddress,
+                        bridgeToken = bridgeToken
+                    )
+                }
+                else {
+                    emptyList()
+                }
+            }
+
+            _rooms.update {
+                loadRoomsFromApi(
+                    bridgeIp = bridgeIpAddress,
+                    bridgeToken = bridgeToken
+                ) ?: emptyList()
+            }
+
+            // finally update the flow
+            _bridge.update {
+                it.copy(
+                    active = true,
+                    rooms = rooms.value.toSet(),
+                    scenes = scenes.value,
+                    zones = zones.value
+                )
+            }
+
+        } else {
+            // no longer connected.  Remember to turn off sse (just in case)!
+            _bridge.update {
+                it.copy(
+                    active = false
+                )
+            }
+        }
+    }
 
     /**
      * Checks to see if this bridge is responding to its ip.  This tests
@@ -243,75 +343,6 @@ class PhilipsHueBridgeModel(
     //-------------------------------------
     //  private functions
     //-------------------------------------
-
-    /**
-     * Asks the bridge all about itself.  The data is then converted and stored
-     * for quick retrieval.
-     *
-     * If there's an error, a message is spit out, and null is returned.
-     *
-     * @param   connected       Currently receiving sse from bridge. Defaults to False.
-     *
-     * Note:    This is a stand-alone function.  Doesn't involve flows or save
-     *          anything to this class (no side effects).
-     */
-    private suspend fun loadAllBridgeDataFromApi(
-        connected: Boolean = false
-    ) : PhilipsHueBridgeInfo? {
-
-        // is this bridge active?
-        val active = isBridgeActive(
-            bridgeIp = bridgeIpAddress,
-            bridgeToken = bridgeToken
-        )
-        if (active == false) {
-            Log.v(TAG, "getDataFromBridgeApi(), but bridge is not responding.")
-            return PhilipsHueBridgeInfo(
-                id = bridgeId,
-                labelName = "",
-                ipAddress = bridgeIpAddress,
-                token = bridgeToken,
-                active = false,
-                connected = false
-            )
-        }
-
-        // get the info from bridge and check for errors
-        val v2Bridge = PhilipsHueBridgeApi.getBridge(bridgeIpAddress, bridgeToken)
-        val apiErr = v2Bridge.getError()
-        if (apiErr.isNotEmpty()) {
-            // yep, there's an error here
-            Log.d(TAG, "getDataFromBridgeApi() error: $apiErr")
-            return null
-        }
-
-        // convert to our bridge data struct
-        if (v2Bridge.hasData()) {
-            val bridgeInfo = PhilipsHueDataConverter.convertV2Bridge(
-                v2Bridge = v2Bridge.getData(),
-                bridgeIp = bridgeIpAddress,
-                token = bridgeToken,
-                active = true,
-                connected = connected,
-            )
-
-            // now the big things (rooms, zones, scenes)
-            bridgeInfo.rooms = loadRoomsFromApi(
-                bridgeIp = bridgeIpAddress,
-                bridgeToken = bridgeToken
-            )?.toMutableSet() ?: mutableSetOf()
-
-            bridgeInfo.scenes = loadScenesFromApi().toMutableList() ?: mutableListOf()
-            bridgeInfo.zones = loadZonesFromApi().toMutableList() ?: mutableListOf()
-
-            return bridgeInfo
-        }
-
-        else {
-            Log.d(TAG, "Cannot convert bridge data to struct as there's no data!")
-            return null
-        }
-    }
 
     /**
      * Asks the bridge to get all the rooms.  Caller should know what to do with
@@ -572,7 +603,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "interpretOpenEvent() isOpen = $isOpen")
 
         _bridge.update {
-            bridge.value?.copy(connected = isOpen)
+            bridge.value.copy(connected = isOpen)
         }
     }
 
@@ -596,7 +627,7 @@ class PhilipsHueBridgeModel(
             }
 
             // finally make a new version of the bridge using the new rooms
-            it?.copy(rooms = newRoomList.toSet(), )
+            it.copy(rooms = newRoomList.toSet(), )
         }
     }
 

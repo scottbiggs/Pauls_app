@@ -24,6 +24,7 @@ import org.json.JSONException
  * The events will be consumed by [PhilipsHueRepository] which will
  * spit 'em out to whomever needs them.
  */
+@Deprecated("use PhilipsHueSSE instead")
 class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
 
     //---------------------------------
@@ -226,21 +227,21 @@ class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
             .url("https://${bridge.ipAddress}/eventstream/clip/v2")
             .header("Accept", "text/event-stream")
             .addHeader("hue-application-key", bridge.token)
-            .tag(bridge.id)     // identifies this request (within the EventSource)
+            .tag(bridge.v2Id)     // identifies this request (within the EventSource)
             .build()
 
         // Check to see if this bridge is already on our list.
         // if so, remove it (we'll make a new one).
         val foundEventSource: Pair<String, EventSource>? = null
         for(i in 0 until eventSourceList.size) {
-            if (eventSourceList[i].first == bridge.id) {
+            if (eventSourceList[i].first == bridge.v2Id) {
                 eventSourceList.removeAt(i)
                 break
             }
         }
 
         // making new eventsource
-        val newEventSource = Pair(bridge.id,
+        val newEventSource = Pair(bridge.v2Id,
             EventSources.createFactory(getAllTrustingSseClient())   // todo: make secure
                 .newEventSource(
                     request = request,

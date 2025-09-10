@@ -55,7 +55,6 @@ import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeModel
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 
@@ -159,9 +158,9 @@ private fun DrawBridgeContents(
         bridges.forEach { bridgeInfo ->
 //            val bridgeInfo = bridgeModel.bridge.value
 //            if (bridgeInfo != null) {
-//                item(span = { GridItemSpan(this.maxLineSpan) }) {
-//                    DrawBridgeSeparator(bridgeInfo, viewmodel)
-//                }
+            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                DrawBridgeSeparator(bridgeInfo, viewmodel)
+            }
 
             // The first item (which has the name of the bridge)
             // will take the entire row of a grid.
@@ -363,7 +362,7 @@ private fun DotDotDotBridgeMenu(
                 },
                 onConfirm = {
                     showDeleteDialog = false
-                    viewmodel.deleteBridge(bridge.id)    // this spurns a new coroutine and returns immediately
+                    viewmodel.deleteBridge(bridge.v2Id)    // this spurns a new coroutine and returns immediately
                 },
                 titleText = stringResource(R.string.delete_bridge_confirm_title),
                 bodyText = stringResource(R.string.delete_bridge_confirm_body),
@@ -402,7 +401,7 @@ private fun ShowBridgeInfoDialog(
                     item {
                         DrawBridgeInfoLine(
                             stringResource(R.string.id),
-                            bridge.id
+                            bridge.v2Id
                         )
                     }
 

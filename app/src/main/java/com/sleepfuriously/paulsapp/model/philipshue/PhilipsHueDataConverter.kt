@@ -7,9 +7,12 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Light
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceGroupedLightsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceLightsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceRoomsAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
@@ -88,7 +91,7 @@ object PhilipsHueDataConverter {
         connected: Boolean = false
     ) : PhilipsHueBridgeInfo {
         return PhilipsHueBridgeInfo(
-            id = v2Bridge.id,
+            v2Id = v2Bridge.id,
             ipAddress = bridgeIp,
             labelName = v2Bridge.printedNameOnDevice,
             token = token,
@@ -157,12 +160,30 @@ object PhilipsHueDataConverter {
     }
 
     /**
+     * Takes a [PHv2ResourceGroupedLightsAll] and deconstructs into a list
+     * of [PHv2GroupedLight]s.  This is way too easy!
+     */
+    fun convertV2GroupedLights(
+        v2GroupedLists: PHv2ResourceGroupedLightsAll,
+        bridgeIp: String,
+        bridgeToken: String
+    ) : List<PHv2GroupedLight> {
+
+        return v2GroupedLists.data
+    }
+
+    /**
      * Converts a [PHv2Room] datum into a [PhilipsHueRoomInfo]
      * instance.  This may require gathering more info from the
      * bridge, hence the suspend.
      *
-     * @param   bridge      The bridge that this is attached to.
+     * @param   v2Room      A room on the bridge as returned directly
+     *                      from the API call.
+     *
+     * @param   bridgeIp    The bridge that this is attached to.
      *                      It better be active!
+     *
+     * @param   bridgeToken Token for this bridge
      */
     suspend fun convertPHv2Room(
         v2Room: PHv2Room,

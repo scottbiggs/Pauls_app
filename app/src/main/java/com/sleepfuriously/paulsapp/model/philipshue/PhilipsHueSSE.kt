@@ -24,6 +24,7 @@ import org.json.JSONException
  * than my first try.  This class only deals with one bridge, but can be
  * instantiated as many times as needed.
  */
+@OptIn(ExperimentalStdlibApi::class)
 class PhilipsHueSSE(
     private val bridgeId: String,
     private val bridgeIpAddress: String,
@@ -239,6 +240,13 @@ class PhilipsHueSSE(
     fun stopSSE() {
         eventSource?.cancel()
         eventSource = null
+    }
+
+    /**
+     * Tells caller if sse is running
+     */
+    fun isSseRunning() : Boolean {
+        return eventSource != null
     }
 
     //---------------------------------

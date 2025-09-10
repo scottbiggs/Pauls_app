@@ -307,11 +307,11 @@ suspend fun isBridgeActive(bridge: PhilipsHueBridgeInfo) : Boolean = withContext
  * the ip and token (not the whole bridge).
  */
 suspend fun isBridgeActive(
-    bridgeIp: String,
+    bridgeIpStr: String,
     bridgeToken: String
 ) : Boolean = withContext(Dispatchers.IO) {
-    if ((doesBridgeRespondToIp(ip = bridgeIp)) &&
-        (doesBridgeAcceptToken(bridgeIp, bridgeToken))) {
+    if ((doesBridgeRespondToIp(ip = bridgeIpStr)) &&
+        (doesBridgeAcceptToken(bridgeIpStr, bridgeToken))) {
         return@withContext true
     }
 

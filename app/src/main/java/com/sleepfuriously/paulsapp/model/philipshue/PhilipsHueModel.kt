@@ -11,7 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -41,12 +41,8 @@ import kotlinx.coroutines.withContext
  *    set...() in their function names.  Long-term data storage use load...()
  *    and save...().  Delete functions are always both short and long-term.
  *
- *  - Functions that access a bridge always are appended with ...[From|To]Api().
- *
- *  - Long-term functions are usually safe to run on the
- *    Main thread (unless you do several quickly).  For those there are command
- *    line parameters to make these operations synchronous, and of course you
- *    should to these off the Main thread.
+ *  - Functions that access a bridge's version of the data always are appended
+ *    with ...[From|To]Api() since these use the Philips Hue api.
  *
  * ---------------------------------------------------
  *
@@ -118,6 +114,9 @@ class PhilipsHueModel(
     // todo: move this to PhilipsHueBridgeModel
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
+    /** true during initialization */
+    private var initializingLock = false
+
     //-------------------------------------
     //  initializations
     //-------------------------------------
@@ -134,13 +133,13 @@ class PhilipsHueModel(
         //
 
         // Needs to run off the main thread
-        runBlocking(Dispatchers.IO) {
+        coroutineScope.launch(Dispatchers.IO) {
 
             // 1. Load bridge ids from prefs
             //
             val bridgeIdsFromPrefs = PhilipsHueBridgeStorage.loadAllBridgeIds(ctx)
             if (bridgeIdsFromPrefs.isNullOrEmpty()) {
-                return@runBlocking
+                return@launch
             }
 
             /**  temp holder */
@@ -174,7 +173,7 @@ class PhilipsHueModel(
                 }
 
                 val bridge = PhilipsHueBridgeInfo(
-                    id = id,
+                    v2Id = id,
                     labelName = name,
                     ipAddress = ip,
                     token = token,
@@ -193,7 +192,7 @@ class PhilipsHueModel(
             val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
             workingBridgeSet.forEach { workingBridge ->
                 tmpBridgeModels.add(PhilipsHueBridgeModel(
-                    bridgeId = workingBridge.id,
+                    bridgeId = workingBridge.v2Id,
                     bridgeIpAddress = workingBridge.ipAddress,
                     bridgeToken = workingBridge.token,
                     coroutineScope = coroutineScope
@@ -205,7 +204,7 @@ class PhilipsHueModel(
                 Log.d(TAG, "updating _bridgeModelFlowList to $tmpBridgeModels, size = ${tmpBridgeModels.size}")
                 tmpBridgeModels.forEach { bridgeModel ->
                     Log.d(TAG, "    id = ${bridgeModel.bridgeId}")
-                    Log.d(TAG, "    bridge.value = ${bridgeModel.bridge.value}")
+                    Log.d(TAG, "    bridge.value = ${bridgeModel.bridge}")
                 }
                 tmpBridgeModels
             }
@@ -290,7 +289,7 @@ class PhilipsHueModel(
     fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
 
         if (bridge.connected) {
-            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.id}")
+            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.v2Id}")
             return
         }
 
@@ -305,8 +304,8 @@ class PhilipsHueModel(
      * which will be processed.
      */
     fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.id} at ${bridge.ipAddress}")
-        phServerSentEvents.cancelSSE(bridge.id)
+        Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
+        phServerSentEvents.cancelSSE(bridge.v2Id)
     }
 
     //-------------------------------------
@@ -416,7 +415,7 @@ class PhilipsHueModel(
         bridgeModelFlowList.value.forEach { testBridge ->
             val testBridgeInfo = testBridge.bridge.value
             if (testBridgeInfo != null) {
-                if (testBridgeInfo.id == bridgeId) {
+                if (testBridgeInfo.v2Id == bridgeId) {
                     return testBridgeInfo
                 }
             }
@@ -524,7 +523,7 @@ class PhilipsHueModel(
             // find the index of the bridge to remove
             var index = -1
             for (i in 0 until bridgeModelFlowList.value.size) {
-                if (bridgeModelFlowList.value[i].bridge.value?.id == bridgeId) {
+                if (bridgeModelFlowList.value[i].bridge.value?.v2Id == bridgeId) {
                     index = i
                     break
                 }
