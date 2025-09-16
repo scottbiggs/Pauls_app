@@ -1,7 +1,7 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertPHv2Room
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Light
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
@@ -67,10 +67,10 @@ class PhilipsHueBridgeModel(
     //  flow data
     //-------------------------------------
 
-    private val _bridge = MutableStateFlow<PhilipsHueBridgeInfo>(
+    private val _bridge = MutableStateFlow(
         PhilipsHueBridgeInfo(
             v2Id = bridgeId,
-            labelName = "",     // todo make sure this is retrieved bridge itself later
+            bridgeId = "",     // todo make sure this is retrieved by bridge itself later
             ipAddress = bridgeIpAddress,
             token = bridgeToken,
             active = false,
@@ -228,8 +228,14 @@ class PhilipsHueBridgeModel(
             )
         ) {
             //
-            // yep, active. so let's update our flows
+            // yep, active. continue
             //
+
+            val v2bridgeResource = getBridgeApi(
+                bridgeIpStr = bridgeIpAddress,
+                token = bridgeToken
+            )
+            val bridgeId = v2bridgeResource.getName()
 
             _devices.update {
                 PhilipsHueBridgeApi.getAllDevicesFromApi(
@@ -278,11 +284,13 @@ class PhilipsHueBridgeModel(
 
             // finally update the flow
             _bridge.update {
+                Log.d(TAG, "refresh() - updating _bridge bridgeId = $bridgeId")
                 it.copy(
                     active = true,
                     rooms = rooms.value.toSet(),
                     scenes = scenes.value,
-                    zones = zones.value
+                    zones = zones.value,
+                    bridgeId = bridgeId
                 )
             }
 

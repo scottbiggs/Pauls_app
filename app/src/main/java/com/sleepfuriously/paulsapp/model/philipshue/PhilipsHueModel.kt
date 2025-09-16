@@ -174,7 +174,7 @@ class PhilipsHueModel(
 
                 val bridge = PhilipsHueBridgeInfo(
                     v2Id = id,
-                    labelName = name,
+                    bridgeId = name,
                     ipAddress = ip,
                     token = token,
                     active = isActive,

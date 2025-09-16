@@ -23,6 +23,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -107,6 +108,7 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     /** access to philips hue model */
+    @Deprecated("trying to phase out the PhilipsHueModel")
     private lateinit var phModel : PhilipsHueModel
 
     /** access to repository */
@@ -117,26 +119,45 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     init {
+
+        viewModelScope.launch {
+
+            // convert list of BridgeModels to a list Bridges
+            phRepository.bridgesList.collectLatest { bridgeModel ->
+                val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+                bridgeModel.forEach { bridgeInfo ->
+                    delay(1000) // fixme: this causes things to work--why???
+                    tmpBridgeList.add(bridgeInfo.bridge.value)
+                }
+                Log.d(TAG, "collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
+                Log.d(TAG, "    bridgeList = $tmpBridgeList")
+                philipsHueBridgesCompose = tmpBridgeList
+            }
+        }
+
+
+
+
         // Setup a coroutine that listens for changes (works as a consumer) to
         // the flow from the Philips Hue model (about the bridge models).
         // When there is a change, pass that change along to philipsHueBridgeModelsCompose
         // (this makes us now a producer).  Thus this viewmodel is an intermediary (both).
-        viewModelScope.launch {
-
-            phModel = PhilipsHueModel(coroutineScope = viewModelScope)
-            phModel.bridgeModelFlowList.collectLatest { bridgeModelList ->
-                Log.d(TAG, "collecting latest phModel.BridgeModelFlowList. size = ${bridgeModelList.size}")
-                val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-                bridgeModelList.forEach { model ->
-                    Log.d(TAG, "    $model")
-                    Log.d(TAG, "    -> ${model.bridge}")
-                    model.bridge.value?.let {
-                        tmpBridgeList.add(it)
-                    }
-                }
-                philipsHueBridgesCompose = tmpBridgeList
-            }
-        }
+//        viewModelScope.launch {
+//
+//            phModel = PhilipsHueModel(coroutineScope = viewModelScope)
+//            phModel.bridgeModelFlowList.collectLatest { bridgeModelList ->
+//                Log.d(TAG, "collecting latest phModel.BridgeModelFlowList. size = ${bridgeModelList.size}")
+//                val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
+//                bridgeModelList.forEach { model ->
+//                    Log.d(TAG, "    $model")
+//                    Log.d(TAG, "    -> ${model.bridge}")
+//                    model.bridge.value.let {
+//                        tmpBridgeList.add(it)
+//                    }
+//                }
+//                philipsHueBridgesCompose = tmpBridgeList
+//            }
+//        }
     }
 
     //-------------------------
@@ -515,7 +536,7 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
 
             // Get the name of the bridge (I'm using the printed name on the bridge itself)
-            val v2bridge = PhilipsHueBridgeApi.getBridge(
+            val v2bridge = PhilipsHueBridgeApi.getBridgeApi(
                 bridgeIpStr = workingNewBridge!!.ip,
                 token = workingNewBridge!!.token
             )

@@ -7,7 +7,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Light
@@ -93,7 +92,7 @@ object PhilipsHueDataConverter {
         return PhilipsHueBridgeInfo(
             v2Id = v2Bridge.id,
             ipAddress = bridgeIp,
-            labelName = v2Bridge.printedNameOnDevice,
+            bridgeId = v2Bridge.printedNameOnDevice,
             token = token,
             active = active,
             connected = connected

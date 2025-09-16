@@ -63,9 +63,9 @@ class PhilipsHueInitializer(
             }
 
             val isActive = isBridgeActive(ip, token)
-            var name = ""
+            var bridgeId = ""
             if (isActive) {
-                val v2bridge = PhilipsHueBridgeApi.getBridge(
+                val v2bridge = PhilipsHueBridgeApi.getBridgeApi(
                     bridgeIpStr = ip,
                     token = token
                 )
@@ -73,12 +73,12 @@ class PhilipsHueInitializer(
                     Log.e(TAG, "error getting v2bridge info. error = ${v2bridge.getError()}")
                     return@withContext null
                 }
-                name = v2bridge.getName()
+                bridgeId = v2bridge.getName()
             }
 
             val bridge = PhilipsHueBridgeInfo(
                 v2Id = bridgeID,
-                labelName = name,
+                bridgeId = bridgeId,
                 ipAddress = ip,
                 token = token,
                 active = isActive,

@@ -121,7 +121,10 @@ class PhilipsHueRepository(
 //                    }
                 }
                 // producing flow
-                _bridgesList.update { newBridgeList }
+                _bridgesList.update {
+                    Log.d(TAG, "updating bridgeList: $_bridgesList")
+                    newBridgeList
+                }
             }
         }
 

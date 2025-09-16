@@ -178,7 +178,7 @@ private fun DrawBridgeContents(
                     DrawBridgeTitle(
                         text = stringResource(
                             id = R.string.ph_bridge_name,
-                            bridgeInfo.labelName
+                            bridgeInfo.bridgeId
                         )
                     )
                 }
@@ -244,6 +244,9 @@ private fun DrawBridgeSeparator(
             .padding(top = 32.dp)
             .height(28.dp)
     }
+
+    Log.d(TAG, "DrawBridgeSeparator(): bridge = $bridge")
+
     Box(
         modifier = modifier
             .background(
@@ -254,13 +257,21 @@ private fun DrawBridgeSeparator(
                     )
                 )
             )
-    )
+    ) {
+        Text(
+            text ="${bridge.bridgeId}: ${bridge.rooms.size} rooms",
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 20.dp)
+            )
 
-    DotDotDotBridgeMenu(
-        modifier = modifier,
-        viewmodel = viewmodel,
-        bridge = bridge,
-    )
+        DotDotDotBridgeMenu(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            viewmodel = viewmodel,
+            bridge = bridge,
+        )
+    }
+
 }
 
 @Composable

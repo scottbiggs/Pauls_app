@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 
 /**
@@ -43,8 +44,8 @@ data class PhilipsHueNewBridge(
 data class PhilipsHueBridgeInfo(
     /** unique identifier for this bridge which comes from the philips hue v2 id*/
     val v2Id : String,
-    /** Name as printed on the bridge itself */
-    var labelName : String,
+    /** Name as printed on the bridge itself. Called "bridge-id" in [PHv2Bridge] */
+    var bridgeId : String,
     /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
     val ipAddress : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
@@ -68,7 +69,7 @@ data class PhilipsHueBridgeInfo(
         if (v2Id != otherBridge.v2Id) {
             return false
         }
-        if (labelName != otherBridge.labelName) {
+        if (bridgeId != otherBridge.bridgeId) {
             return false
         }
         if (ipAddress != otherBridge.ipAddress) {
@@ -110,7 +111,7 @@ data class PhilipsHueBridgeInfo(
 
     override fun hashCode(): Int {
         var result = v2Id.hashCode()
-        result = 31 * result + labelName.hashCode()
+        result = 31 * result + bridgeId.hashCode()
         result = 31 * result + ipAddress.hashCode()
         result = 31 * result + token.hashCode()
         result = 31 * result + active.hashCode()
@@ -128,7 +129,7 @@ data class PhilipsHueBridgeInfo(
         operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
             return PhilipsHueBridgeInfo(
                 v2Id = "",
-                labelName = newBridge.labelName,
+                bridgeId = newBridge.labelName,
                 ipAddress = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,

@@ -91,7 +91,7 @@ object PhilipsHueBridgeApi {
      * @return  On error, error portion of [PHv2ResourceBridge] will be
      *          filled in.
      */
-    suspend fun getBridge(
+    suspend fun getBridgeApi(
         bridgeIpStr: String,
         token: String
     ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {

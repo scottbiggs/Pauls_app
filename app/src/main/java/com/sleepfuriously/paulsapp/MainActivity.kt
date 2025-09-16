@@ -131,11 +131,13 @@ class MainActivity : ComponentActivity() {
 
 //                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgeModelsCompose
                 val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
+                Log.d(TAG, "onCreate() - philipsHueBridges = $philipsHueBridges")
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuff.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
+                    Log.d(TAG, "Finishing!!!")
                     finish()
                 }
 

@@ -93,11 +93,11 @@ class PhilipsHueBridge(
         //
 
         val isActive = isBridgeActive(bridgeIpStr = bridgeIpStr, bridgeToken = bridgeToken)
-        var name = ""
+        var bridgeId = ""
         var id = ""
 
         if (isActive) {
-            val v2bridge = PhilipsHueBridgeApi.getBridge(
+            val v2bridge = PhilipsHueBridgeApi.getBridgeApi(
                 bridgeIpStr = bridgeIpStr,
                 token = bridgeToken
             )
@@ -106,12 +106,12 @@ class PhilipsHueBridge(
                 return@withContext null
             }
             id = v2bridge.getId()
-            name = v2bridge.getName()
+            bridgeId = v2bridge.getName()
         }
 
         _bridgeInfo.value = PhilipsHueBridgeInfo(
             v2Id = id,
-            labelName = name,
+            bridgeId = bridgeId,
             ipAddress = bridgeIpStr,
             token = bridgeToken,
             active = isActive,

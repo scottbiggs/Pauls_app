@@ -174,7 +174,7 @@ data class PHv2DeviceProductData(
     val productArchetype: String,
     val certified: Boolean,
     val softwareVersion: String,
-    val hardwarePlatformType: String
+    val hardwarePlatformType: String = ""       // note: docs say it's required, but Bridges don't return this data
 ) {
     companion object {
         /**
@@ -194,7 +194,7 @@ data class PHv2DeviceProductData(
                 productArchetype = productDataJsonObject.getString(PRODUCT_ARCHETYPE),
                 certified = productDataJsonObject.getBoolean(CERTIFIED),
                 softwareVersion = productDataJsonObject.getString(SOFTWARE_VERSION),
-                hardwarePlatformType = productDataJsonObject.getString(HARDWARE_PLATFORM_TYPE)
+                hardwarePlatformType = productDataJsonObject.optString(HARDWARE_PLATFORM_TYPE)
             )
         }
     }
