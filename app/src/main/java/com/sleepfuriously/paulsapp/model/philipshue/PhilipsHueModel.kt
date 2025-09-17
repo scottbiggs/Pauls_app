@@ -167,7 +167,7 @@ class PhilipsHueModel(
                             Log.e(TAG, "   error = ${v2Bridge.getError()}")
                         } else {
                             // finally we can get the name!
-                            name = v2Bridge.getName()
+                            name = v2Bridge.getDeviceName()
                         }
                     }
                 }
@@ -178,7 +178,8 @@ class PhilipsHueModel(
                     ipAddress = ip,
                     token = token,
                     active = isActive,
-                    connected = false
+                    connected = false,
+                    humanName = "initializing..."
                 )
 
                 workingBridgeSet += bridge

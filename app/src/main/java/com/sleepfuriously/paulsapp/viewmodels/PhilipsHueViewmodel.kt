@@ -13,6 +13,7 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Bridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
@@ -123,7 +124,7 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch {
 
             // convert list of BridgeModels to a list Bridges
-            phRepository.bridgesList.collectLatest { bridgeModel ->
+            phRepository.bridgeModelList.collectLatest { bridgeModel ->
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModel.forEach { bridgeInfo ->
                     delay(1000) // fixme: this causes things to work--why???
@@ -201,7 +202,8 @@ class PhilipsHueViewmodel : ViewModel() {
         workingNewBridge = PhilipsHueNewBridge(
             ip = "hey, I'm supposed to be an ip!!",
             labelName = "testBridge",
-            token = "goblllelsldlsy gook"
+            token = "goblllelsldlsy gook",
+            humanName = "test bridge"
         )
         bridgeAddAllGoodAndDone()
     }
@@ -347,7 +349,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun beginAddPhilipsHueBridge() {
         _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
-        workingNewBridge = PhilipsHueNewBridge()
+        workingNewBridge = PhilipsHueNewBridge(humanName = "tmp name")
         Log.d(TAG, "newBridge is created. Ready to start adding data to it.")
     }
 
@@ -540,17 +542,30 @@ class PhilipsHueViewmodel : ViewModel() {
                 bridgeIpStr = workingNewBridge!!.ip,
                 token = workingNewBridge!!.token
             )
+
             if (v2bridge.hasData() == false) {
-                Log.e(TAG, "Unable to get info from bridge (id = ${workingNewBridge?.labelName})in bridgeAllGoodAndDone()! Aborting!")
+                Log.e(
+                    TAG,
+                    "Unable to get info from bridge (id = ${workingNewBridge?.labelName})in bridgeAllGoodAndDone()! Aborting!"
+                )
                 Log.e(TAG, "   data error msg = ${v2bridge.getError()}")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
                 return@launch
             }
 
-            workingNewBridge?.labelName = v2bridge.getName()
+            val newBridgeInfo = convertV2Bridge(
+                v2Bridge = v2bridge.getData(),
+                bridgeIp = workingNewBridge!!.ip,
+                token = workingNewBridge!!.token,
+                active = true
+            )
+            workingNewBridge?.humanName = newBridgeInfo.humanName
+
+            workingNewBridge?.labelName = v2bridge.getDeviceName()
 
             // Add this new bridge to our permanent data (and the Model).
-            phModel.addBridge(workingNewBridge!!)
+//        phModel.addBridge(workingNewBridge!!)
+            phRepository.addPhilipsHueBridge(workingNewBridge!!)
 
             // lastly signal that we're done with the new bridge stuff
             workingNewBridge = null

@@ -122,17 +122,10 @@ fun ShowMainScreenPhilipsHue(
 
 @Composable
 private fun DrawBridgeContents(
-//    bridgeModels: List<PhilipsHueBridgeModel>,      // instead of a list of bridge models (which contain a list of
-                                                    // StateFlows, I should be handing in a list of the actual data
-                                                    // data that I need
     bridges: List<PhilipsHueBridgeInfo>,
     viewmodel: PhilipsHueViewmodel
 ) {
-//    Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridgeModels.size}")
     Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridges.size}")
-//    bridgeModels.forEach { model ->
-//        Log.d(TAG, "    ${model.bridge.value}")
-//    }
     bridges.forEach { bridge ->
         Log.d(TAG, "   $bridge")
     }
@@ -163,7 +156,8 @@ private fun DrawBridgeContents(
             }
 
             // The first item (which has the name of the bridge)
-            // will take the entire row of a grid.
+            // will take the entire row of a grid and includes a radio button
+            // that toggles the server-sent events on/off.  TODO: this make be too much info for users
             item(
                 span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
             ) {
@@ -173,12 +167,14 @@ private fun DrawBridgeContents(
                     RadioButton(
                         enabled = bridgeInfo.active,
                         selected = bridgeInfo.connected,
-                        onClick = { },
+                        onClick = {
+                            TODO("Radio Button onClick() not implemented in DrawBridgeContents()!")
+                        },
                     )
                     DrawBridgeTitle(
                         text = stringResource(
                             id = R.string.ph_bridge_name,
-                            bridgeInfo.bridgeId
+                            bridgeInfo.humanName
                         )
                     )
                 }
@@ -231,7 +227,8 @@ private fun DrawBridgeContents(
 }
 
 /**
- * A nice separator between bridges.
+ * A nice separator between bridges.  It also shows the name of the
+ * bridge and how many rooms are in it. todo: make optional
  */
 @Composable
 private fun DrawBridgeSeparator(
@@ -259,7 +256,7 @@ private fun DrawBridgeSeparator(
             )
     ) {
         Text(
-            text ="${bridge.bridgeId}: ${bridge.rooms.size} rooms",
+            text ="${bridge.humanName}: ${bridge.rooms.size} rooms",
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 20.dp)

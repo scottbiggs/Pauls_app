@@ -81,7 +81,7 @@ data class PHv2ResourceBridge(
     /**
      * Returns name as printed on the bridge.  Empty on error.
      */
-    fun getName() : String {
+    fun getDeviceName() : String {
         return if (data.isEmpty()) {
             ""
         }

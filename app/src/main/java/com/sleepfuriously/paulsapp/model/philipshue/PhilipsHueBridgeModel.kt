@@ -4,6 +4,8 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Light
+import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE
+import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_DELETE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ERROR
@@ -77,7 +79,8 @@ class PhilipsHueBridgeModel(
             connected = false,
             rooms = emptySet(),
             scenes = emptyList(),
-            zones = emptyList()
+            zones = emptyList(),
+            humanName = "default"
         ))
     /** Flow for this bridge. Collectors will be notified of changes to this bridge. */
     val bridge = _bridge.asStateFlow()
@@ -235,7 +238,7 @@ class PhilipsHueBridgeModel(
                 bridgeIpStr = bridgeIpAddress,
                 token = bridgeToken
             )
-            val bridgeId = v2bridgeResource.getName()
+            val bridgeId = v2bridgeResource.getDeviceName()
 
             _devices.update {
                 PhilipsHueBridgeApi.getAllDevicesFromApi(
@@ -282,6 +285,12 @@ class PhilipsHueBridgeModel(
                 ) ?: emptyList()
             }
 
+            // use the devices to find the bridge human name
+            val humanName = PhilipsHueDataConverter.getBridgeUsername(
+                bridgeIp = bridgeIpAddress,
+                bridgeToken = bridgeToken
+            )
+
             // finally update the flow
             _bridge.update {
                 Log.d(TAG, "refresh() - updating _bridge bridgeId = $bridgeId")
@@ -290,7 +299,8 @@ class PhilipsHueBridgeModel(
                     rooms = rooms.value.toSet(),
                     scenes = scenes.value,
                     zones = zones.value,
-                    bridgeId = bridgeId
+                    bridgeId = bridgeId,
+                    humanName = humanName
                 )
             }
 

@@ -2,6 +2,11 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.content.Context
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getDeviceIndividualFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE
+import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
+import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceDevicesAll
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
@@ -95,6 +100,7 @@ class PhilipsHueBridge(
         val isActive = isBridgeActive(bridgeIpStr = bridgeIpStr, bridgeToken = bridgeToken)
         var bridgeId = ""
         var id = ""
+        var humanName = EMPTY_STRING
 
         if (isActive) {
             val v2bridge = PhilipsHueBridgeApi.getBridgeApi(
@@ -106,7 +112,13 @@ class PhilipsHueBridge(
                 return@withContext null
             }
             id = v2bridge.getId()
-            bridgeId = v2bridge.getName()
+            bridgeId = v2bridge.getDeviceName()
+
+            // human name is more difficult
+            humanName = PhilipsHueDataConverter.getBridgeUsername(
+                bridgeIp = bridgeIpStr,
+                bridgeToken = bridgeToken
+            )
         }
 
         _bridgeInfo.value = PhilipsHueBridgeInfo(
@@ -115,7 +127,8 @@ class PhilipsHueBridge(
             ipAddress = bridgeIpStr,
             token = bridgeToken,
             active = isActive,
-            connected = false
+            connected = false,
+            humanName = humanName
         )
         Log.d(TAG,"initialize() - bridge is now = $bridgeInfo")
 

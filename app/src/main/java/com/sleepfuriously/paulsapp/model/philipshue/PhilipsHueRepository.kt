@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
  *  - Connect to those bridges (if possible).
  *
  * After initialization, receive flow updates on the bridges and pass that
- * along to whatever is observing [bridgesList].
+ * along to whatever is observing [bridgeModelList].
  *
  * ---------------------------------------------------
  *
@@ -91,7 +91,7 @@ class PhilipsHueRepository(
 
     private val _bridgesList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
     /** the complete list of all the bridges and associated data (comes from [PhilipsHueModel]) */
-    val bridgesList = _bridgesList.asStateFlow()
+    val bridgeModelList = _bridgesList.asStateFlow()
 
 
     //-------------------------------
@@ -147,7 +147,7 @@ class PhilipsHueRepository(
         }
 
         // find the bridge model and tell it to connect for sse
-        val foundBridgeModel = bridgesList.value.find { bridgeModel ->
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
             bridgeModel.bridge.value?.v2Id == bridge.v2Id
         }
         foundBridgeModel?.connectSSE()
@@ -164,7 +164,7 @@ class PhilipsHueRepository(
         Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
         // find the bridge model and disconnect sse
-        val foundBridgeModel = bridgesList.value.find { bridgeModel ->
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
             bridgeModel.bridge.value?.v2Id == bridge.v2Id
         }
         foundBridgeModel?.disconnectSSE()

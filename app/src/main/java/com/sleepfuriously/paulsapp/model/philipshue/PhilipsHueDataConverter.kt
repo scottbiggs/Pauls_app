@@ -2,11 +2,17 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.google.gson.Gson
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getDeviceIndividualFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE
+import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V2
+import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V3
 import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHBridgePostTokenResponse
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Light
@@ -82,16 +88,23 @@ object PhilipsHueDataConverter {
      * Note: Scenes, Rooms, and Zones are completely ignored as this info is not
      * in [PHv2ResourceBridge].
      */
-    fun convertV2Bridge(
+    suspend fun convertV2Bridge(
         v2Bridge: PHv2Bridge,
         bridgeIp: String,
         token: String,
         active: Boolean = true,
         connected: Boolean = false
-    ) : PhilipsHueBridgeInfo {
-        return PhilipsHueBridgeInfo(
+    ) : PhilipsHueBridgeInfo = withContext(Dispatchers.IO) {
+
+        val username = getBridgeUsername(
+            bridgeIp = bridgeIp,
+            bridgeToken = token
+        )
+
+        return@withContext PhilipsHueBridgeInfo(
             v2Id = v2Bridge.id,
             ipAddress = bridgeIp,
+            humanName = username,
             bridgeId = v2Bridge.printedNameOnDevice,
             token = token,
             active = active,
@@ -407,6 +420,50 @@ object PhilipsHueDataConverter {
 
         return v2ZonesAll.data
     }
+
+    /**
+     * Gets the username for a given bridge.  Overkill, but should work.
+     * If you already have a list of devices for this bridge, call [convertDevicesToBridgeUsername]
+     * which will be MUCH faster.
+     */
+    suspend fun getBridgeUsername(
+        bridgeIp: String,
+        bridgeToken: String
+    ) : String = withContext(Dispatchers.IO) {
+        val allDevices = getAllDevicesFromApi(
+            bridgeIp = bridgeIp,
+            bridgeToken = bridgeToken
+        )
+        if (allDevices.isEmpty()) {
+            Log.e(TAG, "getBridgeUsername() - problem getting devices! returning 'error bridge'.")
+            return@withContext "error bridge"
+        }
+
+        return@withContext convertDevicesToBridgeUsername(allDevices)
+    }
+
+    /**
+     * Sifts through all the given devices until a bridge is found (uses metadata).
+     *
+     * @return  The user name for this bridge.  Error will return empty string.
+     */
+    fun convertDevicesToBridgeUsername(devices: List<PHv2Device>) : String {
+        var username = ""
+
+        for (device in devices) {
+            if ((device.metadata.archetype == BRIDGE_V2) ||
+                (device.metadata.archetype == BRIDGE_V3)) {
+                username = device.metadata.name
+                break
+            }
+        }
+        if (username.isEmpty()) {
+            Log.e(TAG, "convertDevicesToBridgeUsername() cannot find bridge in devices! Using 'foo bridge'.")
+            username = "foo bridge"
+        }
+        return username
+    }
+
 }
 
 private const val TAG = "PhilipsHueDataConverter"

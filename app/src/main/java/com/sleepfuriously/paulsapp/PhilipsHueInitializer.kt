@@ -73,7 +73,7 @@ class PhilipsHueInitializer(
                     Log.e(TAG, "error getting v2bridge info. error = ${v2bridge.getError()}")
                     return@withContext null
                 }
-                bridgeId = v2bridge.getName()
+                bridgeId = v2bridge.getDeviceName()
             }
 
             val bridge = PhilipsHueBridgeInfo(
@@ -82,7 +82,8 @@ class PhilipsHueInitializer(
                 ipAddress = ip,
                 token = token,
                 active = isActive,
-                connected = false
+                connected = false,
+                humanName = "foo"
             )
 
             Log.d(TAG,"returning bridge $bridge")

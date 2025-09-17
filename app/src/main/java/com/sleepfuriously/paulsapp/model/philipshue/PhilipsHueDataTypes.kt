@@ -3,6 +3,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 
 /**
@@ -21,6 +22,8 @@ data class PhilipsHueNewBridge(
     var ip : String = "",
     /** the name of the bridge as printed on it */
     var labelName: String = "",
+    /** name of the bridge given by the user */
+    var humanName : String,
     /** The token "name" used to access this bridge. */
     var token : String = "",
     /** When true, this bridge is in active use */
@@ -46,6 +49,8 @@ data class PhilipsHueBridgeInfo(
     val v2Id : String,
     /** Name as printed on the bridge itself. Called "bridge-id" in [PHv2Bridge] */
     var bridgeId : String,
+    /** Name of the bridge as given by the user.  Found in the metadata of [PHv2Device]. */
+    var humanName : String,
     /** The ip of this bridge in the local network.  Empty means that the ip hasn't been figured out yet. */
     val ipAddress : String = "",
     /** The token "name" used to access this bridge.  Empty means that no token has been created yet. */
@@ -124,12 +129,13 @@ data class PhilipsHueBridgeInfo(
 
     companion object {
         /**
-         * Used the creating a new bridge
+         * Used for creating a new bridge
          */
         operator fun invoke(newBridge: PhilipsHueNewBridge) : PhilipsHueBridgeInfo {
             return PhilipsHueBridgeInfo(
                 v2Id = "",
                 bridgeId = newBridge.labelName,
+                humanName = newBridge.humanName,
                 ipAddress = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,
