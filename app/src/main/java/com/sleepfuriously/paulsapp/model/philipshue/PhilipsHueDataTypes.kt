@@ -1,5 +1,6 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
+import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ItemInArray
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Bridge
@@ -60,72 +61,85 @@ data class PhilipsHueBridgeInfo(
     /** Are we currently listening for events from this bridge? */
     var connected: Boolean,
     /** All the rooms controlled by this bridge */
-    val rooms: Set<PhilipsHueRoomInfo> = setOf(),
+    val rooms: List<PhilipsHueRoomInfo> = listOf(),
     /** all the scenes for this bridge */
     val scenes: List<PHv2Scene> = listOf(),
     /** all the zones for this bridge */
     val zones: List<PHv2Zone> = listOf()
 ) {
-    /**
-     * This should cause the flow to update correctly.
-     */
-    override fun equals(other: Any?): Boolean {
-        val otherBridge = other as PhilipsHueBridgeInfo
-        if (v2Id != otherBridge.v2Id) {
-            return false
-        }
-        if (bridgeId != otherBridge.bridgeId) {
-            return false
-        }
-        if (ipAddress != otherBridge.ipAddress) {
-            return false
-        }
-        if (token != otherBridge.token) {
-            return false
-        }
-        if (active != otherBridge.active) {
-            return false
-        }
-        if (connected != otherBridge.connected) {
-            return false
-        }
-        if (rooms.size != otherBridge.rooms.size) {
-            return false
-        }
-        rooms.forEach { room ->
-            if (otherBridge.rooms.contains(room) == false) {
-                return false
-            }
-        }
-        if (scenes.size != otherBridge.scenes.size) {
-            return false
-        }
-        scenes.forEachIndexed { i, scene ->
-            if (otherBridge.scenes[i] != scene) {
-                return false
-            }
-        }
-        zones.forEachIndexed { i, zone ->
-            if (otherBridge.zones[i] != zone) {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = v2Id.hashCode()
-        result = 31 * result + bridgeId.hashCode()
-        result = 31 * result + ipAddress.hashCode()
-        result = 31 * result + token.hashCode()
-        result = 31 * result + active.hashCode()
-        result = 31 * result + connected.hashCode()
-        result = 31 * result + rooms.hashCode()
-        result = 31 * result + scenes.hashCode()
-        result = 31 * result + zones.hashCode()
-        return result
-    }
+//    /**
+//     * This should cause the flow to update correctly.
+//     */
+//    override fun equals(other: Any?): Boolean {
+//        val otherBridge = other as PhilipsHueBridgeInfo
+//        if (v2Id != otherBridge.v2Id) {
+//            Log.d(TAG, "bridge.equals() -> false -> v2Id")
+//            return false
+//        }
+//        if (bridgeId != otherBridge.bridgeId) {
+//            Log.d(TAG, "bridge.equals() -> false -> bridgeId")
+//            return false
+//        }
+//        if (ipAddress != otherBridge.ipAddress) {
+//            Log.d(TAG, "bridge.equals() -> false -> ipAddress")
+//            return false
+//        }
+//        if (token != otherBridge.token) {
+//            Log.d(TAG, "bridge.equals() -> false -> token")
+//            return false
+//        }
+//        if (active != otherBridge.active) {
+//            Log.d(TAG, "bridge.equals() -> false -> active")
+//            return false
+//        }
+//        if (connected != otherBridge.connected) {
+//            Log.d(TAG, "bridge.equals() -> false -> connected")
+//            return false
+//        }
+//        if (rooms.size != otherBridge.rooms.size) {
+//            Log.d(TAG, "bridge.equals() -> false -> room.size (this.size = ${rooms.size}, other.size = ${otherBridge.rooms.size}")
+//            return false
+//        }
+//        rooms.forEachIndexed { i, room ->
+//            if (otherBridge.rooms[i] != room) {
+//                // failing here
+//                Log.d(TAG, "bridge.equals() -> false -> otherBridge.rooms[$i] != ${room.name})")
+//                return false
+//            }
+//        }
+//        if (scenes.size != otherBridge.scenes.size) {
+//            Log.d(TAG, "bridge.equals() -> false -> scenes.size (this.size = ${scenes.size}, other.size = ${otherBridge.scenes.size}")
+//            return false
+//        }
+//        scenes.forEachIndexed { i, scene ->
+//            if (otherBridge.scenes[i] != scene) {
+//                Log.d(TAG, "bridge.equals() -> false -> otherBridge.scenes[$i] != ${scene.metadata.name}")
+//                return false
+//            }
+//        }
+//        zones.forEachIndexed { i, zone ->
+//            if (otherBridge.zones[i] != zone) {
+//                Log.d(TAG, "bridge.equals() -> false -> otherBridge.zones[$i] != $zone)")
+//                return false
+//            }
+//        }
+//
+//        Log.d(TAG, "equals() -> TRUE")
+//        return true
+//    }
+//
+//    override fun hashCode(): Int {
+//        var result = v2Id.hashCode()
+//        result = 31 * result + bridgeId.hashCode()
+//        result = 31 * result + ipAddress.hashCode()
+//        result = 31 * result + token.hashCode()
+//        result = 31 * result + active.hashCode()
+//        result = 31 * result + connected.hashCode()
+//        result = 31 * result + rooms.hashCode()
+//        result = 31 * result + scenes.hashCode()
+//        result = 31 * result + zones.hashCode()
+//        return result
+//    }
 
     companion object {
         /**
@@ -139,7 +153,7 @@ data class PhilipsHueBridgeInfo(
                 ipAddress = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,
-                connected = false,
+                connected = false
             )
         }
     }
@@ -152,45 +166,61 @@ data class PhilipsHueRoomInfo(
     val id: String,
     val name: String,
     var on: Boolean = false,
-    var brightness : Int = 0,
-    val lights: MutableSet<PhilipsHueLightInfo>,
+    var brightness : Int = MIN_BRIGHTNESS,
+    val lights: MutableList<PhilipsHueLightInfo>,
     /** References to group of lights in this room.  Even though it's an array, there should be just 1. */
     val groupedLightServices: List<PHv2ItemInArray>
 ) {
-    override fun equals(other: Any?): Boolean {
-        val otherRoom = other as PhilipsHueRoomInfo
-        if (otherRoom.id != id) {
-            return false
-        }
-        if (otherRoom.name != name) {
-            return false
-        }
-        if (otherRoom.on != on) {
-            return false
-        }
-        if (otherRoom.brightness != brightness) {
-            return false
-        }
-        if (otherRoom.lights.size != lights.size) {
-            return false
-        }
-        otherRoom.lights.forEach { otherLight ->
-            if (lights.contains(otherLight) == false) {
-                return false
-            }
-        }
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id.hashCode()
-        result = 31 * result + name.hashCode()
-        result = 31 * result + on.hashCode()
-        result = 31 * result + brightness
-        result = 31 * result + lights.hashCode()
-        result = 31 * result + groupedLightServices.hashCode()
-        return result
-    }
+//    /**
+//     * Overriden equals = for [PhilipsHueRoomInfo].
+//     */
+//    override fun equals(other: Any?): Boolean {
+//        val otherRoom = other as PhilipsHueRoomInfo
+//        if (otherRoom.id != id) {
+//            Log.d(TAG, "roomInfo.equals() -> false: id($id) != otherRoom.id(${otherRoom.id})")
+//            return false
+//        }
+//        if (otherRoom.name != name) {
+//            Log.d(TAG, "roomInfo.equals() -> false: name")
+//            return false
+//        }
+//        if (otherRoom.on != on) {
+//            Log.d(TAG, "roomInfo.equals() -> false: on")
+//            return false
+//        }
+//        if (otherRoom.brightness != brightness) {
+//            Log.d(TAG, "roomInfo.equals() -> false: brightness")
+//            return false
+//        }
+//        if (otherRoom.lights.size != lights.size) {
+//            Log.d(TAG, "roomInfo.equals() -> false: lights.size")
+//            return false
+//        }
+//        otherRoom.lights.forEachIndexed { i, otherLight ->
+//            if (lights[i] != otherLight) {
+//                Log.d(TAG, "roomInfo.equals() -> false: lights[$i] != $otherLight)")
+//                return false
+//            }
+//        }
+//        otherRoom.groupedLightServices.forEachIndexed {i, lightGroup ->
+//            if (groupedLightServices[i] != lightGroup) {
+//                Log.d(TAG, "roomInfo.equals() -> false: a lightGroup doesn't match!")
+//                return false
+//            }
+//        }
+//
+//        return true
+//    }
+//
+//    override fun hashCode(): Int {
+//        var result = id.hashCode()
+//        result = 31 * result + name.hashCode()
+//        result = 31 * result + on.hashCode()
+//        result = 31 * result + brightness
+//        result = 31 * result + lights.hashCode()
+//        result = 31 * result + groupedLightServices.hashCode()
+//        return result
+//    }
 
 }
 
@@ -212,24 +242,31 @@ data class PhilipsHueLightInfo(
     override fun equals(other: Any?): Boolean {
         val t = other as PhilipsHueLightInfo
         if (t.lightId != lightId) {
+            Log.d(TAG, "lightInfo.equals() -> false: lightId")
             return false
         }
         if (t.deviceId != deviceId) {
+            Log.d(TAG, "lightInfo.equals() -> false: deviceId")
             return false
         }
         if (t.name != name) {
+            Log.d(TAG, "lightInfo.equals() -> false: name")
             return false
         }
         if (t.state != state) {
+            Log.d(TAG, "lightInfo.equals() -> false: state")
             return false
         }
         if (t.type != type) {
+            Log.d(TAG, "lightInfo.equals() -> false: type")
             return false
         }
         if (t.modelid != modelid) {
+            Log.d(TAG, "lightInfo.equals() -> false: modelid")
             return false
         }
         if (t.swversion != swversion) {
+            Log.d(TAG, "lightInfo.equals() -> false: swversion")
             return false
         }
         return true

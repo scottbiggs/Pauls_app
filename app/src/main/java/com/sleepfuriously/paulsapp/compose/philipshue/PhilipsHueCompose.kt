@@ -194,7 +194,7 @@ private fun DrawBridgeContents(
                 }
             } else {
                 // yes, there are rooms to display
-                Log.d(TAG, "DrawBridgeContents: updating display of ${bridgeInfo.rooms.size} rooms")
+                Log.d(TAG, "DrawBridgeContents() - updating display of ${bridgeInfo.rooms.size} rooms")
                 bridgeInfo.rooms.forEach { room ->
                     Log.d(TAG, "DrawBridgeContents() - drawing room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
                     item {
@@ -255,13 +255,6 @@ private fun DrawBridgeSeparator(
                 )
             )
     ) {
-        Text(
-            text ="${bridge.humanName}: ${bridge.rooms.size} rooms",
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp)
-            )
-
         DotDotDotBridgeMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
             viewmodel = viewmodel,

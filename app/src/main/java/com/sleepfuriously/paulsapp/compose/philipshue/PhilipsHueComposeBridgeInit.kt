@@ -67,7 +67,7 @@ fun ManualBridgeSetup(
 
     Log.d(TAG, "ManualBridgeSetup() waitingForResults = $waitingForResults")
     if (waitingForResults) {
-        ManualInitWaiting(philipsHueViewmodel, modifier)
+        ManualInitWaiting(modifier)
     }
     else {
         when (initBridgeState) {
@@ -261,7 +261,6 @@ private fun ManualBridgeSetupStep1_Portrait(
     val ctx = LocalContext.current
 
     val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp
     val screenWidth = config.screenWidthDp
 
     BackHandler {
@@ -460,7 +459,7 @@ private fun ManualBridgeSetupStep2(
 
     if (bridgeErrorMsg.isBlank()) {
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .safeContentPadding()      // takes the insets into account (nav bars, etc)
                 .padding(8.dp),
@@ -546,45 +545,47 @@ private fun ManualBridgeSetupStep3(
         viewmodel.bridgeInitGoBack()
     }
 
-    if (state == BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE) {
-        SimpleFullScreenBoxMessage(
-            backgroundModifier = modifier,
-            onClick = {
-                viewmodel.bridgeAddAllGoodAndDone()
-            },
-            msgText = stringResource(id = R.string.new_bridge_success),
-            buttonText = stringResource(R.string.ok)
-        )
-    }
-
-    else if (state == BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE) {
-        SimpleFullScreenBoxMessage(
-            backgroundModifier = modifier,
-            onClick = {
-                viewmodel.bridgeAddAllGoodAndDone()
-            },
-            msgText = stringResource(id = R.string.bridge_ip_step_3_problem_adding_bridge),
-            buttonText = stringResource(R.string.ok)
-        )
-    }
-
-    else {
-        // this state should never call this function
-        SimpleFullScreenBoxMessage(
-            backgroundModifier = modifier,
-            onClick = {
-                viewmodel.bridgeInitGoBack()
-            },
-            msgText = stringResource(R.string.bridge_ip_step_3_bad_state_error),
-            buttonText = stringResource(R.string.back)
-        )
+    when (state) {
+        BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = {
+                    viewmodel.bridgeAddAllGoodAndDone()
+                },
+                msgText = stringResource(id = R.string.new_bridge_success),
+                buttonText = stringResource(R.string.ok)
+            )
+        }
+        BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> {
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = {
+                    viewmodel.bridgeAddAllGoodAndDone()
+                },
+                msgText = stringResource(id = R.string.bridge_ip_step_3_problem_adding_bridge),
+                buttonText = stringResource(R.string.ok)
+            )
+        }
+        else -> {
+            // this state should never call this function
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = {
+                    viewmodel.bridgeInitGoBack()
+                },
+                msgText = stringResource(R.string.bridge_ip_step_3_bad_state_error),
+                buttonText = stringResource(R.string.back)
+            )
+        }
     }
 
 }
 
+/**
+ * Display while the app is waiting for the bridge to respond.
+ */
 @Composable
 private fun ManualInitWaiting(
-    viewmodel: PhilipsHueViewmodel,
     modifier: Modifier = Modifier
 ) {
 

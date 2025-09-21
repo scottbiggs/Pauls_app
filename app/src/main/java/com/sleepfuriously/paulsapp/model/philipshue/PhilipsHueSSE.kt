@@ -8,7 +8,9 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.Request
 import okhttp3.Response
@@ -36,13 +38,15 @@ class PhilipsHueSSE(
     //  flows
     //---------------------------------
 
-    private val _openEvent = Channel<Boolean>()
+//    private val _openEvent = Channel<Boolean>()
+    private val _openEvent = MutableStateFlow(false)
     /**
      * An open event is sent when the bridge's sse is first opened or closed.
      * True means that the bridge is connected and receiving server-sent events.
      * Falst means that the bridge is not connected and no sse are flowing.
      */
-    val openEvent = _openEvent.receiveAsFlow()
+//    val openEvent = _openEvent.receiveAsFlow()
+    val openEvent = _openEvent.asStateFlow()
 
 
     private val _serverSentEvent = Channel<PHv2ResourceServerSentEvent>()
@@ -90,7 +94,8 @@ class PhilipsHueSSE(
 
                 coroutineScope.launch {
                     Log.d(TAG, "onOpen() sending _openEvent: true")
-                    _openEvent.send(true)
+                    _openEvent.update { true }
+//                    _openEvent.send(true)
                 }
             }
             else {
@@ -116,7 +121,8 @@ class PhilipsHueSSE(
 
             coroutineScope.launch {
                 Log.d(TAG, "onClosed() sending _openEvent: false")
-                _openEvent.send(false)
+                _openEvent.update { false }
+//                _openEvent.send(false)
             }
         }
 
@@ -130,11 +136,11 @@ class PhilipsHueSSE(
             data: String
         ) {
             Log.d(TAG, "EventSourceListener: On Event Received!")
-            Log.d(TAG, "   eventSource = ${eventSource.toString()}")
-            Log.d(TAG, "   id = $id")
-            Log.d(TAG, "   type = $type")
-            Log.d(TAG, "   data = $data")
-            Log.i(TAG, "   time = ${getTime()}")
+            Log.d(TAG, "   eventSource:")
+            Log.d(TAG, "      id = $id")
+            Log.d(TAG, "      type = $type")
+            Log.d(TAG, "      data = $data")
+            Log.i(TAG, "      time = ${getTime()}")
 
             val bridgeId = getBridgeIdFromEventSource(eventSource)
             if (bridgeId == null) {
@@ -178,7 +184,8 @@ class PhilipsHueSSE(
             else {
                 coroutineScope.launch {
                     Log.d(TAG, "onFailure() sending openEvent: false")
-                    _openEvent.send(false)
+                    _openEvent.update { false }
+//                    _openEvent.send(false)
                 }
 
             }

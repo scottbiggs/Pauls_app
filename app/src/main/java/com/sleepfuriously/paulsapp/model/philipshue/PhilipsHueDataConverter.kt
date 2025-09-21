@@ -3,8 +3,6 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.google.gson.Gson
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getDeviceIndividualFromApi
-import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE
 import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V2
 import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V3
 import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
@@ -176,11 +174,8 @@ object PhilipsHueDataConverter {
      * of [PHv2GroupedLight]s.  This is way too easy!
      */
     fun convertV2GroupedLights(
-        v2GroupedLists: PHv2ResourceGroupedLightsAll,
-        bridgeIp: String,
-        bridgeToken: String
+        v2GroupedLists: PHv2ResourceGroupedLightsAll
     ) : List<PHv2GroupedLight> {
-
         return v2GroupedLists.data
     }
 
@@ -219,7 +214,7 @@ object PhilipsHueDataConverter {
                 return@withContext PhilipsHueRoomInfo(
                     id = "-1",
                     name = EMPTY_STRING,
-                    lights = mutableSetOf(),
+                    lights = mutableListOf(),
                     groupedLightServices = groupedLightServices
                 )
             }
@@ -238,7 +233,7 @@ object PhilipsHueDataConverter {
             }
 
             // get the lights
-            val regularLightSet = mutableSetOf<PhilipsHueLightInfo>()
+            val regularLightList = mutableListOf<PhilipsHueLightInfo>()
             v2Room.children.forEach { child ->
                 if (child.rtype == RTYPE_DEVICE) {
                     // is this device a light?  It's a light iff one of its services is rtype = "light".
@@ -267,7 +262,7 @@ object PhilipsHueDataConverter {
                                         ),
                                         type = v2light.data[0].type
                                     )
-                                    regularLightSet.add(regularLight)
+                                    regularLightList.add(regularLight)
                                 }
                                 else {
                                     Log.e(TAG, "problem finding light in convertPHv2Room()!!!")
@@ -284,7 +279,7 @@ object PhilipsHueDataConverter {
                 name = v2Room.metadata.name,
                 on = onOff,
                 brightness = brightness,
-                lights = regularLightSet,
+                lights = regularLightList,
                 groupedLightServices = groupedLightServices
             )
             return@withContext newRoom
@@ -296,7 +291,7 @@ object PhilipsHueDataConverter {
             name = v2Room.metadata.name,
             on = false,
             brightness = 0,
-            lights = mutableSetOf(),
+            lights = mutableListOf(),
             groupedLightServices = groupedLightServices
         )
 
