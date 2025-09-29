@@ -5,9 +5,15 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,6 +32,9 @@ import kotlinx.coroutines.withContext
  *
  * After initialization, receive flow updates on the bridges and pass that
  * along to whatever is observing [bridgeModelList].
+ *
+ * NOTE: because [_bridgeModelList] and [bridgeModelList] are actually different,
+ * we should ONLY USE _bridgeModelList within this class
  *
  * ---------------------------------------------------
  *
@@ -79,9 +88,7 @@ import kotlinx.coroutines.withContext
  * devices, services, etc are all unique.  I just use those ids.
  */
 class PhilipsHueRepository(
-    /**
-     * Anything that takes a while should be done within this scope.
-     */
+    /** Anything that takes a while should be done within this scope */
     private val coroutineScope: CoroutineScope
 ) {
 
@@ -89,16 +96,42 @@ class PhilipsHueRepository(
     //  flows to observe
     //-------------------------------
 
-    private val _bridgesList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
-    /** the complete list of all the bridges and associated data (comes from [PhilipsHueModel]) */
-    val bridgeModelList = _bridgesList.asStateFlow()
+    /**
+     * Takes a list of [PhilipsHueBridgeModel] and converts it to a
+     * list of [PhilipsHueBridgeInfo].
+     */
+    private val _bridgeModelList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
 
+    /** the complete list of all the bridges and associated data (comes from [PhilipsHueModel]) */
+//    val bridgeModelList = _bridgeModelList.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val bridgeModelList: StateFlow<List<PhilipsHueBridgeInfo>> = _bridgeModelList
+        .flatMapLatest { bridgeModels ->
+            Log.d(TAG, "change noted in _bridgeModelList -- trying to pass it along")
+            if (bridgeModels.isEmpty()) {
+                MutableStateFlow(emptyList())
+            }
+            else {
+                val listOfStateFlowBridgeInfo =
+                    bridgeModels.map(transform = PhilipsHueBridgeModel::bridge)
+                combine(
+                    flows = listOfStateFlowBridgeInfo,
+                    transform = Array<PhilipsHueBridgeInfo>::toList
+                )
+            }
+        }.stateIn(
+            scope = coroutineScope,
+            started = SharingStarted.WhileSubscribed(100),
+            initialValue = listOf()
+        )
 
     //-------------------------------
     //  class variables
     //-------------------------------
 
     /** Accessor to the Philips Hue Model */
+    @Deprecated("should be removed asap")
     private val model = PhilipsHueModel(coroutineScope = coroutineScope)
 
     //-------------------------------
@@ -109,7 +142,10 @@ class PhilipsHueRepository(
         // start consuming bridge flow from Model
         coroutineScope.launch {
             model.bridgeModelFlowList.collectLatest {
-                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel. change = $it, hash = ${System.identityHashCode(it)}")
+                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel:")
+                Log.d(TAG, "    size = ${it.size}")
+                Log.d(TAG, "    change = $it")
+                Log.d(TAG, "    hash = ${System.identityHashCode(it)}")
 
                 // rebuilding a copy of the bridge set
                 val newBridgeList = mutableListOf<PhilipsHueBridgeModel>()
@@ -121,8 +157,8 @@ class PhilipsHueRepository(
 //                    }
                 }
                 // producing flow
-                _bridgesList.update {
-                    Log.d(TAG, "updating bridgeList: $_bridgesList")
+                _bridgeModelList.update {
+                    Log.d(TAG, "updating bridgeList: $_bridgeModelList")
                     newBridgeList
                 }
             }
@@ -147,10 +183,12 @@ class PhilipsHueRepository(
         }
 
         // find the bridge model and tell it to connect for sse
-        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
-            bridgeModel.bridge.value?.v2Id == bridge.v2Id
+        val foundBridgeModel = _bridgeModelList.value.find { bridgeModel ->
+            bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
         foundBridgeModel?.connectSSE()
+
+
     }
 
     /**
@@ -164,8 +202,8 @@ class PhilipsHueRepository(
         Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
         // find the bridge model and disconnect sse
-        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
-            bridgeModel.bridge.value?.v2Id == bridge.v2Id
+        val foundBridgeModel = _bridgeModelList.value.find { bridgeModel ->
+            bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
         foundBridgeModel?.disconnectSSE()
     }

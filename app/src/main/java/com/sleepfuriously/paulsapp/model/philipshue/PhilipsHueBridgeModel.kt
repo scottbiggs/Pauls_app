@@ -96,14 +96,17 @@ class PhilipsHueBridgeModel(
     /** master list of all the light groups for this bridge */
     val groupedLights = _groupedLights.asStateFlow()
 
+    // fixme: redundant with PhilipsHueBridgeInfo.rooms
     private val _rooms = MutableStateFlow<List<PhilipsHueRoomInfo>>(listOf())
     /** list of rooms for this bridge */
     val rooms = _rooms.asStateFlow()
 
+    // fixme: redundant with PhilipsHueBridgeInfo.scenes
     private val _scenes = MutableStateFlow<List<PHv2Scene>>(listOf())
     /** list of all scenes for this bridge */
     val scenes = _scenes.asStateFlow()
 
+    // fixme: redundant with PhilipsHueBridgeInfo.zones
     private val _zones = MutableStateFlow<List< PHv2Zone>>(listOf())
     /** list of all zones for this bridge */
     val zones = _zones.asStateFlow()
@@ -179,51 +182,15 @@ class PhilipsHueBridgeModel(
 
             coroutineScope.launch {
                 while (true) {
-                    // smb - not here
                     phSse.serverSentEvent.collectLatest { sseEvent ->
-                        // smb - not here
                         Log.d(TAG, "received sseEvent for bridge ${bridge.value.humanName}:")
                         Log.d(TAG, "      type: ${sseEvent.type}")
                         Log.d(TAG, "      id:   ${sseEvent.eventId}")
                         Log.d(TAG, "      data: ${sseEvent.data}")
                         interpretEvent(sseEvent)
                     }
-                    // smb - not here
                 }
             }
-
-
-
-
-            // fixme NOPE!!
-//            Log.d(TAG, "init(): collecting sse")
-//            phSse.serverSentEvent.collect { sseEvent ->
-//                Log.d(TAG, "received sseEvent:")
-//                Log.d(TAG, "      type: ${sseEvent.type}")
-//                Log.d(TAG, "      id:   ${sseEvent.eventId}")
-//                Log.d(TAG, "      data: ${sseEvent.data}")
-//                interpretEvent(sseEvent)
-//            }
-
-//            phSse.openEvent.collect { openEvent ->
-//                Log.d(TAG, "received openEvent: $openEvent")
-//                interpretOpenEvent(openEvent)
-//            }
-
-//                while (true) {
-//                    phSse.serverSentEvent.collect { sseEvent ->
-//                        Log.d(TAG, "received sseEvent:")
-//                        Log.d(TAG, "      type: ${sseEvent.type}")
-//                        Log.d(TAG, "      id:   ${sseEvent.eventId}")
-//                        Log.d(TAG, "      data: ${sseEvent.data}")
-//                        interpretEvent(sseEvent)
-//                    }
-//                    // todo: test to see if this actually works!!!  (it doesn't, sigh)
-//                    phSse.openEvent.collect { openEvent ->
-//                        Log.d(TAG, "received openEvent: $openEvent")
-//                        interpretOpenEvent(openEvent)
-//                    }
-//                }
         }
     }
 
@@ -315,15 +282,17 @@ class PhilipsHueBridgeModel(
                     bridgeToken = bridgeToken
                 )
 
-                if (apiGroup != null) {
-                    convertV2GroupedLights(
-                        v2GroupedLists = apiGroup,
-                        bridgeIp = bridgeIpAddress,
-                        bridgeToken = bridgeToken
-                    )
+                if (apiGroup == null) {
+                    Log.d(TAG, "refresh(): network error trying to find grouped lights!")
+                    emptyList()
+                }
+
+                else if (apiGroup.errors.isNotEmpty()) {
+                    Log.w(TAG, "refresh(): api error trying to find grouped lights!")
+                    emptyList()
                 }
                 else {
-                    emptyList()
+                    convertV2GroupedLights(apiGroup)
                 }
             }
 
@@ -541,7 +510,8 @@ class PhilipsHueBridgeModel(
                             light.state.bri = eventDatum.dimming.brightness
                         }
 
-                        // todo: handle other changes to light
+                        // todo: save that light change!
+                        Log.e(TAG, "light change not fully implemented!")
                     }
                 }
 
@@ -568,15 +538,13 @@ class PhilipsHueBridgeModel(
                             if (room != null) {
                                 // what changed?  Did the room dim or was it turned on/off?
                                 if (eventDatum.dimming != null) {
-//                                    room.brightness = eventDatum.dimming.brightness
                                     room = room.copy(brightness = eventDatum.dimming.brightness)
                                 }
                                 if (eventDatum.on != null) {
-//                                    room.on = eventDatum.on.on
                                     room = room.copy(on = eventDatum.on.on)
                                 }
 
-                                updateBridgeRooms(room) // smb - here!
+                                updateBridgeRooms(room)
 
                             } else {
                                 Log.e(
@@ -722,13 +690,15 @@ class PhilipsHueBridgeModel(
 
 
     /**
-     * This is pure side effect.  The [bridge] flow variable is updated
+     * This works by pure side effect.  The [bridge] flow variable is updated
      * with new data to a room.
      */
     private fun updateBridgeRooms(modifiedRoom: PhilipsHueRoomInfo) {
-        Log.d(TAG, "updateBridgeRooms() begin - bridge ${bridge.value.humanName}")
+        Log.d(TAG, "updateBridgeRooms() BEGIN  bridge ${bridge.value.humanName}")
+        bridge.value.rooms.forEach { room ->
+            Log.d(TAG, "    - $room")
+        }
         val newRoomList = mutableListOf<PhilipsHueRoomInfo>()
-
 
         _bridge.update {
             // replace the room matching the id with the modified room
@@ -744,7 +714,11 @@ class PhilipsHueBridgeModel(
             // finally make a new version of the bridge using the new rooms
             it.copy(rooms = newRoomList)
         }
+
         Log.d(TAG, "updateBridgeRooms() end.  bridge ${bridge.value.humanName}")
+        bridge.value.rooms.forEach { room ->
+            Log.d(TAG, "    - $room")
+        }
     }
 
 

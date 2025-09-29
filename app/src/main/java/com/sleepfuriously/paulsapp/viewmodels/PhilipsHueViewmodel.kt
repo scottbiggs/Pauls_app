@@ -125,10 +125,12 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // convert list of BridgeModels to a list Bridges
             phRepository.bridgeModelList.collectLatest { bridgeModel ->
+                Log.d(TAG, "phRepository changed")
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModel.forEach { bridgeInfo ->
                     delay(1000) // fixme: this causes things to work--why???
-                    tmpBridgeList.add(bridgeInfo.bridge.value)
+//                    tmpBridgeList.add(bridgeInfo.bridge.value)
+                    tmpBridgeList.add(bridgeInfo)
                 }
                 Log.d(TAG, "collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
                 Log.d(TAG, "    bridgeList = $tmpBridgeList")

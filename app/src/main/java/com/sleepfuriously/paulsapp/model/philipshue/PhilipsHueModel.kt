@@ -82,6 +82,7 @@ import kotlinx.coroutines.withContext
  * Philips Hue has a brilliant way of making sure all the bridges,
  * devices, services, etc are all unique.  I just use those ids.
  */
+@Deprecated("Use PhilipsHueBridgeModel instead")
 class PhilipsHueModel(
     private val ctx: Context = MyApplication.appContext,
 
