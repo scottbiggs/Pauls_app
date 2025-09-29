@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
  *  successful.  Disconnect with [disconnectSSE] and reconnect with [connectSSE].
  *  Use the [bridge] flow variable to see if the bridge is currently connected.
  *
- * @param   bridgeId            The id used to differentiate this bridge.
+ * @param   bridgeV2Id          The id used to differentiate this bridge.
  *                              Note that this is the v2 id (long) and NOT
  *                              the v1 (short) bridge id.
  *
@@ -58,7 +58,7 @@ import kotlinx.coroutines.withContext
  * @param   coroutineScope      Used for all the suspend functions within this class
  */
 class PhilipsHueBridgeModel(
-    val bridgeId: String,
+    val bridgeV2Id: String,
     val bridgeIpAddress: String,
     val bridgeToken: String,
     private val coroutineScope: CoroutineScope
@@ -68,9 +68,10 @@ class PhilipsHueBridgeModel(
     //  flow data
     //-------------------------------------
 
+    // dummy value to start
     private val _bridge = MutableStateFlow(
         PhilipsHueBridgeInfo(
-            v2Id = bridgeId,
+            v2Id = bridgeV2Id,
             bridgeId = "",     // todo make sure this is retrieved by bridge itself later
             ipAddress = bridgeIpAddress,
             token = bridgeToken,
@@ -84,6 +85,10 @@ class PhilipsHueBridgeModel(
     /** Flow for this bridge. Collectors will be notified of changes to this bridge. */
     val bridge = _bridge.asStateFlow()
 
+    //
+    //  todo: The following could (should) be put in the bridge data!!!
+    //
+
     private val _devices = MutableStateFlow<List<PHv2Device>>(emptyList())
     /** master list of all devices on this bridge */
     val devices = _devices.asStateFlow()
@@ -96,20 +101,6 @@ class PhilipsHueBridgeModel(
     /** master list of all the light groups for this bridge */
     val groupedLights = _groupedLights.asStateFlow()
 
-    // fixme: redundant with PhilipsHueBridgeInfo.rooms
-    private val _rooms = MutableStateFlow<List<PhilipsHueRoomInfo>>(listOf())
-    /** list of rooms for this bridge */
-    val rooms = _rooms.asStateFlow()
-
-    // fixme: redundant with PhilipsHueBridgeInfo.scenes
-    private val _scenes = MutableStateFlow<List<PHv2Scene>>(listOf())
-    /** list of all scenes for this bridge */
-    val scenes = _scenes.asStateFlow()
-
-    // fixme: redundant with PhilipsHueBridgeInfo.zones
-    private val _zones = MutableStateFlow<List< PHv2Zone>>(listOf())
-    /** list of all zones for this bridge */
-    val zones = _zones.asStateFlow()
 
     //-------------------------------------
     //  class data
@@ -130,12 +121,13 @@ class PhilipsHueBridgeModel(
      *
      * @param   coroutineScope      Used for all the suspend functions within this class
      */
+    @Deprecated("don't think this is used")
     operator fun invoke(
         bridgeInfo: PhilipsHueBridgeInfo,
         coroutineScope: CoroutineScope
     ) : PhilipsHueBridgeModel {
         return PhilipsHueBridgeModel(
-            bridgeId = bridgeInfo.v2Id,
+            bridgeV2Id = bridgeInfo.v2Id,
             bridgeIpAddress = bridgeInfo.v2Id,
             bridgeToken = bridgeInfo.token,
             coroutineScope = coroutineScope
@@ -146,7 +138,9 @@ class PhilipsHueBridgeModel(
     /**
      * Called every time this class is instantiated.  Does NOT do the
      * work of retrieving info from the long-term storage (that stuff
-     * is done in [PhilipsHueBridgeStorage]).
+     * is done in [PhilipsHueBridgeStorage]) and it's assumed that it is
+     * completed before instantiating; the params from that are required
+     * to start this up anyway.
      */
     init {
         Log.d(TAG, "init() begin")
@@ -162,7 +156,7 @@ class PhilipsHueBridgeModel(
             // initialize server-sent events.
             Log.d(TAG, "init(): initializing sse")
             phSse = PhilipsHueSSE(
-                bridgeId = bridgeId,
+                bridgeId = bridgeV2Id,
                 bridgeIpAddress = bridgeIpAddress,
                 bridgeToken = bridgeToken,
                 coroutineScope = coroutineScope
@@ -204,7 +198,7 @@ class PhilipsHueBridgeModel(
 
         val otherBridgeModel = other as PhilipsHueBridgeModel
 
-        if (otherBridgeModel.bridgeId  != bridgeId) { return false }
+        if (otherBridgeModel.bridgeV2Id  != bridgeV2Id) { return false }
         if (otherBridgeModel.bridgeIpAddress  != bridgeIpAddress) { return false }
         if (otherBridgeModel.bridgeToken  != bridgeToken) { return false }
         if (otherBridgeModel.bridge != bridge) { return false }
@@ -214,11 +208,13 @@ class PhilipsHueBridgeModel(
     }
 
     override fun hashCode(): Int {
-        var result = bridgeId.hashCode()
+        var result = bridgeV2Id.hashCode()
         result = 31 * result + bridgeIpAddress.hashCode()
         result = 31 * result + bridgeToken.hashCode()
         result = 31 * result + bridge.hashCode()
-//        result = 31 * result + phSse.hashCode()
+        if (::phSse.isInitialized) {
+            result = 31 * result + phSse.hashCode()
+        }
         return result
     }
 

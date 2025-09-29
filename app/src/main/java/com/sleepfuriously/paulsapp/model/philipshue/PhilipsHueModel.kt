@@ -194,7 +194,7 @@ class PhilipsHueModel(
             val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
             workingBridgeSet.forEach { workingBridge ->
                 tmpBridgeModels.add(PhilipsHueBridgeModel(
-                    bridgeId = workingBridge.v2Id,
+                    bridgeV2Id = workingBridge.v2Id,
                     bridgeIpAddress = workingBridge.ipAddress,
                     bridgeToken = workingBridge.token,
                     coroutineScope = coroutineScope
@@ -205,7 +205,7 @@ class PhilipsHueModel(
             _bridgeModelFlowList.update {
                 Log.d(TAG, "updating _bridgeModelFlowList to $tmpBridgeModels, size = ${tmpBridgeModels.size}")
                 tmpBridgeModels.forEach { bridgeModel ->
-                    Log.d(TAG, "    id = ${bridgeModel.bridgeId}")
+                    Log.d(TAG, "    id = ${bridgeModel.bridgeV2Id}")
                     Log.d(TAG, "    bridge.value = ${bridgeModel.bridge}")
                 }
                 tmpBridgeModels
@@ -344,7 +344,7 @@ class PhilipsHueModel(
         val id = v2Bridge.getId()
 
         val newBridgeModel = PhilipsHueBridgeModel(
-            bridgeId = id,
+            bridgeV2Id = id,
             bridgeIpAddress = newBridge.ip,
             bridgeToken = newBridge.token,
             coroutineScope = CoroutineScope(coroutineContext)
