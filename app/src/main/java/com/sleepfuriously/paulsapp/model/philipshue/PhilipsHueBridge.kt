@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
  *
  *  Long-term storage of bridge data is NOT included here.
  */
+@Deprecated("This info should be moved to PhilipsHueBridgeModel")
 class PhilipsHueBridge(
     private val bridgeIpStr: String,
     private val bridgeToken: String,

@@ -115,8 +115,6 @@ class PhilipsHueModel(
     // todo: move this to PhilipsHueBridgeModel
     private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
-    /** true during initialization */
-    private var initializingLock = false
 
     //-------------------------------------
     //  initializations
@@ -163,12 +161,13 @@ class PhilipsHueModel(
                         Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
                     } else {
                         val v2Bridge = PHv2ResourceBridge(jsonBridgeResponseString)
-                        if (v2Bridge.hasData() == false) {
-                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
-                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
-                        } else {
+                        if (v2Bridge.hasData()) {
                             // finally we can get the name!
                             name = v2Bridge.getDeviceName()
+                        }
+                        else {
+                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
+                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
                         }
                     }
                 }
@@ -189,7 +188,6 @@ class PhilipsHueModel(
             // 2. Load data for each bridge (but only if it's active)
             //    To make sure that the flow works correctly we construct
             //    a brand-new set with all the data in it.
-
             // 2. Load up the bridges and put them in our bridge list
             val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
             workingBridgeSet.forEach { workingBridge ->
@@ -416,10 +414,8 @@ class PhilipsHueModel(
 
         bridgeModelFlowList.value.forEach { testBridge ->
             val testBridgeInfo = testBridge.bridge.value
-            if (testBridgeInfo != null) {
-                if (testBridgeInfo.v2Id == bridgeId) {
-                    return testBridgeInfo
-                }
+            if (testBridgeInfo.v2Id == bridgeId) {
+                return testBridgeInfo
             }
         }
         return null
@@ -525,7 +521,7 @@ class PhilipsHueModel(
             // find the index of the bridge to remove
             var index = -1
             for (i in 0 until bridgeModelFlowList.value.size) {
-                if (bridgeModelFlowList.value[i].bridge.value?.v2Id == bridgeId) {
+                if (bridgeModelFlowList.value[i].bridge.value.v2Id == bridgeId) {
                     index = i
                     break
                 }

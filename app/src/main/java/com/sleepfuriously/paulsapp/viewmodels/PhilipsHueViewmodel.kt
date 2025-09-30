@@ -67,16 +67,6 @@ class PhilipsHueViewmodel : ViewModel() {
 
 
     /**
-     * This list of bridges is just an intermediary--it's set to change when the Philips
-     * Hue Model changes.  It then passes along info the the View.  I should not be
-     * accessing this directly except from within the collector (of the Model).
-     */
-//    var philipsHueBridgesCompose by mutableStateOf<List<PhilipsHueBridgeInfo>>(mutableListOf())
-//        private set
-//    var philipsHueBridgeModelsCompose by mutableStateOf<List<PhilipsHueBridgeModel>>(mutableListOf())
-//        private set
-
-    /**
      * The bridges that are to be displayed in the views
      */
     var philipsHueBridgesCompose by mutableStateOf<List<PhilipsHueBridgeInfo>>(mutableListOf())
@@ -135,30 +125,6 @@ class PhilipsHueViewmodel : ViewModel() {
                 philipsHueBridgesCompose = tmpBridgeList
             }
         }
-
-
-
-
-        // Setup a coroutine that listens for changes (works as a consumer) to
-        // the flow from the Philips Hue model (about the bridge models).
-        // When there is a change, pass that change along to philipsHueBridgeModelsCompose
-        // (this makes us now a producer).  Thus this viewmodel is an intermediary (both).
-//        viewModelScope.launch {
-//
-//            phModel = PhilipsHueModel(coroutineScope = viewModelScope)
-//            phModel.bridgeModelFlowList.collectLatest { bridgeModelList ->
-//                Log.d(TAG, "collecting latest phModel.BridgeModelFlowList. size = ${bridgeModelList.size}")
-//                val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-//                bridgeModelList.forEach { model ->
-//                    Log.d(TAG, "    $model")
-//                    Log.d(TAG, "    -> ${model.bridge}")
-//                    model.bridge.value.let {
-//                        tmpBridgeList.add(it)
-//                    }
-//                }
-//                philipsHueBridgesCompose = tmpBridgeList
-//            }
-//        }
     }
 
     //-------------------------

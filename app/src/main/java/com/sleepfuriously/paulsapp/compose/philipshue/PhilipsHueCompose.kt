@@ -381,6 +381,9 @@ private fun DotDotDotBridgeMenu(
     }
 }
 
+/**
+ * Displays the dialog with all sorts of information about the bridge.
+ */
 @Composable
 private fun ShowBridgeInfoDialog(
     bridge: PhilipsHueBridgeInfo,
@@ -398,6 +401,14 @@ private fun ShowBridgeInfoDialog(
             SelectionContainer {
                 // This is the meat of the function.  All the data goes here.
                 LazyColumn {
+                    // human name
+                    item {
+                        DrawBridgeInfoLine(
+                            stringResource(R.string.name),
+                            bridge.humanName
+                        )
+                    }
+
                     // id
                     item {
                         DrawBridgeInfoLine(
@@ -449,7 +460,7 @@ private fun ShowBridgeInfoDialog(
                         item {
                             DrawBridgeInfoLine(
                                 stringResource(R.string.bridge_info_room),
-                                room.id
+                                room.name
                             )
                         }
 

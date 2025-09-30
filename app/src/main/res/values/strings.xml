@@ -97,6 +97,7 @@
     <string name="no">no</string>
     <string name="cancel" tools:ignore="ButtonCase">cancel</string>
     <string name="ok" tools:ignore="ButtonCase">ok</string>
+    <string name="name">name</string>
     <string name="next">next</string>
     <string name="done">done</string>
     <string name="close">close</string>
@@ -108,7 +109,7 @@
     <string name="id">ID</string>
     <string name="active">Active</string>
     <string name="not_applicable">N/A</string>
-    <string name="token">username</string>
+    <string name="token">token</string>
     <string name="room">room</string>
     <string name="zone">zone</string>
     <string name="connected">connected</string>

@@ -33,10 +33,6 @@ import org.json.JSONObject
  *
  * These CRUD functions are suspend functions and will return values.
  * How the data is handled and passed along is up to the caller.
- *
- * NOTE
- *  The handling of first connecting to a bridge is done in a different
- *  place (right now [PhilipsHueModel]).
  */
 object PhilipsHueBridgeApi {
 
@@ -226,7 +222,7 @@ object PhilipsHueBridgeApi {
 
         // check for html errors
         if (response.isSuccessful == false) {
-            Log.e(TAG, "getAllGroupedLightsFromApi() unsuccessful attempt at getting ALL grouped_lights!  bridge ip = ${bridgeIp}")
+            Log.e(TAG, "getAllGroupedLightsFromApi() unsuccessful attempt at getting ALL grouped_lights!  bridge ip = $bridgeIp")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             return null
         }
@@ -263,7 +259,7 @@ object PhilipsHueBridgeApi {
         )
 
         if (response.isSuccessful == false) {
-            Log.e(TAG, "unsuccessful attempt at getting grouped_lights!  groupId = $groupId, bridge ip = ${bridgeIp}")
+            Log.e(TAG, "unsuccessful attempt at getting grouped_lights!  groupId = $groupId, bridge ip = $bridgeIp")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             // returning null
             return@withContext null
@@ -363,7 +359,7 @@ object PhilipsHueBridgeApi {
         )
 
         if (response.isSuccessful == false) {
-            Log.e(TAG, "getLightInfoFromApi() unsuccessful attempt at getting light data!  lightId = $lightId, bridge ip = ${bridgeIp}")
+            Log.e(TAG, "getLightInfoFromApi() unsuccessful attempt at getting light data!  lightId = $lightId, bridge ip = $bridgeIp")
             Log.e(TAG, "   code = ${response.code}, message = ${response.message}, body = ${response.body}")
             return@withContext null
         }
@@ -450,9 +446,11 @@ object PhilipsHueBridgeApi {
     /**
      * Gets just one scene from a bridge.
      *
-     * @param   sceneId     The id for this scene
+     * @param   sceneId         The id for this scene
      *
-     * @param   bridge      The bridge to question about this scene
+     * @param   bridgeIp        Ip address of the bridge to question about this scene
+     *
+     * @param   bridgeToken     Token for the bridge.
      *
      * @return      The scene.  If an error, then the error component of the
      *              data is filled in.
@@ -560,9 +558,11 @@ object PhilipsHueBridgeApi {
     /**
      * Gets just one zone from a bridge.
      *
-     * @param   zoneId      The id for this zone
+     * @param   zoneId          The id for this zone
      *
-     * @param   bridge      The bridge to question about this zone
+     * @param   bridgeIp        The bridge to question about this zone
+     *
+     * @param   bridgeToken     Token to reference the bridge (aka username).
      *
      * @return      The zone.  If an error, then the error component of the
      *              data is filled in.

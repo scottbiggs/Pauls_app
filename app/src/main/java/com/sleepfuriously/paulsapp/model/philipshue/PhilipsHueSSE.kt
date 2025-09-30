@@ -110,7 +110,7 @@ class PhilipsHueSSE(
 
         override fun onClosed(eventSource: EventSource) {
             super.onClosed(eventSource)
-            Log.d(TAG, "sse - onClosed() for eventSource ${eventSource.toString()}")
+            Log.d(TAG, "sse - onClosed() for eventSource $eventSource")
             Log.i(TAG, "   time = ${getTime()}")
 
             val bridgeId = getBridgeIdFromEventSource(eventSource)

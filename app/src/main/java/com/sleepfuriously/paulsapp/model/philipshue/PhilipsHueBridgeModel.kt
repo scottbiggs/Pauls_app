@@ -316,7 +316,8 @@ class PhilipsHueBridgeModel(
                 )
             }
 
-        } else {
+        }
+        else if (::phSse.isInitialized) {
             // no longer connected.  Remember to turn off sse (just in case)!
             phSse.stopSSE()
             _bridge.update {
@@ -326,6 +327,9 @@ class PhilipsHueBridgeModel(
                     connected = false
                 )
             }
+        }
+        else {
+            Log.w(TAG, "checking to see if bridge is active before phSse is initialized")
         }
     }
 
@@ -616,9 +620,7 @@ class PhilipsHueBridgeModel(
      * Similar to [interpretUpdateEvent] and [interpretAddEvent], but for
      * delete events.
      */
-    private fun interpretDeleteEvent(
-        event: PHv2ResourceServerSentEvent
-    ) {
+    private fun interpretDeleteEvent(event: PHv2ResourceServerSentEvent) {
         // fixme
         Log.e(TAG, "todo: implement interpreting DELETE event")
 
