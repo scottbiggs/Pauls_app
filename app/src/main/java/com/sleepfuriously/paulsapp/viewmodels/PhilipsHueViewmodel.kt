@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Bridge
@@ -432,8 +433,7 @@ class PhilipsHueViewmodel : ViewModel() {
      *                          Otherwise it's changed to STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE.
      */
     fun bridgeButtonPushed() {
-        TODO("implement bridgeButtonPushed()")
-/*
+
         if (workingNewBridge == null) {
             Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
             return
@@ -442,7 +442,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
 //            val registerResponse = philipsHueRepository.registerAppToPhilipsHueBridge(bridge.ip)
-            val registerResponse = phModel.registerAppToBridge(bridge.ip)
+            val registerResponse = phRepository.registerAppToPhilipsHueBridge(bridge.ip)
             val token = registerResponse.first
             val err = registerResponse.second
 
@@ -487,7 +487,6 @@ class PhilipsHueViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
             }
         }
-*/
     }
 
     /**
