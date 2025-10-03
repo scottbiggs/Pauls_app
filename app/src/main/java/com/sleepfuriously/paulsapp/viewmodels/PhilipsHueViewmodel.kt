@@ -233,8 +233,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * If the bridgeId is invalid, then nothing is done (of course).
      */
     fun deleteBridge(bridgeId: String) {
-        TODO("implement deleteBridge()")
-//        phModel.deleteBridge(bridgeId)
+        phRepository.deletePhilipsHueBridge(bridgeId)
     }
 
     /**
