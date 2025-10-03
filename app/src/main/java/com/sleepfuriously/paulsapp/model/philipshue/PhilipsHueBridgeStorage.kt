@@ -208,7 +208,7 @@ object PhilipsHueBridgeStorage {
      * Because this does multiple saves in a row, you need to call
      * this off the main thread to avoid any possible race condition.
      *
-     * @param       bridge      The bridge to save (complete).
+     * @param       bridgeId    The bridge to save (complete).
      *                          Warning: this id MUST BE UNIQUE if
      *                          we are saving a NEW bridge!!!
      *                          This does not check the uniqueness

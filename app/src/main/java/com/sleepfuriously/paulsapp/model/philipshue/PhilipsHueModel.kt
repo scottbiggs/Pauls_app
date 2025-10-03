@@ -104,6 +104,7 @@ class PhilipsHueModel(
      * The main list of the bridges.  Changes to the list happen HERE!  Those changes
      * will flow downstream to all sorts of places.
      */
+    @Deprecated("take me away...!")
     val bridgeModelFlowList = _bridgeModelFlowList.asStateFlow()
 
 
@@ -112,8 +113,8 @@ class PhilipsHueModel(
     //-------------------------------------
 
     /** Controls server-sent events (sse) */
-    // todo: move this to PhilipsHueBridgeModel
-    private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
+//    @Deprecated("variable currently uses OLD sse stuff")
+//    private val phServerSentEvents = PhilipsHueServerSentEvents(coroutineScope)
 
 
     //-------------------------------------
@@ -286,15 +287,15 @@ class PhilipsHueModel(
      * Connects the given bridge to this app, enabling this app to
      * receive updates on changes to the Philips Hue world.
      */
-    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
-
-        if (bridge.connected) {
-            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.v2Id}")
-            return
-        }
-
-        phServerSentEvents.startSse(bridge)
-    }
+//    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
+//
+//        if (bridge.connected) {
+//            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.v2Id}")
+//            return
+//        }
+//
+//        phServerSentEvents.startSse(bridge)
+//    }
 
     /**
      * Stop receiving updates about the Philps Hue IoT for this bridge.
@@ -303,10 +304,10 @@ class PhilipsHueModel(
      * Should be no need to do any changes: the bridge itself should call onClosed()
      * which will be processed.
      */
-    fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
-        phServerSentEvents.cancelSSE(bridge.v2Id)
-    }
+//    fun disconnectFromBridge(bridge: PhilipsHueBridgeInfo) {
+//        Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
+//        phServerSentEvents.cancelSSE(bridge.v2Id)
+//    }
 
     //-------------------------------------
     //  create
@@ -887,19 +888,19 @@ class PhilipsHueModel(
  * can occur while trying to get a new token (username) from
  * the bridge.
  */
-enum class GetBridgeTokenErrorEnum {
-    NO_ERROR,
-    /** ip is not proper format */
-    BAD_IP,
-    /** reponse was not successful--probably a bad url or no bridge */
-    UNSUCCESSFUL_RESPONSE,
-    /** for whatever reason there WAS a successful response, but a token wasn't found */
-    TOKEN_NOT_FOUND,
-    /** successful response, but the body would not parse properly--perhaps ip went to wrong device? */
-    CANNOT_PARSE_RESPONSE_BODY,
-    /** user did not hit the button on the bridge before we tried to register with it */
-    BUTTON_NOT_HIT
-}
+//enum class GetBridgeTokenErrorEnum {
+//    NO_ERROR,
+//    /** ip is not proper format */
+//    BAD_IP,
+//    /** reponse was not successful--probably a bad url or no bridge */
+//    UNSUCCESSFUL_RESPONSE,
+//    /** for whatever reason there WAS a successful response, but a token wasn't found */
+//    TOKEN_NOT_FOUND,
+//    /** successful response, but the body would not parse properly--perhaps ip went to wrong device? */
+//    CANNOT_PARSE_RESPONSE_BODY,
+//    /** user did not hit the button on the bridge before we tried to register with it */
+//    BUTTON_NOT_HIT
+//}
 
 
 //-------------------------------------

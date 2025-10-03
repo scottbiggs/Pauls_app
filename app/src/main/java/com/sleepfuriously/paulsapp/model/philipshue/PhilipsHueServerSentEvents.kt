@@ -24,7 +24,7 @@ import org.json.JSONException
  * The events will be consumed by [PhilipsHueRepository] which will
  * spit 'em out to whomever needs them.
  */
-@Deprecated("use PhilipsHueSSE instead")
+@Deprecated("delete me.  use PhilipsHueSSE instead")
 class PhilipsHueServerSentEvents(coroutineScope: CoroutineScope) {
 
     //---------------------------------

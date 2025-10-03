@@ -10,11 +10,9 @@ import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
-import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Bridge
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModel
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
@@ -24,7 +22,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -98,10 +95,6 @@ class PhilipsHueViewmodel : ViewModel() {
     //  private data
     //-------------------------
 
-    /** access to philips hue model */
-    @Deprecated("trying to phase out the PhilipsHueModel")
-    private lateinit var phModel : PhilipsHueModel
-
     /** access to repository */
     private var phRepository = PhilipsHueRepository(viewModelScope)
 
@@ -114,7 +107,7 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch {
 
             // convert list of BridgeModels to a list Bridges
-            phRepository.bridgeModelList.collectLatest { bridgeModel ->
+            phRepository.bridgeInfoList.collectLatest { bridgeModel ->
                 Log.d(TAG, "phRepository changed")
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModel.forEach { bridgeInfo ->
@@ -150,14 +143,15 @@ class PhilipsHueViewmodel : ViewModel() {
         changedRoom: PhilipsHueRoomInfo,
         changedBridge: PhilipsHueBridgeInfo
     ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            phModel.updateRoomBrightness(
-                newBrightness = newBrightness,
-                newOnStatus = newOnStatus,
-                changedRoom = changedRoom,
-                changedBridge = changedBridge
-            )
-        }
+        TODO("implement changeRoomBrightness")
+//        viewModelScope.launch(Dispatchers.IO) {
+//            phModel.updateRoomBrightness(
+//                newBrightness = newBrightness,
+//                newOnStatus = newOnStatus,
+//                changedRoom = changedRoom,
+//                changedBridge = changedBridge
+//            )
+//        }
     }
 
     /**
@@ -239,7 +233,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * If the bridgeId is invalid, then nothing is done (of course).
      */
     fun deleteBridge(bridgeId: String) {
-        phModel.deleteBridge(bridgeId)
+        TODO("implement deleteBridge()")
+//        phModel.deleteBridge(bridgeId)
     }
 
     /**
@@ -247,7 +242,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * server-sent events.
      */
     fun connectBridge(bridge: PhilipsHueBridgeInfo) {
-        phModel.startSseConnection(bridge)
+        TODO("implement connectBridge()")
+//        phModel.startSseConnection(bridge)
     }
 
     /**
@@ -255,7 +251,8 @@ class PhilipsHueViewmodel : ViewModel() {
      * this bridge.
      */
     fun disconnectBridge(bridge: PhilipsHueBridgeInfo) {
-        phModel.disconnectFromBridge(bridge)
+        TODO("implement disconnectBridge()")
+//        phModel.disconnectFromBridge(bridge)
     }
 
 
@@ -436,7 +433,8 @@ class PhilipsHueViewmodel : ViewModel() {
      *                          Otherwise it's changed to STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE.
      */
     fun bridgeButtonPushed() {
-
+        TODO("implement bridgeButtonPushed()")
+/*
         if (workingNewBridge == null) {
             Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
             return
@@ -490,6 +488,7 @@ class PhilipsHueViewmodel : ViewModel() {
                 _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
             }
         }
+*/
     }
 
     /**
@@ -531,7 +530,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // Add this new bridge to our permanent data (and the Model).
 //        phModel.addBridge(workingNewBridge!!)
-            phRepository.addPhilipsHueBridge(workingNewBridge!!)
+            phRepository.addBridge(workingNewBridge!!)
 
             // lastly signal that we're done with the new bridge stuff
             workingNewBridge = null

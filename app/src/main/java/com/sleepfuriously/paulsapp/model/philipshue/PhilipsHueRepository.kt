@@ -1,6 +1,10 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.MyApplication
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge.Companion.invoke
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.CoroutineScope
@@ -9,7 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.collections.plus
 
 /**
  * This is the communicator between all the Philips Hue components
@@ -31,9 +35,9 @@ import kotlinx.coroutines.withContext
  *  - Connect to those bridges (if possible).
  *
  * After initialization, receive flow updates on the bridges and pass that
- * along to whatever is observing [bridgeModelList].
+ * along to whatever is observing [bridgeInfoList].
  *
- * NOTE: because [_bridgeModelList] and [bridgeModelList] are actually different,
+ * NOTE: because [bridgeModelList] and [bridgeInfoList] are actually different,
  * we should ONLY USE _bridgeModelList within this class
  *
  * ---------------------------------------------------
@@ -97,24 +101,35 @@ class PhilipsHueRepository(
     //-------------------------------
 
     /**
-     * Takes a list of [PhilipsHueBridgeModel] and converts it to a
-     * list of [PhilipsHueBridgeInfo].
+     * fixme:  does not work!!! -- no sse changes pass through
+     *
+     * Holds our list of [PhilipsHueBridgeModel] as a StateFlow.  It's converted
+     * to a list of [PhilipsHueBridgeInfo] as a StateFlow (called [bridgeInfoList]).
+     *
+     * Changes anywhere down the line should percolate up and be sent along to any
+     * observer of bridgeInfoList.
      */
-    private val _bridgeModelList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
+    private val bridgeModelList = MutableStateFlow<List<PhilipsHueBridgeModel>>(listOf())
 
-    /** the complete list of all the bridges and associated data (comes from [PhilipsHueModel]) */
+    /**
+     * The complete list of all the bridges and associated data
+     *
+     * fixme:  does not work!!! -- sse changes are not noticed here
+     */
 //    val bridgeModelList = _bridgeModelList.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val bridgeModelList: StateFlow<List<PhilipsHueBridgeInfo>> = _bridgeModelList
+    val bridgeInfoList: StateFlow<List<PhilipsHueBridgeInfo>> = bridgeModelList
         .flatMapLatest { bridgeModels ->
             Log.d(TAG, "change noted in _bridgeModelList -- trying to pass it along")
             if (bridgeModels.isEmpty()) {
+                Log.d(TAG, "   passing along an empty list")
                 MutableStateFlow(emptyList())
             }
             else {
                 val listOfStateFlowBridgeInfo =
                     bridgeModels.map(transform = PhilipsHueBridgeModel::bridge)
+                Log.d(TAG, "   transforming into BridgeInfoList. size = ${bridgeModels.size}")
                 combine(
                     flows = listOfStateFlowBridgeInfo,
                     transform = Array<PhilipsHueBridgeInfo>::toList
@@ -141,7 +156,8 @@ class PhilipsHueRepository(
     init {
         // start consuming bridge flow from Model
         coroutineScope.launch {
-            model.bridgeModelFlowList.collectLatest {
+//            model.bridgeModelFlowList.collectLatest {
+            bridgeModelList.collectLatest {
                 Log.d(TAG, "collecting bridgeFlowSet from bridgeModel:")
                 Log.d(TAG, "    size = ${it.size}")
                 Log.d(TAG, "    change = $it")
@@ -157,12 +173,97 @@ class PhilipsHueRepository(
 //                    }
                 }
                 // producing flow
-                _bridgeModelList.update {
-                    Log.d(TAG, "updating bridgeList: $_bridgeModelList")
+                bridgeModelList.update {
+                    Log.d(TAG, "updating bridgeList: $bridgeModelList")
                     newBridgeList
                 }
             }
         }
+
+        // Now for the real initializations!  Load up the bridge information,
+        // make our list of bridges, and start talking to them.
+        //
+        // todo question:  should this be done BEFORE the flow is collected above?
+        //
+        coroutineScope.launch(Dispatchers.IO) {
+
+            // 1. Load bridge ids from prefs
+            //
+            val ctx = MyApplication.appContext
+            val bridgeIdsFromPrefs = PhilipsHueBridgeStorage.loadAllBridgeIds(ctx)
+            if (bridgeIdsFromPrefs.isNullOrEmpty()) {
+                return@launch
+            }
+
+            /**  temp holder */
+            val workingBridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+
+            // use these ids to load the ips & tokens from prefs
+            bridgeIdsFromPrefs.forEach { id ->
+
+                // get the IP for this bridge
+                val ip = PhilipsHueBridgeStorage.loadBridgeIp(id, ctx)
+
+                // get the token for this bridge
+                val token = PhilipsHueBridgeStorage.loadBridgeToken(id, ctx)
+
+                val isActive = isBridgeActive(ip, token)
+                var name = ""
+                if (isActive) {
+                    val jsonBridgeResponseString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
+                    if (jsonBridgeResponseString.isEmpty()) {
+                        Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
+                    } else {
+                        val v2Bridge = PHv2ResourceBridge(jsonBridgeResponseString)
+                        if (v2Bridge.hasData()) {
+                            // finally we can get the name!
+                            name = v2Bridge.getDeviceName()
+                        }
+                        else {
+                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
+                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
+                        }
+                    }
+                }
+
+                val bridge = PhilipsHueBridgeInfo(
+                    v2Id = id,
+                    bridgeId = name,
+                    ipAddress = ip,
+                    token = token,
+                    active = isActive,
+                    connected = false,
+                    humanName = "initializing..."
+                )
+
+                workingBridgeSet += bridge
+            }
+
+            // 2. Load up the bridges and put them in our bridge list
+            //
+            val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
+            workingBridgeSet.forEach { workingBridge ->
+                tmpBridgeModels.add(PhilipsHueBridgeModel(
+                    bridgeV2Id = workingBridge.v2Id,
+                    bridgeIpAddress = workingBridge.ipAddress,
+                    bridgeToken = workingBridge.token,
+                    coroutineScope = coroutineScope
+                ))
+            }
+
+            // 3. update the flow (well, the variable that is reflected in the flow)
+            //
+            bridgeModelList.update {
+                Log.d(TAG, "updating bridgeModelList to $tmpBridgeModels, size = ${tmpBridgeModels.size}")
+                tmpBridgeModels.forEach { bridgeModel ->
+                    Log.d(TAG, "    id = ${bridgeModel.bridgeV2Id}")
+                    Log.d(TAG, "    bridge.value = ${bridgeModel.bridge}")
+                }
+                tmpBridgeModels
+            }
+        }
+
+
 
     }
 
@@ -183,7 +284,7 @@ class PhilipsHueRepository(
         }
 
         // find the bridge model and tell it to connect for sse
-        val foundBridgeModel = _bridgeModelList.value.find { bridgeModel ->
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
             bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
         foundBridgeModel?.connectSSE()
@@ -202,7 +303,7 @@ class PhilipsHueRepository(
         Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
         // find the bridge model and disconnect sse
-        val foundBridgeModel = _bridgeModelList.value.find { bridgeModel ->
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
             bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
         foundBridgeModel?.disconnectSSE()
@@ -237,7 +338,33 @@ class PhilipsHueRepository(
     suspend fun registerAppToPhilipsHueBridge(
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
-        return model.registerAppToBridge(bridgeIp)
+
+        val fullAddress = PhilipsHueBridgeApi.createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
+        Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
+
+        val response = synchronousPost(
+            url = fullAddress,
+            bodyStr = generateGetTokenBody(ctx = MyApplication.appContext),
+            trustAll = true     // fixme when we have full security going
+        )
+
+        if (response.isSuccessful) {
+            // get token
+            val token = PhilipsHueDataConverter.getTokenFromBodyStr(response.body)
+            Log.i(TAG, "requestTokenFromBridge($bridgeIp) -> $token")
+
+            if (token != null) {
+                return Pair(token, GetBridgeTokenErrorEnum.NO_ERROR)
+            } else {
+                Log.e(TAG, "unable to parse body in requestTokenFromBridge($bridgeIp)")
+                Log.e(TAG, "   response => \n$response")
+                return Pair("", GetBridgeTokenErrorEnum.CANNOT_PARSE_RESPONSE_BODY)
+            }
+        } else {
+            Log.e(TAG, "error: unsuccessful attempt to get token from bridge at ip $bridgeIp")
+            Log.e(TAG, "   response => \n$response")
+            return Pair("", GetBridgeTokenErrorEnum.UNSUCCESSFUL_RESPONSE)
+        }
     }
 
     /**
@@ -245,7 +372,8 @@ class PhilipsHueRepository(
      * receive updates on changes to the Philips Hue world.
      */
     fun startPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
-        model.startSseConnection(bridge)
+        TODO()
+//        model.startSseConnection(bridge)
     }
 
     /**
@@ -259,10 +387,55 @@ class PhilipsHueRepository(
      *                          (the id will be set BY THIS FUNCTION).
      *                          The data is NOT checked for accuracy.
      */
-    suspend fun addPhilipsHueBridge(
+    /**
+     * This creates a new bridge and adds it the permanent bridge
+     * data.
+     *
+     * preconditions
+     *      The newBridge must be active and contain a token!!!
+     *
+     * @param   newBridge       A nearly fully-loaded bridge info class
+     *                          (the id will be set BY THIS FUNCTION).
+     *                          The data is NOT checked for accuracy.
+     */
+    suspend fun addBridge(
         newBridge: PhilipsHueNewBridge
     ) = withContext(Dispatchers.IO) {
-        model.addBridge(newBridge)
+
+        // grab the id for this bridge
+        val jsonResponseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
+            bridgeIp = newBridge.ip,
+            token = newBridge.token
+        )
+        val v2Bridge = PHv2ResourceBridge(jsonResponseStr)
+        if (v2Bridge.hasData() == false) {
+            Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
+            Log.e(TAG, "   error msg: ${v2Bridge.getError()}")
+            return@withContext
+        }
+
+        val id = v2Bridge.getId()
+
+        val newBridgeModel = PhilipsHueBridgeModel(
+            bridgeV2Id = id,
+            bridgeIpAddress = newBridge.ip,
+            bridgeToken = newBridge.token,
+            coroutineScope = CoroutineScope(coroutineContext)
+        )
+
+        bridgeModelList.update {
+            Log.d(TAG, "updating _bridgeModelFlowList(2) by adding $newBridgeModel")
+            it + newBridgeModel
+        }
+
+        // update long-term data
+        PhilipsHueBridgeStorage.saveBridge(
+            bridgeId = id,
+            bridgeipAddress = newBridge.ip,
+            newToken = newBridge.token,
+            synchronize = true,
+            ctx = MyApplication.appContext
+        )
     }
 
     //-------------------------------
@@ -314,29 +487,29 @@ class PhilipsHueRepository(
     //  update
     //-------------------------------
 
-    /**
-     * Pass the call along to the Philips Hue model (after placing
-     * this in a coroutine).
-     */
-    /**
-     * Pass the call along to the Philips Hue model (after placing
-     * this in a coroutine).
-     */
-    fun updatePhilipsHueRoomBrightness(
-        newBrightness: Int,
-        newOnStatus: Boolean,
-        changedRoom: PhilipsHueRoomInfo,
-        changedBridge: PhilipsHueBridgeInfo
-    ) {
-        coroutineScope.launch(Dispatchers.IO) {
-            model.updateRoomBrightness(
-                newBrightness = newBrightness,
-                newOnStatus = newOnStatus,
-                changedRoom = changedRoom,
-                changedBridge = changedBridge
-            )
-        }
-    }
+//    /**
+//     * Pass the call along to the Philips Hue model (after placing
+//     * this in a coroutine).
+//     */
+//    /**
+//     * Pass the call along to the Philips Hue model (after placing
+//     * this in a coroutine).
+//     */
+//    fun updatePhilipsHueRoomBrightness(
+//        newBrightness: Int,
+//        newOnStatus: Boolean,
+//        changedRoom: PhilipsHueRoomInfo,
+//        changedBridge: PhilipsHueBridgeInfo
+//    ) {
+//        coroutineScope.launch(Dispatchers.IO) {
+//            model.updateRoomBrightness(
+//                newBrightness = newBrightness,
+//                newOnStatus = newOnStatus,
+//                changedRoom = changedRoom,
+//                changedBridge = changedBridge
+//            )
+//        }
+//    }
 
     /**
      * Another intermediary: tell the PH model to update a room so
@@ -381,7 +554,59 @@ class PhilipsHueRepository(
      * Results will be propogated through a flow.
      */
     fun deletePhilipsHueBridge(bridgeId: String) {
-        model.deleteBridge(bridgeId)
+
+        // make sure that the bridge exists
+        var found = false
+        for (bridgeModel in bridgeModelList.value) {
+            if (bridgeModel.bridgeV2Id == bridgeId) {
+                found = true
+                break
+            }
+        }
+        if (found == false) {
+            Log.e(TAG, "unable to delete bridge id = $bridgeId")
+            return
+        }
+
+        // 1) Tell the bridge to remove this app's username (token)
+        //      UNABLE TO COMPLY:  Philps Hue removed this ability, so it cannot be implemented!
+        //      The user has to do a RESET on the bridge to get this data removed.  What a pain!
+
+        // 2) Remove bridge data from our permanent storage
+        val ctx = MyApplication.appContext
+        if (PhilipsHueBridgeStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {
+            Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
+            return
+        }
+
+        PhilipsHueBridgeStorage.removeBridgeIP(bridgeId, true, ctx)
+
+        if (PhilipsHueBridgeStorage.removeBridgeId(bridgeId, true, ctx) == false) {
+            Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
+            return
+        }
+
+        // 3) Remove bridge data from our temp storage.
+        //  As this is a complicated data structure, we need to use a
+        //  (kind of) complicated remove.
+        bridgeModelList.update {
+            // find the index of the bridge to remove
+            var index = -1
+            for (i in 0 until bridgeModelList.value.size) {
+                if (bridgeModelList.value[i].bridge.value.v2Id == bridgeId) {
+                    index = i
+                    break
+                }
+            }
+            if (index == -1) {
+                Log.e(TAG, "Unable to find bridge id = $bridgeId in deleteBridge(). Aborting!")
+                bridgeModelList.value
+            }
+            else {
+                Log.d(TAG, "updating _bridgeModelFlowList by removing ${bridgeModelList.value[index]}")
+                bridgeModelList.value - bridgeModelList.value[index]
+            }
+        }
     }
 
     /**
@@ -393,8 +618,28 @@ class PhilipsHueRepository(
      * If the bridge is not found, nothing is done.
      */
     fun stopPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
-        model.disconnectFromBridge(bridge)
+        TODO()
+//        model.disconnectFromBridge(bridge)
     }
+}
+
+/**
+ * These are the possibilities of the types of errors that
+ * can occur while trying to get a new token (username) from
+ * the bridge.
+ */
+enum class GetBridgeTokenErrorEnum {
+    NO_ERROR,
+    /** ip is not proper format */
+    BAD_IP,
+    /** reponse was not successful--probably a bad url or no bridge */
+    UNSUCCESSFUL_RESPONSE,
+    /** for whatever reason there WAS a successful response, but a token wasn't found */
+    TOKEN_NOT_FOUND,
+    /** successful response, but the body would not parse properly--perhaps ip went to wrong device? */
+    CANNOT_PARSE_RESPONSE_BODY,
+    /** user did not hit the button on the bridge before we tried to register with it */
+    BUTTON_NOT_HIT
 }
 
 
