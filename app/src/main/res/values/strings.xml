@@ -41,6 +41,7 @@
     <string name="new_bridge_stage_1_error_no_bridge_at_ip">Hmmm, I cannot find a bridge at IP = %1s.\n
         Please check to make sure the bridge is on and the IP is correct.
     </string>
+    <string name="new_bridge_stage_1_error_already_initialized">The bridge at IP = %1s is already initialized.</string>
     <string name="new_bridge_success">Yay, your bridge was successfully added!</string>
     <string name="new_bridge_impossible_state_error">Error, should never have NOT_INITIALIZING state in PhilipsHueManualInit()!</string>
     <string name="connect_to_ph_bridge">Connect to the Philips Hue bridge</string>

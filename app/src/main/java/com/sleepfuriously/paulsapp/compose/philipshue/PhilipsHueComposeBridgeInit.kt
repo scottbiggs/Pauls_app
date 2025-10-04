@@ -84,6 +84,7 @@ fun ManualBridgeSetup(
             // These states involve stage 1
             BridgeInitStates.STAGE_1_GET_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+            BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED,
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 if (landscape) {
                     ManualBridgeSetupStep1_landscape(modifier, philipsHueViewmodel, initBridgeState)
@@ -242,6 +243,17 @@ private fun ManualBridgeSetupStep1_landscape(
             ctx,
             stringResource(
                 R.string.new_bridge_stage_1_error_no_bridge_at_ip,
+                viewmodel.workingNewBridge?.ip ?: ""
+            ),
+            Toast.LENGTH_LONG
+        ).show()
+        viewmodel.bridgeAddErrorMsgIsDisplayed()
+    }
+    if (state == BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED) {
+        Toast.makeText(
+            ctx,
+            stringResource(
+                R.string.new_bridge_stage_1_error_already_initialized,
                 viewmodel.workingNewBridge?.ip ?: ""
             ),
             Toast.LENGTH_LONG
@@ -411,6 +423,17 @@ private fun ManualBridgeSetupStep1_Portrait(
         ).show()
         viewmodel.bridgeAddErrorMsgIsDisplayed()
     }
+    if (state == BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP) {
+        Toast.makeText(
+            ctx,
+            stringResource(
+                R.string.new_bridge_stage_1_error_no_bridge_at_ip,
+                viewmodel.workingNewBridge?.ip ?: ""
+            ),
+            Toast.LENGTH_LONG
+        ).show()
+        viewmodel.bridgeAddErrorMsgIsDisplayed()
+    }
 
 } // ManualBridgeSetupStep1_Portrait
 
@@ -436,6 +459,7 @@ private fun ManualBridgeSetupStep2(
         BridgeInitStates.STAGE_1_GET_IP -> ""
         BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT -> ""
         BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> ""
+        BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED -> ""
         BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON -> ""
         BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE -> stringResource(
             R.string.registering_bridge_button_not_pressed,

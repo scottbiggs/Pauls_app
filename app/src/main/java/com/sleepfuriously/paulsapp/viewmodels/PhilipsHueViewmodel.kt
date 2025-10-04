@@ -276,6 +276,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
             BridgeInitStates.STAGE_1_GET_IP,
             BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+            BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED,
             BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
             }
@@ -351,7 +352,7 @@ class PhilipsHueViewmodel : ViewModel() {
 
             // check format
             if (isValidBasicIp(newIp) == false) {
-                Log.e(TAG, "invalid ip format in addPhilipsHueBridgeIp($newIp)")
+                Log.w(TAG, "addPhilipsHueBridgeIp() - invalid ip format: $newIp")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT
                 _waitingForResponse.value = false
                 return@launch
@@ -361,6 +362,14 @@ class PhilipsHueViewmodel : ViewModel() {
             // The user may need to modify it later.
             Log.d(TAG, "newbridge.ip set to $newIp")
             workingNewBridge!!.ip = newIp
+
+            // check to see if we already know about this bridge
+            if (phRepository.doesBridgeExist(newIp)) {
+                Log.w(TAG, "addPhilipsHueBridgeIp() - bridge already exists: ip = $newIp")
+                _addNewBridgeState.update { BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED }
+                _waitingForResponse.update { false }
+                return@launch
+            }
 
             // is there actually a bridge there?
             if (doesBridgeRespondToIp(newIp) == false) {
@@ -400,7 +409,8 @@ class PhilipsHueViewmodel : ViewModel() {
                 workingNewBridge?.ip = ""
             }
 
-            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP -> {
+            BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP,
+            BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED -> {
                 Log.d(TAG, "bridgeAddErrorMsgIsDisplayed() - reset to stage 1")
                 _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
             }
@@ -434,11 +444,19 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun bridgeButtonPushed() {
 
+        // sanity checks: make sure that the bridge exists and is operating
         if (workingNewBridge == null) {
             Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
+            _addNewBridgeState.update { BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE }
             return
         }
-        val bridge = workingNewBridge ?: return        // yah, redundant.  But that's kotlin for ya!
+        if (workingNewBridge == null) {
+            _addNewBridgeState.update { BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE }
+            return
+        }
+        // Should never return here, but that's kotlin!  It's the only way to make sure bridge
+        // is not null.
+        val bridge = workingNewBridge ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
 //            val registerResponse = philipsHueRepository.registerAppToPhilipsHueBridge(bridge.ip)
@@ -742,6 +760,7 @@ enum class BridgeInitStates {
     STAGE_1_GET_IP,
     STAGE_1_ERROR__BAD_IP_FORMAT,
     STAGE_1_ERROR__NO_BRIDGE_AT_IP,
+    STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED,
 
     /** User needs to hit the bridge button and then hit next so we can initiate registration */
     STAGE_2_PRESS_BRIDGE_BUTTON,

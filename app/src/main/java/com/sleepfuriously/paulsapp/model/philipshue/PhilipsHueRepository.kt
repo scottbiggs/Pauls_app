@@ -443,6 +443,19 @@ class PhilipsHueRepository(
     //-------------------------------
 
     /**
+     * Checks to see if this bridge already exists in our list of bridges
+     * Doesn't matter if it's active or not--just if it exists.
+     */
+    fun doesBridgeExist(ip: String) : Boolean {
+        bridgeInfoList.value.forEach { bridgeInfo ->
+            if (bridgeInfo.ipAddress == ip) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
      * Tests to see if a bridge is at the given ip.
      *
      * This just tests to see if the basic debug screen appears.
