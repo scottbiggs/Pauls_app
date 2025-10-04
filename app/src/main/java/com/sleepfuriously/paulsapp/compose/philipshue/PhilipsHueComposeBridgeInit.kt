@@ -25,8 +25,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -115,6 +118,16 @@ fun ManualBridgeSetup(
     }
 }
 
+/**
+ * First screen (landscape mode) of the bridge initialization process.  Shows
+ * how to find the IP of a bridge and provides a place to type it in.  The
+ * result on some change of [state].
+ *
+ * @param   modifier
+ * @param   viewmodel
+ * @param   state           Enum from [BridgeInitStates] which tells this
+ *                          function exactly what to display.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ManualBridgeSetupStep1_landscape(
@@ -428,6 +441,17 @@ private fun ManualBridgeSetupStep1_Portrait(
             ctx,
             stringResource(
                 R.string.new_bridge_stage_1_error_no_bridge_at_ip,
+                viewmodel.workingNewBridge?.ip ?: ""
+            ),
+            Toast.LENGTH_LONG
+        ).show()
+        viewmodel.bridgeAddErrorMsgIsDisplayed()
+    }
+    if (state == BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED) {
+        Toast.makeText(
+            ctx,
+            stringResource(
+                R.string.new_bridge_stage_1_error_already_initialized,
                 viewmodel.workingNewBridge?.ip ?: ""
             ),
             Toast.LENGTH_LONG
