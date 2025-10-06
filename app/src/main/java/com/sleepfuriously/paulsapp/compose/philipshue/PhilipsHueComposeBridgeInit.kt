@@ -25,11 +25,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -478,6 +475,7 @@ private fun ManualBridgeSetupStep2(
         viewmodel.bridgeInitGoBack()
     }
 
+    // figure out any error messages
     val bridgeErrorMsg = when (state) {
         BridgeInitStates.NOT_INITIALIZING -> ""
         BridgeInitStates.STAGE_1_GET_IP -> ""
@@ -505,6 +503,7 @@ private fun ManualBridgeSetupStep2(
         BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> ""
     }
 
+    // no error. display big bridge w/ button
     if (bridgeErrorMsg.isBlank()) {
         Column(
             modifier = modifier

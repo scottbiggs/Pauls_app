@@ -13,7 +13,6 @@ import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Bridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
@@ -459,16 +458,15 @@ class PhilipsHueViewmodel : ViewModel() {
         val bridge = workingNewBridge ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-//            val registerResponse = philipsHueRepository.registerAppToPhilipsHueBridge(bridge.ip)
             val registerResponse = phRepository.registerAppToPhilipsHueBridge(bridge.ip)
             val token = registerResponse.first
             val err = registerResponse.second
 
             if (token.isBlank()) {
-                Log.d(TAG, "bridgeButtonPushed(), error returned from registerAppToBridge()")
+                Log.e(TAG, "bridgeButtonPushed(), error returned from registerAppToBridge()")
 
                 when (err) {
-                    GetBridgeTokenErrorEnum.NO_ERROR,
+                    GetBridgeTokenErrorEnum.NO_ERROR,       // This should not happen, but if it does, crash to get our attention!
                     GetBridgeTokenErrorEnum.BAD_IP -> {
                         Log.e(TAG, "Error state ${registerResponse.second} should not occur at this point in bridge registration.")
                         // we should crash now!!!
@@ -502,7 +500,7 @@ class PhilipsHueViewmodel : ViewModel() {
                 // The adding of the data will wait until bridgeAddAllGoodAndDone() is called.
                 Log.d(TAG, "Successfully found the token in bridgeButtonPushed()")
                 workingNewBridge!!.token = token
-                _addNewBridgeState.value = BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE
+                _addNewBridgeState.update { BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE }
             }
         }
     }
@@ -514,43 +512,20 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun bridgeAddAllGoodAndDone() {
 
-        Log.d(TAG, "bridgeAllGoodAndDone() begin")
+        Log.d(TAG, "bridgeAllGoodAndDone() begin - addNewBridgeState = ${addNewBridgeState.value}")
 
         viewModelScope.launch(Dispatchers.IO) {
-
-            // Get the name of the bridge (I'm using the printed name on the bridge itself)
-            val v2bridge = PhilipsHueBridgeApi.getBridgeApi(
-                bridgeIpStr = workingNewBridge!!.ip,
-                token = workingNewBridge!!.token
-            )
-
-            if (v2bridge.hasData() == false) {
-                Log.e(
-                    TAG,
-                    "Unable to get info from bridge (id = ${workingNewBridge?.labelName})in bridgeAllGoodAndDone()! Aborting!"
-                )
-                Log.e(TAG, "   data error msg = ${v2bridge.getError()}")
-                _addNewBridgeState.value = BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE
-                return@launch
+            if (phRepository.addBridge(workingNewBridge!!)) {
+                // signal that we're done with the new bridge stuff
+                workingNewBridge = null
+                _addNewBridgeState.update { BridgeInitStates.NOT_INITIALIZING }
+                Log.d(TAG,"bridgeAddAllGoodAndDone() - added succefully. addNewBridgeState = $addNewBridgeState")
             }
-
-            val newBridgeInfo = convertV2Bridge(
-                v2Bridge = v2bridge.getData(),
-                bridgeIp = workingNewBridge!!.ip,
-                token = workingNewBridge!!.token,
-                active = true
-            )
-            workingNewBridge?.humanName = newBridgeInfo.humanName
-
-            workingNewBridge?.labelName = v2bridge.getDeviceName()
-
-            // Add this new bridge to our permanent data (and the Model).
-//        phModel.addBridge(workingNewBridge!!)
-            phRepository.addBridge(workingNewBridge!!)
-
-            // lastly signal that we're done with the new bridge stuff
-            workingNewBridge = null
-            _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+            else {
+                // error adding this bridge
+                _addNewBridgeState.update { BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE }
+                Log.e(TAG, "bridgeAllGoodAndDone() - addBridge() returned false! addNewBridgeState = $addNewBridgeState")
+            }
         }
     }
 

@@ -4,7 +4,6 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge.Companion.invoke
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.CoroutineScope
@@ -19,8 +18,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.collections.plus
+import kotlin.coroutines.coroutineContext
 
 /**
  * This is the communicator between all the Philips Hue components
@@ -101,8 +100,6 @@ class PhilipsHueRepository(
     //-------------------------------
 
     /**
-     * fixme:  does not work!!! -- no sse changes pass through
-     *
      * Holds our list of [PhilipsHueBridgeModel] as a StateFlow.  It's converted
      * to a list of [PhilipsHueBridgeInfo] as a StateFlow (called [bridgeInfoList]).
      *
@@ -113,11 +110,7 @@ class PhilipsHueRepository(
 
     /**
      * The complete list of all the bridges and associated data
-     *
-     * fixme:  does not work!!! -- sse changes are not noticed here
      */
-//    val bridgeModelList = _bridgeModelList.asStateFlow()
-
     @OptIn(ExperimentalCoroutinesApi::class)
     val bridgeInfoList: StateFlow<List<PhilipsHueBridgeInfo>> = bridgeModelList
         .flatMapLatest { bridgeModels ->
@@ -145,10 +138,6 @@ class PhilipsHueRepository(
     //  class variables
     //-------------------------------
 
-    /** Accessor to the Philips Hue Model */
-    @Deprecated("should be removed asap")
-    private val model = PhilipsHueModel(coroutineScope = coroutineScope)
-
     //-------------------------------
     //  init
     //
@@ -156,7 +145,6 @@ class PhilipsHueRepository(
     init {
         // start consuming bridge flow from Model
         coroutineScope.launch {
-//            model.bridgeModelFlowList.collectLatest {
             bridgeModelList.collectLatest {
                 Log.d(TAG, "collecting bridgeFlowSet from bridgeModel:")
                 Log.d(TAG, "    size = ${it.size}")
@@ -168,9 +156,6 @@ class PhilipsHueRepository(
                 it.forEach { bridge ->
                     newBridgeList.add(bridge)
                     Log.d(TAG, "Setting bridge for flow:")
-//                    bridge.rooms.forEach { room ->
-//                        Log.d(TAG, "   room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
-//                    }
                 }
                 // producing flow
                 bridgeModelList.update {
@@ -186,6 +171,8 @@ class PhilipsHueRepository(
         // todo question:  should this be done BEFORE the flow is collected above?
         //
         coroutineScope.launch(Dispatchers.IO) {
+
+            // todo: use addBridge() here
 
             // 1. Load bridge ids from prefs
             //
@@ -233,7 +220,7 @@ class PhilipsHueRepository(
                     token = token,
                     active = isActive,
                     connected = false,
-                    humanName = "initializing..."
+                    humanName = "initializing...",
                 )
 
                 workingBridgeSet += bridge
@@ -262,8 +249,6 @@ class PhilipsHueRepository(
                 tmpBridgeModels
             }
         }
-
-
 
     }
 
@@ -299,7 +284,7 @@ class PhilipsHueRepository(
      * Should be no need to do any changes: the bridge itself should call onClosed()
      * which will be processed.
      */
-    fun disconnectSseFromBridge(bridge: PhilipsHueBridgeInfo) {
+    fun StopSseConnection(bridge: PhilipsHueBridgeInfo) {
         Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
         // find the bridge model and disconnect sse
@@ -368,15 +353,6 @@ class PhilipsHueRepository(
     }
 
     /**
-     * Connects the given bridge to this app, enabling this app to
-     * receive updates on changes to the Philips Hue world.
-     */
-    fun startPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
-        TODO()
-//        model.startSseConnection(bridge)
-    }
-
-    /**
      * This creates a new bridge and adds it the permanent bridge
      * data.
      *
@@ -386,21 +362,11 @@ class PhilipsHueRepository(
      * @param   newBridge       A nearly fully-loaded bridge info class
      *                          (the id will be set BY THIS FUNCTION).
      *                          The data is NOT checked for accuracy.
-     */
-    /**
-     * This creates a new bridge and adds it the permanent bridge
-     * data.
      *
-     * preconditions
-     *      The newBridge must be active and contain a token!!!
-     *
-     * @param   newBridge       A nearly fully-loaded bridge info class
-     *                          (the id will be set BY THIS FUNCTION).
-     *                          The data is NOT checked for accuracy.
+     * @return  True if all went well
      */
     suspend fun addBridge(
-        newBridge: PhilipsHueNewBridge
-    ) = withContext(Dispatchers.IO) {
+        newBridge: PhilipsHueNewBridge) : Boolean {
 
         // grab the id for this bridge
         val jsonResponseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
@@ -411,7 +377,7 @@ class PhilipsHueRepository(
         if (v2Bridge.hasData() == false) {
             Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
             Log.e(TAG, "   error msg: ${v2Bridge.getError()}")
-            return@withContext
+            return false
         }
 
         val id = v2Bridge.getId()
@@ -436,6 +402,8 @@ class PhilipsHueRepository(
             synchronize = true,
             ctx = MyApplication.appContext
         )
+
+        return true
     }
 
     //-------------------------------
@@ -622,18 +590,6 @@ class PhilipsHueRepository(
         }
     }
 
-    /**
-     * Stop receiving updates about the Philps Hue IoT for this bridge.
-     * If the bridge is not found, nothing is done.
-     */
-    /**
-     * Stop receiving updates about the Philps Hue IoT for this bridge.
-     * If the bridge is not found, nothing is done.
-     */
-    fun stopPhilipsHueSseConnection(bridge: PhilipsHueBridgeInfo) {
-        TODO()
-//        model.disconnectFromBridge(bridge)
-    }
 }
 
 /**

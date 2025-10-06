@@ -147,10 +147,7 @@ private fun DrawBridgeContents(
         //      - bridge info
         //      - delete bridge
         //  - grid of all the rooms on the bridge
-//        bridgeModels.forEach { bridgeModel ->
         bridges.forEach { bridgeInfo ->
-//            val bridgeInfo = bridgeModel.bridge.value
-//            if (bridgeInfo != null) {
             item(span = { GridItemSpan(this.maxLineSpan) }) {
                 DrawBridgeSeparator(bridgeInfo, viewmodel)
             }
@@ -194,9 +191,7 @@ private fun DrawBridgeContents(
                 }
             } else {
                 // yes, there are rooms to display
-                Log.d(TAG, "DrawBridgeContents() - updating display of ${bridgeInfo.rooms.size} rooms")
                 bridgeInfo.rooms.forEach { room ->
-                    Log.d(TAG, "DrawBridgeContents() - drawing room ${room.name}, on = ${room.on}, bri = ${room.brightness}")
                     item {
                         DisplayPhilipsHueRoom(
                             roomName = room.name,
@@ -204,7 +199,7 @@ private fun DrawBridgeContents(
                             lightSwitchOn = room.on,
                             roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
                                 val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
-                                Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
+//                                Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
                                 viewmodel.changeRoomBrightness(
                                     (newIllumination * MAX_BRIGHTNESS).toInt(),
                                     newSwitchOn,
@@ -241,8 +236,6 @@ private fun DrawBridgeSeparator(
             .padding(top = 32.dp)
             .height(28.dp)
     }
-
-    Log.d(TAG, "DrawBridgeSeparator(): bridge = $bridge")
 
     Box(
         modifier = modifier
@@ -340,7 +333,6 @@ private fun DotDotDotBridgeMenu(
                 onClick = {
                     isDropDownExpanded = false
                     showDeleteDialog = true
-                    Log.d(TAG, "selected info menu item - showInfoDialog = $showInfoDialog")
                 }
             )
 
@@ -556,7 +548,6 @@ private fun DrawMainPhilipsHueAddBridgeFab(
 ) {
     // Add button to add a new bridge (if there are no active bridges, then
     // show the extended FAB)
-//    if (viewmodel.philipsHueBridgeModelsCompose.isEmpty()) {
     if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
         ExtendedFloatingActionButton(
             modifier = modifier
