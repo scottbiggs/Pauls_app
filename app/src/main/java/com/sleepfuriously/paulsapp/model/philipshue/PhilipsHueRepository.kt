@@ -273,8 +273,6 @@ class PhilipsHueRepository(
             bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
         foundBridgeModel?.connectSSE()
-
-
     }
 
     /**
@@ -284,7 +282,7 @@ class PhilipsHueRepository(
      * Should be no need to do any changes: the bridge itself should call onClosed()
      * which will be processed.
      */
-    fun StopSseConnection(bridge: PhilipsHueBridgeInfo) {
+    fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
         Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
         // find the bridge model and disconnect sse

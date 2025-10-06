@@ -72,7 +72,7 @@ class PhilipsHueBridgeModel(
     private val _bridge = MutableStateFlow(
         PhilipsHueBridgeInfo(
             v2Id = bridgeV2Id,
-            bridgeId = "",     // todo make sure this is retrieved by bridge itself later
+            bridgeId = "",
             ipAddress = bridgeIpAddress,
             token = bridgeToken,
             active = false,
@@ -492,26 +492,38 @@ class PhilipsHueBridgeModel(
             // What kind of device changed?
             when (eventDatum.type) {
                 RTYPE_LIGHT -> {
-                    val light = findLightFromId(eventDatum.owner!!.rid, bridge.value)
-                    if (light == null) {
+                    val foundLight = findLightFromId(eventDatum.owner!!.rid, bridge.value)
+                    if (foundLight == null) {
                         Log.e(TAG, "unable to find changed light in interpretEvent()!")
                     } else {
                         // yep, there is indeed a light. What changed?
                         Log.d(
                             TAG,
-                            "updating light event (id = ${light.lightId}, deviceId = ${light.deviceId})"
+                            "updating light event (id = ${foundLight.lightId}, deviceId = ${foundLight.deviceId})"
                         )
                         if (eventDatum.on != null) {
                             // On/Off changed.  Set the light approprately.
-                            light.state.on = eventDatum.on.on
+                            foundLight.state.on = eventDatum.on.on
                         }
 
                         if (eventDatum.dimming != null) {
-                            light.state.bri = eventDatum.dimming.brightness
+                            foundLight.state.bri = eventDatum.dimming.brightness
                         }
 
-                        // todo: save that light change!
-                        Log.e(TAG, "light change not fully implemented!")
+                        // save the changed light in our lights list flow
+                        _lights.update {
+                            val newLightsList = mutableListOf<PhilipsHueLightInfo>()
+                            it.forEach { light ->
+                                if (foundLight.lightId == light.lightId) {
+                                    newLightsList.add(foundLight)
+                                }
+                                else {
+                                    newLightsList.add(light)
+                                }
+                            }
+                            newLightsList
+                        }
+                        Log.d(TAG, "light change detected and recorded")
                     }
                 }
 
