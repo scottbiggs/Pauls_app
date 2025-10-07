@@ -527,19 +527,29 @@ class PhilipsHueBridgeModel(
                     }
                 }
 
+                //--------
+                // There are 3 types of light groups.
+                //  RTYPE_ROOM - The most significant for this app, define the
+                //    lights for a given room.
+                //  RTYPE_BRIDGE_HOME - seems to be kind of the top-level of
+                //    a bridge.  It references a list of services and a list
+                //    of children.  Within the children are ALL the lights for
+                //    this bridge.
+                //  RTYPE_PRIVATE_GROUP - not sure about this one at all. Can't
+                //    even find it in the docs.  Why did I make it?
+                //
                 RTYPE_GROUP_LIGHT -> {
                     Log.d(TAG, "updating grouped_light event. owner = ${eventDatum.owner}")
 
                     // figure out what rtype the owner of this grouped_light event is
                     when (eventDatum.owner?.rtype) {
                         RTYPE_PRIVATE_GROUP -> {
-                            // todo!!!
-                            Log.e(TAG, "implement me!!!")
+                            // Not interesting for this app.
+                            Log.w(TAG, "RTYPE_GROUP_LIGHT -> RTYPE_PRIVATE_GROUP found. Ignoring")
                         }
 
                         RTYPE_BRIDGE_HOME -> {
-                            // todo
-                            Log.e(TAG, "implement me!!!")
+                            Log.w(TAG, "RTYPE_GROUP_LIGHT -> RTYPE_BRIDGE_HOME found. Ignoring")
                         }
 
                         RTYPE_ROOM -> {

@@ -151,7 +151,18 @@ const val RTYPE_AUTH_V1 = "auth_v1"
 const val RTYPE_BEHAVIOR_INSTANCE = "behavior_instance"
 const val RTYPE_BEHAVIOR_SCRIPT = "behavior_script"
 const val RTYPE_BRIDGE = "bridge"
-/** Some sort of reference to an entire bridge (a bridge group?) */
+/**
+ * API says:  Homes group rooms as well as devices not assigned to a room.
+ * My interpetation: They call it a Bridge Home.  It's the bridge itself and
+ * things attached to it, like [RTYPE_GROUP_LIGHT], [RTYPE_DEVICE],
+ * [RTYPE_ROOM].
+ *
+ * Contains:
+ *  List of children (could be devices, rooms, etc)
+ *      rid, rtype
+ *  List of services (possibly grouped lights, etc)
+ *      rid, rtype
+ */
 const val RTYPE_BRIDGE_HOME = "bridge_home"
 const val RTYPE_BUTTON = "button"
 const val RTYPE_CAMERA_MOTION = "camera_motion"
