@@ -157,6 +157,29 @@ data class PhilipsHueBridgeInfo(
             )
         }
     }
+
+    /**
+     * Searches through the current rooms and returns the one that matches
+     * the id.  Returns NULL if it can't be found.
+     */
+    fun getRoomById(roomId: String) : PhilipsHueRoomInfo? {
+        return rooms.find { it.id == roomId }
+    }
+
+    /**
+     * Finds one of the current scene by its id.  Returns NULL if not found.
+     */
+    fun getSceneById(sceneId: String) : PHv2Scene? {
+        return scenes.find { it.id == sceneId }
+    }
+
+    /**
+     * Finds the zone with the given id.  Returns NULL if not found.
+     */
+    fun getZoneById(zoneId: String) : PHv2Zone? {
+        return zones.find { it.id == zoneId }
+    }
+
 }
 
 /**
@@ -230,7 +253,7 @@ data class PhilipsHueRoomInfo(
 data class PhilipsHueLightInfo(
     /** the id is also a number to be used to access it directly as a LIGHT */
     val lightId: String,
-    /** id for this light DEVICE--remember, a light is a child of a device (so this could also be called the parent). */
+    /** id for this light DEVICE--remember, a light is a child of a device (so this could also be called the parent). Aka owner rid */
     val deviceId: String,
     /** human-readable name for this light (find in the metadata of PHv2Device), the parent of the light. */
     val name: String = "",

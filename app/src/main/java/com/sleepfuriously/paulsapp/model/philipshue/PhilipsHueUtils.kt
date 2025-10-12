@@ -23,30 +23,6 @@ import java.io.IOException
 //-------------------------------------
 
 /**
- * Goes through all the rooms in the given bridge.  If an id matches, then
- * return that bridge.
- *
- * @param   roomId      The v2 id that identifies a room.
- *
- * @param   bridge      A [PhilipsHueBridgeInfo] instance that might hold
- *                      that room.
- *
- * @return  bridge matching id. Null is returned of not found.
- */
-fun findRoomFromId(
-    roomId: String,
-    bridge: PhilipsHueBridgeInfo
-) : PhilipsHueRoomInfo? {
-    bridge.rooms.forEach { room ->
-        if (room.id == roomId) {
-            return room
-        }
-    }
-    return null
-}
-
-
-/**
  * Helper function.  From a list of [PHv2ResourceIdentifier]s, this finds the
  * first that is of type [RTYPE_LIGHT], finds it's full info, and returns its
  * [PhilipsHueRoomInfo] form.
