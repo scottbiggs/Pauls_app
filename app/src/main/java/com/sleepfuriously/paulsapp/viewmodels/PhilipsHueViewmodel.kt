@@ -241,8 +241,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * server-sent events.
      */
     fun connectBridge(bridge: PhilipsHueBridgeInfo) {
-        TODO("implement connectBridge()")
-//        phModel.startSseConnection(bridge)
+        phRepository.startSseConnection(bridge)
     }
 
     /**
@@ -250,8 +249,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * this bridge.
      */
     fun disconnectBridge(bridge: PhilipsHueBridgeInfo) {
-        TODO("implement disconnectBridge()")
-//        phModel.disconnectFromBridge(bridge)
+        phRepository.stopSseConnection(bridge)
     }
 
 

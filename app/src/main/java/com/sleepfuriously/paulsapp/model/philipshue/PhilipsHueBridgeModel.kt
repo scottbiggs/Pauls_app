@@ -343,6 +343,11 @@ class PhilipsHueBridgeModel(
      */
     fun connectSSE() {
         phSse.startSse()
+        coroutineScope.launch {
+            // need to refresh so we get the changes that may have happened while
+            // disconnected
+            refresh()
+        }
     }
 
     /**

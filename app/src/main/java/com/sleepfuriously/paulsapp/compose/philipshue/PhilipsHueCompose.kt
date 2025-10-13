@@ -165,7 +165,12 @@ private fun DrawBridgeContents(
                         enabled = bridgeInfo.active,
                         selected = bridgeInfo.connected,
                         onClick = {
-                            TODO("Radio Button onClick() not implemented in DrawBridgeContents()!")
+                            if (bridgeInfo.connected) {
+                                viewmodel.disconnectBridge(bridgeInfo)
+                            }
+                            else {
+                                viewmodel.connectBridge(bridgeInfo)
+                            }
                         },
                     )
                     DrawBridgeTitle(
