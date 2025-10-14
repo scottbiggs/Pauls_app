@@ -466,29 +466,80 @@ class PhilipsHueRepository(
     //  update
     //-------------------------------
 
-//    /**
-//     * Pass the call along to the Philips Hue model (after placing
-//     * this in a coroutine).
-//     */
-//    /**
-//     * Pass the call along to the Philips Hue model (after placing
-//     * this in a coroutine).
-//     */
-//    fun updatePhilipsHueRoomBrightness(
-//        newBrightness: Int,
-//        newOnStatus: Boolean,
-//        changedRoom: PhilipsHueRoomInfo,
-//        changedBridge: PhilipsHueBridgeInfo
-//    ) {
-//        coroutineScope.launch(Dispatchers.IO) {
-//            model.updateRoomBrightness(
-//                newBrightness = newBrightness,
-//                newOnStatus = newOnStatus,
-//                changedRoom = changedRoom,
-//                changedBridge = changedBridge
-//            )
-//        }
-//    }
+    /**
+     * Change the over-all brightness of the given room.
+     *
+     * @param   room            The room that is changing its on/off or brightness.
+     *
+     * @param   newBrightness   New brightness for this room [0..MAX_BRIGHTNESS]
+     */
+    fun changeRoomBrightness(
+        room: PhilipsHueRoomInfo,
+        newBrightness: Int
+    ) {
+        // find the bridge and the room
+        var roomFound = false
+        for (bridgeModel in bridgeModelList.value) {
+
+            // loop through all the rooms for this bridge
+            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
+                if (bridgeRoom.v2Id == room.v2Id) {
+                    // found it!
+                    roomFound = true
+                    bridgeModel.setRoomBrightness(
+                        roomInfo = room,
+                        brightness = newBrightness
+                    )
+                    break       // exit inner loop
+                }
+            }
+            if (roomFound) {
+                break   // exit outer loop
+            }
+        }
+
+        if (roomFound == false) {
+            Log.e(TAG, "changeRoomBrightness() unable to find room ${room.name}! aborting.")
+        }
+    }
+
+    /**
+     * Tells a room to either turn on all lights or turn off all lights
+     *
+     * @param   room            The room that is changing its on/off or brightness.
+     *
+     * @param   newOnStatus     When TRUE, switch room on.  FALSE: turn room off.
+     */
+    fun changeRoomOnOff(
+        room: PhilipsHueRoomInfo,
+        newOnStatus: Boolean
+    ) {
+        // find the bridge and the room--similar to changeRoomBrightness()
+        var roomFound = false
+        for (bridgeModel in bridgeModelList.value) {
+
+            // loop through all the rooms for this bridge
+            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
+                if (bridgeRoom.v2Id == room.v2Id) {
+                    // found it!
+                    roomFound = true
+                    bridgeModel.setRoomOnOffStatus(
+                        roomInfo = room,
+                        onStatus = newOnStatus,
+                    )
+                    break       // exit inner loop
+                }
+            }
+            if (roomFound) {
+                break   // exit outer loop
+            }
+        }
+
+        if (roomFound == false) {
+            Log.e(TAG, "changeRoomBrightness() unable to find room ${room.name}! aborting.")
+        }
+    }
+
 
     /**
      * Another intermediary: tell the PH model to update a room so
@@ -501,7 +552,7 @@ class PhilipsHueRepository(
     ) {
         // First check to make sure that this scene actually references the correct
         // room.  If it doesn't, bail.
-        if ((scene.group.rtype != ROOM) || (scene.group.rid != room.id)) {
+        if ((scene.group.rtype != ROOM) || (scene.group.rid != room.v2Id)) {
             Log.e(TAG, "updateRoomScene() - room does not match with scene. Aborting!")
             return
         }

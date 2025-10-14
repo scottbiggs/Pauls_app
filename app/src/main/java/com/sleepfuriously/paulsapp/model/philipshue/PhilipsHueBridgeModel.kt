@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Light
@@ -362,9 +363,145 @@ class PhilipsHueBridgeModel(
         phSse.stopSSE()
     }
 
+    /**
+     * Use this to turn on or off an entire room.
+     *
+     * @param   roomInfo        The room to modify.  It *really* should exist!
+     *
+     * @param   onStatus        The new On or Off state for this room.  Use NULL
+     *                          if this should be unchanged.
+     *
+     * side effects
+     *  The signal to change the room's on/off state will be sent.  The bridge will do the
+     *  work of changing everything.  Then it will send us an sse with all the new details
+     *  which will cause the [bridge] to update.  Long chain, but should work.
+     */
+    fun setRoomOnOffStatus(
+        roomInfo: PhilipsHueRoomInfo,
+        onStatus: Boolean? = null,
+        ) {
+        // find the grouped light id
+        val groupedLightId = findGroupedLightIdFromRoom(roomInfo)
+        if (groupedLightId.isEmpty()) {
+            Log.e(TAG, "setRoomOnOffStatus() - unable to find grouped_lights. room id = ${roomInfo.v2Id}. Aborting!")
+            return
+        }
+
+        // construct the body. consists of on command in json format
+        val body = "{\"on\": {\"on\": ${onStatus}}}"
+        Log.d(TAG, "---> body = $body")
+
+        // construct the url
+        val url = PhilipsHueBridgeApi.createFullAddress(
+            ip = bridgeIpAddress,
+            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            // send the PUT
+            val response = synchronousPut(
+                url = url,
+                bodyStr = body,
+                headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
+                trustAll = true     // fixme when we have full security going
+            )
+
+            // did it work?
+            if (response.isSuccessful) {
+                Log.d(TAG, "setRoomOnOffStatus() PUT request successful!")
+                Log.d(TAG, "   body = $body")
+            } else {
+                Log.e(TAG, "error sending PUT request in setRoomOnOffStatus()!")
+                Log.e(TAG, "response:")
+                Log.e(TAG, "   code = ${response.code}")
+                Log.e(TAG, "   message = ${response.message}")
+                Log.e(TAG, "   headers = ${response.headers}")
+                Log.e(TAG, "   body = ${response.body}")
+            }
+        }
+    }
+
+    /**
+     * Use this to change the brightness of an entire room.
+     *
+     * @param   roomInfo        The room to modify.  It *really* should exist!
+     *
+     * @param   brightness      The new brightness for this room.  Use NULL if
+     *                          brightness is unchanged.
+     *
+     * side effects
+     *  The signal to change the room's brightness will be sent.  The bridge will do the
+     *  work of changing everything.  Then it will send us an sse with all the new details
+     *  which will cause the [bridge] to update.  Long chain, but should work.
+     */
+    fun setRoomBrightness(
+        roomInfo: PhilipsHueRoomInfo,
+        brightness: Int
+    ) {
+        // find the grouped light id
+        val groupedLightId = findGroupedLightIdFromRoom(roomInfo)
+        if (groupedLightId.isEmpty()) {
+            Log.e(TAG, "setRoomBrightness() - unable to find grouped_lights. room id = ${roomInfo.v2Id}. Aborting!")
+            return
+        }
+
+        // construct the body. consists of on and brightness in json format
+        val body = "{\"dimming\": {\"brightness\": $brightness}}"
+        Log.d(TAG, "---> body = $body")
+
+        // construct the url
+        val url = PhilipsHueBridgeApi.createFullAddress(
+            ip = bridgeIpAddress,
+            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            // send the PUT
+            val response = synchronousPut(
+                url = url,
+                bodyStr = body,
+                headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
+                trustAll = true     // fixme when we have full security going
+            )
+
+            // did it work?
+            if (response.isSuccessful) {
+                Log.d(TAG, "setRoomBrightness() PUT request successful!")
+                Log.d(TAG, "   body = $body")
+            } else {
+                Log.e(TAG, "error sending PUT request in setRoomBrightness()!")
+                Log.e(TAG, "response:")
+                Log.e(TAG, "   code = ${response.code}")
+                Log.e(TAG, "   message = ${response.message}")
+                Log.e(TAG, "   headers = ${response.headers}")
+                Log.e(TAG, "   body = ${response.body}")
+            }
+        }
+    }
+
+
     //-------------------------------------
     //  private functions
     //-------------------------------------
+
+    /**
+     * Finds the id of a light group from a specified room.  A room can have all
+     * kinds of services, but only one is a [RTYPE_GROUP_LIGHT].  That's the
+     * thing we want.
+     *
+     * @return      The rid of the grouped light in the given room.
+     *              Returns an empty string if no light group is found.
+     */
+    private fun findGroupedLightIdFromRoom(roomInfo: PhilipsHueRoomInfo) : String {
+        var groupedLightId = ""
+        for (groupedLight in roomInfo.groupedLightServices) {
+            if (groupedLight.rtype == RTYPE_GROUP_LIGHT) {
+                groupedLightId = groupedLight.rid
+            }
+        }
+        return groupedLightId
+    }
+
 
     /**
      * Asks the bridge to get all the rooms.  Caller should know what to do with
@@ -567,7 +704,6 @@ class PhilipsHueBridgeModel(
                     }
                     // ok, so a room has changed. which one?
                     val changedRoomId = eventDatum.owner.rid
-//                    val changedRoom = bridge.value.rooms.find { it.id == changedRoomId }
                     val changedRoom = bridge.value.getRoomById(changedRoomId)
                     if (changedRoom == null) {
                         Log.e(TAG, "interpretUpdateEvent() - can't find the room that changed! aborting.")
@@ -589,7 +725,7 @@ class PhilipsHueBridgeModel(
                         // redo the rooms list
                         val newRoomList = mutableListOf<PhilipsHueRoomInfo>()
                         it.rooms.forEach { room ->
-                            if (room.id == changedRoomId) {
+                            if (room.v2Id == changedRoomId) {
                                 newRoomList.add(newRoom)
                             }
                             else { newRoomList.add(room) }
@@ -756,7 +892,7 @@ class PhilipsHueBridgeModel(
                     }
 
                     // find the room that needs updating
-                    val roomToUpdate = bridge.value.rooms.find { it.id == deviceToDelete.id }
+                    val roomToUpdate = bridge.value.rooms.find { it.v2Id == deviceToDelete.id }
                     if (roomToUpdate == null) {
                         Log.e(TAG, "interpretDeleteEvent() can't find the room to update! aborting")
                         continue
@@ -782,7 +918,7 @@ class PhilipsHueBridgeModel(
                         // any room with this light needs to have this light removed from it
                         val newRoomsList = mutableListOf<PhilipsHueRoomInfo>()
                         currentBridge.rooms.forEach {
-                            if (it.id == roomToUpdate.id) {
+                            if (it.v2Id == roomToUpdate.v2Id) {
                                 newRoomsList.add(roomToUpdate)
                             }
                             else { newRoomsList.add(it) }
@@ -871,7 +1007,7 @@ class PhilipsHueBridgeModel(
         _bridge.update {
             // replace the room matching the id with the modified room
             it.rooms.forEach { room ->
-                if (room.id == modifiedRoom.id) {
+                if (room.v2Id == modifiedRoom.v2Id) {
                     newRoomList.add(modifiedRoom)
                 }
                 else {

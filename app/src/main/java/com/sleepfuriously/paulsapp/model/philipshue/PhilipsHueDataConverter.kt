@@ -212,7 +212,7 @@ object PhilipsHueDataConverter {
             if (groupedLightServices.size > 1) {
                 Log.e(TAG, "too many grouped light services in convertPHv2Room!  Aborting!")
                 return@withContext PhilipsHueRoomInfo(
-                    id = "-1",
+                    v2Id = "-1",
                     name = EMPTY_STRING,
                     lights = mutableListOf(),
                     groupedLightServices = groupedLightServices
@@ -275,7 +275,7 @@ object PhilipsHueDataConverter {
 
             // everything worked out! return that data
             val newRoom = PhilipsHueRoomInfo(
-                id = v2Room.id,
+                v2Id = v2Room.id,
                 name = v2Room.metadata.name,
                 on = onOff,
                 brightness = brightness,
@@ -287,7 +287,7 @@ object PhilipsHueDataConverter {
 
         // at this point, there's a room, but no lights
         val newRoom = PhilipsHueRoomInfo(
-            id = v2Room.id,
+            v2Id = v2Room.id,
             name = v2Room.metadata.name,
             on = false,
             brightness = 0,

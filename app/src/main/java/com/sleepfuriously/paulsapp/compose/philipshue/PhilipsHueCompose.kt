@@ -202,16 +202,22 @@ private fun DrawBridgeContents(
                             roomName = room.name,
                             illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
                             lightSwitchOn = room.on,
-                            roomChangeCompleteFunction = { newIllumination, newSwitchOn ->
+
+                            roomBrightnessChangedFunction = { newIllumination ->
                                 val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
-//                                Log.d(TAG, "calling viewmodel.roomBrightnessChanged(): new brightness = $intIllumination, on = $newSwitchOn")
                                 viewmodel.changeRoomBrightness(
-                                    (newIllumination * MAX_BRIGHTNESS).toInt(),
-                                    newSwitchOn,
-                                    room,
-                                    bridgeInfo
+                                    newBrightness = intIllumination,
+                                    changedRoom = room
                                 )
                             },
+
+                            roomOnOffChangedFunction = { newOnOff ->
+                                viewmodel.changeRoomOnOff(
+                                    newOnOffState = newOnOff,
+                                    changedRoom = room
+                                )
+                            },
+
                             showScenesFunction = {
                                 viewmodel.showScenes(bridgeInfo, room)
                             }

@@ -52,10 +52,14 @@ import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
  * @param   illumination    How much is this room currently illumniated.
  *                          0 = off all the way to 1 = full on.
  *
- * @param   roomChangeCompleteFunction  Function to call when the illumination is
- *                                  changed and completed by the user.  It takes the new
- *                                  illumination value and a boolean for if the
- *                                  switch is on/off.
+ * @param   roomBrightnessChangedFunction   Function to call when the brightness
+ *                          is changed by the user.  The parameter will be the
+ *                          new illumination value.
+ *
+ * @param   roomOnOffChangedFunction        Function to call when the user
+ *                          switches a room on or off.  The parameter is false
+ *                          when the user wants the room off, and it'll be
+ *                          true when the user wants to switch it on.
  */
 @Composable
 fun DisplayPhilipsHueRoom(
@@ -63,7 +67,8 @@ fun DisplayPhilipsHueRoom(
     roomName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
-    roomChangeCompleteFunction: (newIllumination: Float, newSwitchOn: Boolean) -> Unit,
+    roomBrightnessChangedFunction: (newBrightness: Float) -> Unit,
+    roomOnOffChangedFunction: (newOnOff: Boolean) -> Unit,
     showScenesFunction: () -> Unit
 ) {
     // variables for displaying the lightbulb image
@@ -122,7 +127,7 @@ fun DisplayPhilipsHueRoom(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 onCheckedChange = { newSliderState ->
-                    roomChangeCompleteFunction.invoke(illumination, newSliderState)
+                    roomOnOffChangedFunction.invoke(newSliderState)
                 }
             )
 
@@ -136,7 +141,7 @@ fun DisplayPhilipsHueRoom(
         SliderReportWhenFinished(
             sliderInputValue = illumination,
             setSliderValueFunction = { finalValue ->
-                roomChangeCompleteFunction.invoke(finalValue, lightSwitchOn)
+                roomBrightnessChangedFunction.invoke(finalValue)
             },
             enabled = lightSwitchOn,
             modifier = Modifier

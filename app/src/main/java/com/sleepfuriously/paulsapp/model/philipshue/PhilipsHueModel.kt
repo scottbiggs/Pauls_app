@@ -430,6 +430,7 @@ class PhilipsHueModel(
      * The brightness of a room has changed (also includes on/off).
      * Do the necessary work so that the bridge flow reports the change.
      */
+    @Deprecated("This is now done in PhilipsHueBridge.setRoomBrightness()")
     suspend fun updateRoomBrightness(
         newBrightness: Int,
         newOnStatus: Boolean,
@@ -444,7 +445,7 @@ class PhilipsHueModel(
             }
         }
         if (groupedLightId.isEmpty()) {
-            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.id}. Aborting!")
+            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.v2Id}. Aborting!")
             return
         }
 

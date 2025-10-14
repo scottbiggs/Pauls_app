@@ -163,7 +163,7 @@ data class PhilipsHueBridgeInfo(
      * the id.  Returns NULL if it can't be found.
      */
     fun getRoomById(roomId: String) : PhilipsHueRoomInfo? {
-        return rooms.find { it.id == roomId }
+        return rooms.find { it.v2Id == roomId }
     }
 
     /**
@@ -186,7 +186,7 @@ data class PhilipsHueBridgeInfo(
  * Describes the essential data of a room in the philips hue world.
  */
 data class PhilipsHueRoomInfo(
-    val id: String,
+    val v2Id: String,
     val name: String,
     var on: Boolean = false,
     var brightness : Int = MIN_BRIGHTNESS,
