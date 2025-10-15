@@ -182,6 +182,10 @@ private fun DrawBridgeContents(
                 }
             }
 
+            //--------
+            //  rooms
+            //--------
+
             if (bridgeInfo.rooms.isEmpty()) {
                 // no rooms to display
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
@@ -219,13 +223,42 @@ private fun DrawBridgeContents(
                             },
 
                             showScenesFunction = {
-                                viewmodel.showScenes(bridgeInfo, room)
+                                viewmodel.showScenesForRoom(bridgeInfo, room)
                             }
                         )
                     }
                 }
             }
 
+            //--------
+            // zones
+            //--------
+
+            bridgeInfo.zones.forEach { zone ->
+                item {
+                    DisplayPhilipsHueZone(
+                        zoneName = zone.name,
+                        illumination = zone.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
+                        lightSwitchOn = zone.on,
+                        zoneBrightnessChangedFunction = { newIllumination ->
+                            val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
+                            viewmodel.changeZoneBrightness(
+                                newBrightness = intIllumination,
+                                changedZone = zone
+                            )
+                        },
+                        zoneOnOffChangedFunction = { newOffStatus ->
+                            viewmodel.changeZoneOnOff(
+                                newOnOffState = newOffStatus,
+                                changedZone = zone
+                            )
+                        },
+                        showScenesFunction = {
+                            viewmodel.showScenesForZone(bridgeInfo, zone)
+                        }
+                    )
+                }
+            }
 
         }
     }

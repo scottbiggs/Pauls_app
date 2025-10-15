@@ -65,7 +65,7 @@ data class PhilipsHueBridgeInfo(
     /** all the scenes for this bridge */
     val scenes: List<PHv2Scene> = listOf(),
     /** all the zones for this bridge */
-    val zones: List<PHv2Zone> = listOf()
+    val zones: List<PhilipsHueZoneInfo> = listOf()
 ) {
 //    /**
 //     * This should cause the flow to update correctly.
@@ -176,8 +176,8 @@ data class PhilipsHueBridgeInfo(
     /**
      * Finds the zone with the given id.  Returns NULL if not found.
      */
-    fun getZoneById(zoneId: String) : PHv2Zone? {
-        return zones.find { it.id == zoneId }
+    fun getZoneById(zoneId: String) : PhilipsHueZoneInfo? {
+        return zones.find { it.v2Id == zoneId }
     }
 
 }
@@ -190,7 +190,7 @@ data class PhilipsHueRoomInfo(
     val name: String,
     var on: Boolean = false,
     var brightness : Int = MIN_BRIGHTNESS,
-    val lights: MutableList<PhilipsHueLightInfo>,
+    val lights: List<PhilipsHueLightInfo>,
     /** References to group of lights in this room.  Even though it's an array, there should be just 1. */
     val groupedLightServices: List<PHv2ItemInArray>
 ) {
@@ -244,8 +244,24 @@ data class PhilipsHueRoomInfo(
 //        result = 31 * result + groupedLightServices.hashCode()
 //        return result
 //    }
-
 }
+
+/**
+ * Similar to [PhilipsHueRoomInfo], but a zone can span several rooms.
+ * Furthermore, lights can belong to more than one zone, making zones
+ * much more flexible than rooms.
+ *
+ * This is derived from [PHv2Zone].
+ */
+data class PhilipsHueZoneInfo(
+    val v2Id: String,
+    val name: String,
+    var on: Boolean = false,
+    var brightness : Int = MIN_BRIGHTNESS,
+    val lights: List<PhilipsHueLightInfo>,
+    /** References to group of lights in this room.  Even though it's an array, there should be just 1. */
+    val groupedLightServices: List<PHv2ItemInArray>
+)
 
 /**
  * Holds info about a single philips hue light

@@ -11,6 +11,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
  * Hue light system.  It's a part of the [PhilipsHueModel], but separated
  * to keep things modularized (and reasonably sized).
  */
+// todo: is this usable?
 object PhilipsHueModelZones {
 
     //----------------------------
@@ -107,7 +108,7 @@ object PhilipsHueModelZones {
                     }
                     else {
                         // so far so good. Convert and add it
-                        val light = PhilipsHueDataConverter.convertV2Light(lightIndividual.data[0])
+                        val light = PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo(lightIndividual.data[0])
                         lightList.add(light)
                     }
                 }

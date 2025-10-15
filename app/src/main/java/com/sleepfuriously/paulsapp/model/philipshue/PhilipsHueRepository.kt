@@ -477,30 +477,19 @@ class PhilipsHueRepository(
         room: PhilipsHueRoomInfo,
         newBrightness: Int
     ) {
-        // find the bridge and the room
-        var roomFound = false
-        for (bridgeModel in bridgeModelList.value) {
-
-            // loop through all the rooms for this bridge
-            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
-                if (bridgeRoom.v2Id == room.v2Id) {
-                    // found it!
-                    roomFound = true
-                    bridgeModel.setRoomBrightness(
-                        roomInfo = room,
-                        brightness = newBrightness
-                    )
-                    break       // exit inner loop
-                }
-            }
-            if (roomFound) {
-                break   // exit outer loop
-            }
+        val bridgeModelAndRoom = findBridgeModelAndRoom(room)
+        if (bridgeModelAndRoom == null) {
+            Log.e(TAG, "changeRoomBrightness() - can't because the room cannot be found!  room = ${room.name}")
+            return
         }
 
-        if (roomFound == false) {
-            Log.e(TAG, "changeRoomBrightness() unable to find room ${room.name}! aborting.")
-        }
+        val foundBridgeModel = bridgeModelAndRoom.bridgeModel
+        val foundRoom = bridgeModelAndRoom.room
+
+        foundBridgeModel.setRoomBrightness(
+            roomInfo = foundRoom,
+            brightness = newBrightness
+        )
     }
 
     /**
@@ -514,30 +503,67 @@ class PhilipsHueRepository(
         room: PhilipsHueRoomInfo,
         newOnStatus: Boolean
     ) {
-        // find the bridge and the room--similar to changeRoomBrightness()
-        var roomFound = false
-        for (bridgeModel in bridgeModelList.value) {
-
-            // loop through all the rooms for this bridge
-            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
-                if (bridgeRoom.v2Id == room.v2Id) {
-                    // found it!
-                    roomFound = true
-                    bridgeModel.setRoomOnOffStatus(
-                        roomInfo = room,
-                        onStatus = newOnStatus,
-                    )
-                    break       // exit inner loop
-                }
-            }
-            if (roomFound) {
-                break   // exit outer loop
-            }
+        val bridgeModelAndRoom = findBridgeModelAndRoom(room)
+        if (bridgeModelAndRoom == null) {
+            Log.e(TAG, "changeRoomOnOff() - can't because the room cannot be found!  room = ${room.name}")
+            return
         }
 
-        if (roomFound == false) {
-            Log.e(TAG, "changeRoomBrightness() unable to find room ${room.name}! aborting.")
+        val foundBridgeModel = bridgeModelAndRoom.bridgeModel
+        val foundRoom = bridgeModelAndRoom.room
+
+        foundBridgeModel.setRoomOnOffStatus(
+            roomInfo = foundRoom,
+            onStatus = newOnStatus
+        )
+    }
+
+
+    /**
+     * Change the brightness of a given zone.
+     */
+    fun changeZoneBrightness(
+        zone: PhilipsHueZoneInfo,
+        newBrightness: Int
+    ) {
+        val bridgeModelAndRoom = findBridgeModelAndZone(zone)
+        if (bridgeModelAndRoom == null) {
+            Log.e(TAG, "changeZoneBrightness() - can't because the room cannot be found!  room = ${zone.name}")
+            return
         }
+
+        val foundBridgeModel = bridgeModelAndRoom.bridgeModel
+        val foundZone = bridgeModelAndRoom.zone
+
+        foundBridgeModel.setZoneBrightness(
+            zone = foundZone,
+            brightness = newBrightness
+        )
+    }
+
+    /**
+     * Turn on or off a given zone.
+     *
+     * @param   newOnOff        True -> turn zone on.
+     *                          False -> turn zone off.
+     */
+    fun changeZoneOnOff(
+        zone: PhilipsHueZoneInfo,
+        newOnOff: Boolean
+    ) {
+        val bridgeModelAndRoom = findBridgeModelAndZone(zone)
+        if (bridgeModelAndRoom == null) {
+            Log.e(TAG, "changeZoneOnOff() - can't because the room cannot be found!  room = ${zone.name}")
+            return
+        }
+
+        val foundBridgeModel = bridgeModelAndRoom.bridgeModel
+        val foundZone = bridgeModelAndRoom.zone
+
+        foundBridgeModel.setZoneOnOffStatus(
+            zone = foundZone,
+            onStatus = newOnOff
+        )
     }
 
 
@@ -639,6 +665,90 @@ class PhilipsHueRepository(
         }
     }
 
+    //-------------------------------
+    //  private functions
+    //-------------------------------
+
+    /**
+     * Finds the [PhilipsHueRoomInfo] with a given id.  Also finds the
+     * [PhilipsHueBridgeModel] that holds that room.
+     *
+     * @return      A [BridgeModelAndRoom] class holding both data.
+     *              Null on error or not found.
+     */
+    private fun findBridgeModelAndRoom(
+        room: PhilipsHueRoomInfo
+    ) : BridgeModelAndRoom? {
+
+        // go through the bridgeModels until we find one with the right room.
+        for (bridgeModel in bridgeModelList.value) {
+
+            // loop through all the rooms for this bridge
+            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
+                if (bridgeRoom.v2Id == room.v2Id) {
+                    // found it!
+                    return BridgeModelAndRoom(
+                        room = bridgeRoom,
+                        bridgeModel = bridgeModel,
+                    )
+                }
+            }
+        }
+
+        // didn't find it
+        Log.d(TAG, "Unable to find room ${room.name} in findBridgeModelAndRoom()")
+        return null
+    }
+
+    /**
+     * Finds the [PhilipsHueZoneInfo] with a given id and the
+     * [PhilipsHueBridgeModel] that holds that room.
+     *
+     * @return      A [BridgeModelAndRoom] class holding both data.
+     *              Null on error or not found.
+     */
+    private fun findBridgeModelAndZone(
+        zone: PhilipsHueZoneInfo
+    ) : BridgeModelAndZone? {
+        // loop through the BridgeModels until we find the right one
+        for (bridgeModel in bridgeModelList.value) {
+            // and try the zones
+            for (bridgeZone in bridgeModel.bridge.value.zones) {
+                if (bridgeZone.v2Id == zone.v2Id) {
+                    // yippee, it's here!
+                    return BridgeModelAndZone(
+                        zone = bridgeZone,
+                        bridgeModel = bridgeModel
+                    )
+                }
+            }
+        }
+
+        Log.d(TAG, "findBridgeModelAndZone() - could not find zone ${zone.name} in any of the bridges")
+        return null
+    }
+
+    //-------------------------------
+    //  private data classes
+    //-------------------------------
+
+    /**
+     * Quick and dirty little class that holds a reference to a
+     * [PhilipsHueBridgeModel] and a Room.  Used for return values that need both.
+     */
+    private data class BridgeModelAndRoom(
+        val bridgeModel: PhilipsHueBridgeModel,
+        val room: PhilipsHueRoomInfo
+    )
+
+    /**
+     * Similar to [BridgeModelAndRoom] this data class holds both the
+     * [PhilipsHueBridgeModel] and a [PhilipsHueZoneInfo].
+     */
+    private data class BridgeModelAndZone(
+        val bridgeModel: PhilipsHueBridgeModel,
+        val zone: PhilipsHueZoneInfo
+    )
 }
 
 /**

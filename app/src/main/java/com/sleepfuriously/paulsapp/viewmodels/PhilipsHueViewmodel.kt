@@ -17,6 +17,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
@@ -81,7 +82,8 @@ class PhilipsHueViewmodel : ViewModel() {
     var workingNewBridge: PhilipsHueNewBridge? = null
         private set
 
-    private val _sceneDisplayStuff = MutableStateFlow<SceneData?>(null)
+    /** todo: combine this with  */
+    private val _sceneDisplayStuffForRoom = MutableStateFlow<SceneDataForRoom?>(null)
     /**
      * When not null, a room's info should be displayed.  That consists of:
      * 1. The bridge controlling the room
@@ -89,7 +91,11 @@ class PhilipsHueViewmodel : ViewModel() {
      * 3. A list of all the scenes for this room
      *  - todo: The lights for this room
      */
-    var sceneDisplayStuff = _sceneDisplayStuff.asStateFlow()
+    var sceneDisplayStuffForRoom = _sceneDisplayStuffForRoom.asStateFlow()
+
+    private val _sceneDisplayStuffForZone = MutableStateFlow<SceneDataForZone?>(null)
+    /** similar to [sceneDisplayStuffForRoom] */
+    val sceneDisplayStuffForZone = _sceneDisplayStuffForZone.asStateFlow()
 
     //-------------------------
     //  private data
@@ -156,6 +162,26 @@ class PhilipsHueViewmodel : ViewModel() {
         phRepository.changeRoomOnOff(
             room = changedRoom,
             newOnStatus = newOnOffState
+        )
+    }
+
+    fun changeZoneBrightness(
+        newBrightness: Int,
+        changedZone: PhilipsHueZoneInfo,
+    ) {
+        phRepository.changeZoneBrightness(
+            zone = changedZone,
+            newBrightness = newBrightness
+        )
+    }
+
+    fun changeZoneOnOff(
+        newOnOffState: Boolean,
+        changedZone: PhilipsHueZoneInfo
+    ) {
+        phRepository.changeZoneOnOff(
+            zone = changedZone,
+            newOnOff = newOnOffState
         )
     }
 
@@ -537,14 +563,25 @@ class PhilipsHueViewmodel : ViewModel() {
      * given room.
      *
      * side effects
-     *  - [sceneDisplayStuff] - Loaded with all the scenes that this room currently
+     *  - [sceneDisplayStuffForRoom] - Loaded with all the scenes that this room currently
      *                        can access
      */
-    fun showScenes(bridge: PhilipsHueBridgeInfo, room: PhilipsHueRoomInfo) {
-        _sceneDisplayStuff.update {
-            Log.d(TAG, "showScenes(), room = ${room.name}")
+    fun showScenesForRoom(bridge: PhilipsHueBridgeInfo, room: PhilipsHueRoomInfo) {
+        _sceneDisplayStuffForRoom.update {
+            Log.d(TAG, "showScenesForRoom(), room = ${room.name}")
             val sceneList = PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
-            SceneData(bridge, room, sceneList)
+            SceneDataForRoom(bridge, room, sceneList)
+        }
+    }
+
+    /**
+     * Similar to [showScenesForRoom].
+     */
+    fun showScenesForZone(bridge: PhilipsHueBridgeInfo, zone: PhilipsHueZoneInfo) {
+        _sceneDisplayStuffForZone.update {
+            Log.d(TAG, "showScenesForZone, zone = ${zone.name}")
+            val sceneList = PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+            SceneDataForZone(bridge, zone, sceneList)
         }
     }
 
@@ -552,11 +589,11 @@ class PhilipsHueViewmodel : ViewModel() {
      * Call when the user no longer needs to see scene info for a room.
      *
      * side effects
-     *  - [sceneDisplayStuff] - set to null
+     *  - [sceneDisplayStuffForRoom] - set to null
      */
     fun dontShowScenes() {
         Log.d(TAG, "dontShowScenes()")
-        _sceneDisplayStuff.update { null }
+        _sceneDisplayStuffForRoom.update { null }
     }
 
     /**
@@ -680,10 +717,18 @@ class PhilipsHueViewmodel : ViewModel() {
 /**
  * Holds data that the UI needs to display all the scenes for a room.
  */
-data class SceneData(
+data class SceneDataForRoom(
     val bridge: PhilipsHueBridgeInfo,
     val room: PhilipsHueRoomInfo,
-    val scenes: List<PHv2Scene>,
+    val scenes: List<PHv2Scene>
+//    val lights: List<PhilipsHueLightInfo>  todo
+)
+
+// todo: combine this with SceneDataForRoom
+data class SceneDataForZone(
+    val bridge: PhilipsHueBridgeInfo,
+    val zone: PhilipsHueZoneInfo,
+    val scenes: List<PHv2Scene>
 //    val lights: List<PhilipsHueLightInfo>  todo
 )
 

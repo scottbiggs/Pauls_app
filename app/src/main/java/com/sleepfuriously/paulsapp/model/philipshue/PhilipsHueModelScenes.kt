@@ -3,6 +3,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
+import com.sleepfuriously.paulsapp.model.philipshue.json.ZONE
 
 /**
  * This part of the Philips Hue model just handles scenes.
@@ -97,6 +98,25 @@ object PhilipsHueModelScenes {
         return sceneList
     }
 
+    /**
+     * Similar to [getAllScenesForRoom].
+     */
+    fun getAllScenesForZone(
+        zone: PhilipsHueZoneInfo,
+        bridge: PhilipsHueBridgeInfo
+    ) : List<PHv2Scene> {
+        Log.d(TAG, "getAllScenesForZone() - zone = ${zone.name}")
+
+        val sceneList = mutableListOf<PHv2Scene>()
+        bridge.scenes.forEach { scene ->
+            Log.d(TAG, "                 scene = ${scene.metadata.name}")
+            if ((scene.group.rtype == ZONE) && (scene.group.rid == zone.v2Id)) {
+                sceneList.add(scene)
+                Log.d(TAG, "                 added!")
+            }
+        }
+        return sceneList
+    }
 
     //----------------------------
     //  private functions

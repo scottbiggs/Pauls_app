@@ -142,6 +142,7 @@ const val X = "x"
 const val XY = "xy"
 const val Y = "y"
 const val ZIGBEE_CHANNEL = "zigbeechannel"
+const val ZONE = "zone"
 
 //----------------------------
 //  RTYPES

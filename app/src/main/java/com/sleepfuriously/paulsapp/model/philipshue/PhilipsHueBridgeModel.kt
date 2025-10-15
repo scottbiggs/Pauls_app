@@ -3,8 +3,8 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLights
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2Light
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_DELETE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ERROR
@@ -248,7 +248,7 @@ class PhilipsHueBridgeModel(
 
                 val newLightList = mutableListOf<PhilipsHueLightInfo>()
                 v2LightsList.data.forEach { v2Light ->
-                    newLightList.add(convertV2Light(v2Light))
+                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light))
                 }
                 newLightList
             }
@@ -269,7 +269,7 @@ class PhilipsHueBridgeModel(
                     emptyList()
                 }
                 else {
-                    convertV2GroupedLights(apiGroup)
+                    convertV2GroupedLightsAllToV2GroupedLights(apiGroup)
                 }
             }
 
@@ -383,7 +383,7 @@ class PhilipsHueBridgeModel(
         // find the grouped light id
         val groupedLightId = findGroupedLightIdFromRoom(roomInfo)
         if (groupedLightId.isEmpty()) {
-            Log.e(TAG, "setRoomOnOffStatus() - unable to find grouped_lights. room id = ${roomInfo.v2Id}. Aborting!")
+            Log.v(TAG, "setRoomOnOffStatus() - unable to find any grouped_lights for room ${roomInfo.name}")
             return
         }
 
@@ -441,7 +441,7 @@ class PhilipsHueBridgeModel(
         // find the grouped light id
         val groupedLightId = findGroupedLightIdFromRoom(roomInfo)
         if (groupedLightId.isEmpty()) {
-            Log.e(TAG, "setRoomBrightness() - unable to find grouped_lights. room id = ${roomInfo.v2Id}. Aborting!")
+            Log.v(TAG, "setRoomBrightness() - unable to find any grouped_lights for room id = ${roomInfo.name}.")
             return
         }
 
@@ -480,6 +480,102 @@ class PhilipsHueBridgeModel(
     }
 
 
+    /**
+     * Use this to turn on or off an entire zone.  Very similar to [setRoomOnOffStatus].
+     */
+    fun setZoneOnOffStatus(
+        zone: PhilipsHueZoneInfo,
+        onStatus: Boolean? = null,
+    ) {
+        // find the grouped light id
+        val groupedLightId = findGroupedLightIdFromZone(zone)
+        if (groupedLightId.isEmpty()) {
+            Log.v(TAG, "setZoneOnOffStatus() - unable to find any grouped_lights for zone ${zone.name}.")
+            return
+        }
+
+        // construct the body. consists of on command in json format
+        val body = "{\"on\": {\"on\": ${onStatus}}}"
+        Log.d(TAG, "---> body = $body")
+
+        // construct the url
+        val url = PhilipsHueBridgeApi.createFullAddress(
+            ip = bridgeIpAddress,
+            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            // send the PUT
+            val response = synchronousPut(
+                url = url,
+                bodyStr = body,
+                headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
+                trustAll = true     // fixme when we have full security going
+            )
+
+            // did it work?
+            if (response.isSuccessful) {
+                Log.d(TAG, "setZoneOnOffStatus() PUT request successful!")
+                Log.d(TAG, "   body = $body")
+            } else {
+                Log.e(TAG, "error sending PUT request in setZoneOnOffStatus()!")
+                Log.e(TAG, "response:")
+                Log.e(TAG, "   code = ${response.code}")
+                Log.e(TAG, "   message = ${response.message}")
+                Log.e(TAG, "   headers = ${response.headers}")
+                Log.e(TAG, "   body = ${response.body}")
+            }
+        }
+    }
+
+    /**
+     * Very similar to [setRoomBrightness]
+     */
+    fun setZoneBrightness(
+        zone: PhilipsHueZoneInfo,
+        brightness: Int
+    ) {
+        // find the grouped light id
+        val groupedLightId = findGroupedLightIdFromZone(zone)
+        if (groupedLightId.isEmpty()) {
+            Log.v(TAG, "setZoneBrightness() - unable to find grouped_lights for zone ${zone.name}.")
+            return
+        }
+
+        // construct the body. consists of on and brightness in json format
+        val body = "{\"dimming\": {\"brightness\": $brightness}}"
+        Log.d(TAG, "---> body = $body")
+
+        // construct the url
+        val url = PhilipsHueBridgeApi.createFullAddress(
+            ip = bridgeIpAddress,
+            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            // send the PUT
+            val response = synchronousPut(
+                url = url,
+                bodyStr = body,
+                headerList = listOf(Pair(HEADER_TOKEN_KEY, bridgeToken)),
+                trustAll = true     // fixme when we have full security going
+            )
+
+            // did it work?
+            if (response.isSuccessful) {
+                Log.d(TAG, "setZoneBrightness() PUT request successful!")
+                Log.d(TAG, "   body = $body")
+            } else {
+                Log.e(TAG, "error sending PUT request in setZoneBrightness()!")
+                Log.e(TAG, "response:")
+                Log.e(TAG, "   code = ${response.code}")
+                Log.e(TAG, "   message = ${response.message}")
+                Log.e(TAG, "   headers = ${response.headers}")
+                Log.e(TAG, "   body = ${response.body}")
+            }
+        }
+    }
+
     //-------------------------------------
     //  private functions
     //-------------------------------------
@@ -497,6 +593,24 @@ class PhilipsHueBridgeModel(
         for (groupedLight in roomInfo.groupedLightServices) {
             if (groupedLight.rtype == RTYPE_GROUP_LIGHT) {
                 groupedLightId = groupedLight.rid
+                break
+            }
+        }
+        return groupedLightId
+    }
+
+    /**
+     * Similar to [findGroupedLightIdFromRoom] but for rooms!  hehe
+     *
+     * @return      The rid of the grouped light in the given zone.
+     *              Returns an empty string if no light group is found.
+     */
+    private fun findGroupedLightIdFromZone(zone: PhilipsHueZoneInfo) : String {
+        var groupedLightId = ""
+        for (groupedLight in zone.groupedLightServices) {
+            if (groupedLight.rtype == RTYPE_GROUP_LIGHT) {
+                groupedLightId = groupedLight.rid
+                break
             }
         }
         return groupedLightId
@@ -512,22 +626,40 @@ class PhilipsHueBridgeModel(
      */
     private suspend fun loadRoomsFromApi() : List<PhilipsHueRoomInfo>? {
 
-        val bridgeRooms = PhilipsHueBridgeApi.getAllRoomsFromApi(
+        val bridgeV2ResourceRoomsAll = PhilipsHueBridgeApi.getAllRoomsFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
 
-        if (bridgeRooms.errors.isNotEmpty()) {
+        if (bridgeV2ResourceRoomsAll.errors.isNotEmpty()) {
             Log.e(TAG, "loadRoomsFromApi() error getting rooms:")
-            Log.e(TAG, "   err msg = ${bridgeRooms.errors[0].description}")
+            Log.e(TAG, "   err msg = ${bridgeV2ResourceRoomsAll.errors[0].description}")
             return null
         }
 
-        return PhilipsHueDataConverter.convertV2RoomAll(
-            phV2Rooms = bridgeRooms,
+        return PhilipsHueDataConverter.convertPHv2ResourceRoomsAllToPhilipsHueRoomInfoList(
+            phV2Rooms = bridgeV2ResourceRoomsAll,
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
-        ).toList()
+        )
+    }
+
+    /**
+     * Asks the bridge to get all its zones.  Will return null if the bridge
+     * isn't working.  Note that this could be an empty list.
+     */
+    private suspend fun loadZonesFromApi() : List<PhilipsHueZoneInfo>
+            = withContext(Dispatchers.IO) {
+        val v2AllZones = PhilipsHueBridgeApi.getAllZonesFromApi(
+            bridgeIp = bridgeIpAddress,
+            bridgeToken = bridgeToken
+        )
+
+        return@withContext PhilipsHueDataConverter.convertPHv2ZonesAllToPhilipsHueZoneInfoList(
+            v2ZonesAll = v2AllZones,
+            bridgeIp = bridgeIpAddress,
+            bridgeToken = bridgeToken
+        )
     }
 
     /**
@@ -540,20 +672,7 @@ class PhilipsHueBridgeModel(
             bridgeToken = bridgeToken
         )
 
-        return PhilipsHueDataConverter.convertV2ScenesAll(v2AllScenes)
-    }
-
-    /**
-     * Asks the bridge to get all its zones.  Will return null if the bridge
-     * isn't working.  Note that this could be an empty list.
-     */
-    private suspend fun loadZonesFromApi() : List<PHv2Zone> {
-        val v2AllZones = PhilipsHueBridgeApi.getAllZonesFromApi(
-            bridgeIp = bridgeIpAddress,
-            bridgeToken = bridgeToken
-        )
-
-        return PhilipsHueDataConverter.convertV2ZonesAll(v2AllZones)
+        return PhilipsHueDataConverter.convertV2ScenesAllToV2Scene(v2AllScenes)
     }
 
 
@@ -687,12 +806,35 @@ class PhilipsHueBridgeModel(
 
                                 updateBridgeRooms(room)
 
-                            } else {
-                                Log.e(
-                                    TAG,
-                                    "Error in interpretUpdateEvent()--can't find room that owns grouped_light event. Aborting!"
-                                )
                             }
+                            else {
+                                Log.e(TAG,"Error in interpretUpdateEvent()--can't find room that owns grouped_light event. Aborting!")
+                            }
+                        }
+                        RTYPE_ZONE -> {
+                            Log.d(TAG, "interpretUpdateEvent() RTYPE_GROUP_LIGHT / RTYPE_ZONE")
+                            // now the owner is a zone. signal the zone change according to the event.
+                            val zoneId = eventDatum.owner.rid
+                            var zone = bridge.value.getZoneById(zoneId)
+                            if (zone != null) {
+                                // so what changed? did it dim or turn on/off?
+                                if (eventDatum.dimming != null) {
+                                    zone = zone.copy(brightness = eventDatum.dimming.brightness)
+                                }
+                                if (eventDatum.on != null) {
+                                    zone = zone.copy(on = eventDatum.on.on)
+                                }
+
+                                updateBridgeZones(zone)
+                            }
+                            else {
+                                Log.e(TAG, "interpretUpdateEvent() error: can't find zone in grouped_light event!")
+                            }
+                        }
+
+                        // all other cases
+                        else -> {
+                            Log.e(TAG, "interpretUpdateEvent() unknown rtype for eventDatum.owner! rtype = ${eventDatum.owner!!.rtype}")
                         }
                     }
                 }
@@ -734,14 +876,10 @@ class PhilipsHueBridgeModel(
                     }
                 }
 
-                RTYPE_ZONE -> {
-                    // todo: implement zones (if necessary)
-                    Log.e(TAG, "interpretUpdateEvent() -  updating zone not implemented")
+                else -> {
+                    Log.e(TAG, "interpretUpdateEvent() - ${eventDatum.type} is an unknown type of update event!")
                 }
-                RTYPE_SCENE -> {
-                    // todo
-                    Log.e(TAG, "interpretUpdateEvent() -  updating scene not implemented")
-                }
+
             } // when (eventDatum.type)
         }
         Log.d(TAG, "interpretUpdateEvent() done - bridge = ${bridge.value}")
@@ -899,7 +1037,7 @@ class PhilipsHueBridgeModel(
                     }
 
                     // zones
-                    val zoneToUpdate = bridge.value.zones.find { it.id == deviceToDelete.id }
+                    val zoneToUpdate = bridge.value.zones.find { it.v2Id == deviceToDelete.id }
                     if (zoneToUpdate == null) {
                         Log.e(TAG, "interpretDeleteEvent() can't find the zone to update! aborting")
                         continue
@@ -925,9 +1063,9 @@ class PhilipsHueBridgeModel(
                         }
 
                         // same for zones
-                        val newZoneList = mutableListOf<PHv2Zone>()
+                        val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
                         currentBridge.zones.forEach {
-                            if (it.id == zoneToUpdate.id) {
+                            if (it.v2Id == zoneToUpdate.v2Id) {
                                 newZoneList.add(zoneToUpdate)
                             }
                             else { newZoneList.add(it) }
@@ -1051,12 +1189,12 @@ class PhilipsHueBridgeModel(
     /**
      * Just like [updateBridgeRooms] and [updateBridgeScenes].
      */
-    private fun updateBridgeZones(modifiedZone: PHv2Zone) {
+    private fun updateBridgeZones(modifiedZone: PhilipsHueZoneInfo) {
         Log.d(TAG, "updateBridgeZones() begin.  bridge = ${bridge.value.humanName}")
-        val newZoneList = mutableListOf<PHv2Zone>()
+        val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
         _bridge.update {
             it.zones.forEach { zone ->
-                if (zone.id == modifiedZone.id) {
+                if (zone.v2Id == modifiedZone.v2Id) {
                     newZoneList.add(modifiedZone)
                 }
                 else { newZoneList.add(zone) }

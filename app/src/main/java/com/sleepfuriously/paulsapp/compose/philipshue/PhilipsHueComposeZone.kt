@@ -49,12 +49,13 @@ import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
  *                                  switch is on/off.
  */
 @Composable
-private fun DisplayPhilipsHueZone(
+fun DisplayPhilipsHueZone(
     modifier: Modifier = Modifier,
     zoneName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
-    zoneChangeCompleteFunction: (newIllumination: Float, newSwitchOn: Boolean) -> Unit,
+    zoneBrightnessChangedFunction: (newIllumination: Float) -> Unit,
+    zoneOnOffChangedFunction: (newOnOffStatus: Boolean) -> Unit,
     showScenesFunction: () -> Unit
 ) {
     // variables for displaying the lightbulb image
@@ -66,7 +67,7 @@ private fun DisplayPhilipsHueZone(
         .padding(horizontal = 10.dp, vertical = 4.dp)
         .clip(RoundedCornerShape(10.dp))
         .border(
-            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.tertiary)),
+            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.onTertiaryContainer)),
             RoundedCornerShape(12.dp)
         )
 
@@ -113,7 +114,7 @@ private fun DisplayPhilipsHueZone(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 onCheckedChange = { newSliderState ->
-                    zoneChangeCompleteFunction.invoke(illumination, newSliderState)
+                    zoneOnOffChangedFunction.invoke(newSliderState)
                 }
             )
 
@@ -126,8 +127,8 @@ private fun DisplayPhilipsHueZone(
 
         SliderReportWhenFinished(
             sliderInputValue = illumination,
-            setSliderValueFunction = { finalValue ->
-                zoneChangeCompleteFunction.invoke(finalValue, lightSwitchOn)
+            setSliderValueFunction = { sliderFinalValue ->
+                zoneBrightnessChangedFunction.invoke(sliderFinalValue)
             },
             enabled = lightSwitchOn,
             modifier = Modifier

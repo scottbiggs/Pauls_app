@@ -63,7 +63,7 @@ import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
-import com.sleepfuriously.paulsapp.viewmodels.SceneData
+import com.sleepfuriously.paulsapp.viewmodels.SceneDataForRoom
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
 import kotlin.math.roundToInt
 
@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
                 Log.d(TAG, "onCreate() - philipsHueBridges = $philipsHueBridges")
 
-                val roomSceneData = philipsHueViewmodel.sceneDisplayStuff.collectAsStateWithLifecycle()
+                val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
-        roomSceneData:  SceneData?,
+        roomSceneData:  SceneDataForRoom?,
 //        philipsHueBridges: List<PhilipsHueBridgeModel>,
         philipsHueBridges: List<PhilipsHueBridgeInfo>,
         modifier : Modifier = Modifier,
