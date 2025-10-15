@@ -21,7 +21,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
-import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -594,11 +593,12 @@ class PhilipsHueViewmodel : ViewModel() {
     fun dontShowScenes() {
         Log.d(TAG, "dontShowScenes()")
         _sceneDisplayStuffForRoom.update { null }
+        _sceneDisplayStuffForZone.update { null }
     }
 
     /**
-     * UI calls this when the user selects a scene to run for a given room.
-     * This in turn calls the repository to have the room changed.  The result
+     * UI calls this when the user selects a scene to run for a given room or zone.
+     * This in turn calls the repository to have that place changed.  The result
      * should make the lights change and then bubble up (through a sse) and we'll
      * see changes in our UI.
      *
@@ -607,17 +607,9 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun sceneSelected(
         bridge: PhilipsHueBridgeInfo,
-        room: PhilipsHueRoomInfo,
         scene: PHv2Scene
     ) {
-        // First check to make sure that this scene actually references the correct
-        // room.  If it doesn't, bail.
-        if ((scene.group.rtype != ROOM) || (scene.group.rid != room.v2Id)) {
-            Log.e(TAG, "updateRoomScene() - room does not match with scene. Aborting!")
-            return
-        }
-
-        // Now that the scene and room matches, just tell the scene to turn on.  That's it.
+        // Just tell the scene to turn on.  That's it.
         viewModelScope.launch(Dispatchers.IO) {
             val response = PhilipsHueBridgeApi.sendSceneToRoom(
                 bridgeIp = bridge.ipAddress,

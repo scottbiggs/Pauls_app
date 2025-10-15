@@ -58,12 +58,14 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForRoom
+import com.sleepfuriously.paulsapp.viewmodels.SceneDataForZone
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
 import kotlin.math.roundToInt
 
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
                 Log.d(TAG, "onCreate() - philipsHueBridges = $philipsHueBridges")
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
+                val zoneSceneData = philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
@@ -189,7 +192,8 @@ class MainActivity : ComponentActivity() {
                             0.3f,
                             philipsHueViewmodel = philipsHueViewmodel,
                             philipsHueBridges = philipsHueBridges,
-                            roomSceneData = roomSceneData.value
+                            roomSceneData = roomSceneData.value,
+                            zoneSceneData = zoneSceneData.value
                         )
                     }
 
@@ -216,14 +220,15 @@ class MainActivity : ComponentActivity() {
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,
-        roomSceneData:  SceneDataForRoom?,
-//        philipsHueBridges: List<PhilipsHueBridgeModel>,
+        roomSceneData: SceneDataForRoom?,
+        zoneSceneData: SceneDataForZone?,
         philipsHueBridges: List<PhilipsHueBridgeInfo>,
         modifier : Modifier = Modifier,
     ) {
 
         Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
         Log.d(TAG, "roomSceneData = $roomSceneData")
+        Log.d(TAG, "zoneSceneData = $zoneSceneData")
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -301,7 +306,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        if (roomSceneData == null) {
+                        if ((roomSceneData == null) && (zoneSceneData == null)) {
                             // show regular PH stuff
                             ShowMainScreenPhilipsHue(
                                 modifier = modifier,
@@ -309,12 +314,23 @@ class MainActivity : ComponentActivity() {
                                 bridges = philipsHueBridges
                             )
                         }
-                        else {
+                        else if (roomSceneData != null) {
                             // show room/scene specific info
                             ShowScenesForRoom(
                                 bridge = roomSceneData.bridge,
                                 room = roomSceneData.room,
                                 scenes = roomSceneData.scenes,
+                                viewmodel = philipsHueViewmodel,
+                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                            )
+                        }
+
+                        else if (zoneSceneData != null) {
+                            // show zone/scene info
+                            ShowScenesForZone(
+                                bridge = zoneSceneData.bridge,
+                                zone = zoneSceneData.zone,
+                                scenes = zoneSceneData.scenes,
                                 viewmodel = philipsHueViewmodel,
                                 onDismiss = { philipsHueViewmodel.dontShowScenes() }
                             )

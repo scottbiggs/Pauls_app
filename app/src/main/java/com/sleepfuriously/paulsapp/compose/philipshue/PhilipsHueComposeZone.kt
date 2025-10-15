@@ -43,10 +43,12 @@ import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
  * @param   illumination    How much is this zone currently illumniated.
  *                          0 = off all the way to 1 = full on.
  *
- * @param   zoneChangeCompleteFunction  Function to call when the illumination is
+ * @param   zoneBrightnessChangedFunction  Function to call when the brightness is
  *                                  changed and completed by the user.  It takes the new
- *                                  illumination value and a boolean for if the
- *                                  switch is on/off.
+ *                                  illumination value [0..1].
+ *
+ * @param   zoneOnOffChangedFunction    Function to call when the
+ *                                  zone is turned on or off.
  */
 @Composable
 fun DisplayPhilipsHueZone(
