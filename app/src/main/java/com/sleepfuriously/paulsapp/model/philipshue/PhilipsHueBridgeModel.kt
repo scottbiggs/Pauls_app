@@ -599,7 +599,10 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "    scene = ${scene.metadata.name}")
 
         // construct a new room with the data we want
-        val newRoom = room.copy(currentSceneName = scene.metadata.name)
+        val newRoom = room.copy(
+            currentSceneName = scene.metadata.name,
+            on = true       // this could turn a room on that was off previously
+        )
 
         // remake the room list for this bridge
         val newRoomList = mutableListOf<PhilipsHueRoomInfo>()
@@ -624,7 +627,10 @@ class PhilipsHueBridgeModel(
         scene: PHv2Scene
     ) {
         // construct a new zone with the data we want
-        val newZone = zone.copy(currentSceneName = scene.metadata.name)
+        val newZone = zone.copy(
+            currentSceneName = scene.metadata.name,
+            on = true
+        )
 
         // remake the zone list for this bridge
         val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
