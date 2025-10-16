@@ -601,7 +601,17 @@ class PhilipsHueRepository(
             // update the room about its current scene. But first find the
             // appropriate bridgeModel
             val daBridgeModel = bridgeModelList.value.find { bridgeModel ->
-                bridgeModel.bridge.value.rooms.contains(room)
+                // Gotta do this manually because the room's current scene can
+                // change before it's finally saved (which will make the built-in
+                // equals function return false when all we care about it the v2Id).
+                var found = false
+                for (roomToTest in bridgeModel.bridge.value.rooms) {
+                    if (roomToTest.v2Id == room.v2Id) {
+                        found = true
+                        break
+                    }
+                }
+                found
             }
             if (daBridgeModel == null) {
                 Log.e(TAG, "updateRoomScene() could not find a BridgeModel with the given room! Current bridge won't work!!!")
@@ -638,7 +648,15 @@ class PhilipsHueRepository(
             // update the zone about its current scene. But first find the
             // appropriate bridgeModel
             val daBridgeModel = bridgeModelList.value.find { bridgeModel ->
-                bridgeModel.bridge.value.zones.contains(zone)
+                // Gotta do this manually (see updateRoomScene)
+                var found = false
+                for (zoneToTest in bridgeModel.bridge.value.zones) {
+                    if (zoneToTest.v2Id == zone.v2Id) {
+                        found = true
+                        break
+                    }
+                }
+                found
             }
             if (daBridgeModel == null) {
                 Log.e(TAG, "updateZoneScene() could not find a BridgeModel with the given zone! Current bridge won't work!!!")

@@ -593,6 +593,11 @@ class PhilipsHueBridgeModel(
         room: PhilipsHueRoomInfo,
         scene: PHv2Scene
     ) {
+        Log.d(TAG, "updateRoomCurrentScene() begin")
+        Log.d(TAG, "    room.name = ${room.name}")
+        Log.d(TAG, "    room.currentSceneName = ${room.currentSceneName}")
+        Log.d(TAG, "    scene = ${scene.metadata.name}")
+
         // construct a new room with the data we want
         val newRoom = room.copy(currentSceneName = scene.metadata.name)
 
