@@ -188,6 +188,8 @@ data class PhilipsHueBridgeInfo(
 data class PhilipsHueRoomInfo(
     val v2Id: String,
     val name: String,
+    /** Human-readable name for the current scene. Use empty string if not applicable. */
+    val currentSceneName: String,
     var on: Boolean = false,
     var brightness : Int = MIN_BRIGHTNESS,
     val lights: List<PhilipsHueLightInfo>,
@@ -256,6 +258,8 @@ data class PhilipsHueRoomInfo(
 data class PhilipsHueZoneInfo(
     val v2Id: String,
     val name: String,
+    /** Human-readable name for the current scene. Use empty string if not applicable. */
+    val currentSceneName: String,
     var on: Boolean = false,
     var brightness : Int = MIN_BRIGHTNESS,
     val lights: List<PhilipsHueLightInfo>,

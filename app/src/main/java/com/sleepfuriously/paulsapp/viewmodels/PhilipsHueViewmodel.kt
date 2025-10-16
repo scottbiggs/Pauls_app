@@ -11,7 +11,6 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
@@ -557,6 +556,31 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
+
+    /**
+     * Finds out which scenes are used by a room.
+     *
+     * @return  A List of scenes that a room can use.  Empty list if none found.
+     */
+    fun getSceneListForRoom(
+        bridge: PhilipsHueBridgeInfo,
+        room: PhilipsHueRoomInfo
+    ) : List<PHv2Scene> {
+        return PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+    }
+
+    /**
+     * Finds out which scenes are used by a zone.
+     *
+     * @return  A List of scenes that a zone can use.  Empty list if none found.
+     */
+    fun getSceneListForZone(
+        bridge: PhilipsHueBridgeInfo,
+        zone: PhilipsHueZoneInfo
+    ) : List<PHv2Scene> {
+        return PhilipsHueModelScenes.getAllScenesForZone(zone = zone, bridge = bridge)
+    }
+
     /**
      * UI calls this to indicate that user wants to show the scenes for a
      * given room.
@@ -568,7 +592,7 @@ class PhilipsHueViewmodel : ViewModel() {
     fun showScenesForRoom(bridge: PhilipsHueBridgeInfo, room: PhilipsHueRoomInfo) {
         _sceneDisplayStuffForRoom.update {
             Log.d(TAG, "showScenesForRoom(), room = ${room.name}")
-            val sceneList = PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+            val sceneList = getSceneListForRoom(room =room, bridge = bridge)
             SceneDataForRoom(bridge, room, sceneList)
         }
     }
@@ -579,7 +603,7 @@ class PhilipsHueViewmodel : ViewModel() {
     fun showScenesForZone(bridge: PhilipsHueBridgeInfo, zone: PhilipsHueZoneInfo) {
         _sceneDisplayStuffForZone.update {
             Log.d(TAG, "showScenesForZone, zone = ${zone.name}")
-            val sceneList = PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+            val sceneList = getSceneListForZone(zone =zone, bridge = bridge)
             SceneDataForZone(bridge, zone, sceneList)
         }
     }
@@ -602,29 +626,30 @@ class PhilipsHueViewmodel : ViewModel() {
      * should make the lights change and then bubble up (through a sse) and we'll
      * see changes in our UI.
      *
+     * side effects
+     *  room - It will be changed (down the path) so that it'll know its scene changed.
+     *
      * Note
      *  This does NOT cause the scenes info to go away.
      */
-    fun sceneSelected(
+    fun sceneSelectedForRoom(
         bridge: PhilipsHueBridgeInfo,
+        room: PhilipsHueRoomInfo,
         scene: PHv2Scene
     ) {
-        // Just tell the scene to turn on.  That's it.
-        viewModelScope.launch(Dispatchers.IO) {
-            val response = PhilipsHueBridgeApi.sendSceneToRoom(
-                bridgeIp = bridge.ipAddress,
-                bridgeToken = bridge.token,
-                sceneToDisplay = scene
-            )
-            Log.d(TAG, "updateRoomScene() response:")
-            Log.d(TAG, "    successful = ${response.isSuccessful}")
-            Log.d(TAG, "    code = ${response.code}")
-            Log.d(TAG, "    message = ${response.message}")
-            Log.d(TAG, "    body = ${response.body}")
-            Log.d(TAG, "    headers = ${response.headers}")
+        // Tell the repo that something changed in the room.
+        phRepository.updateRoomScene(bridge, room, scene)
+    }
 
-            // nothing else to do.  The bridge will update everything with an sse.
-        }
+    /**
+     * Similar to [sceneSelectedForRoom].
+     */
+    fun sceneSelectedForZone(
+        bridge: PhilipsHueBridgeInfo,
+        zone: PhilipsHueZoneInfo,
+        scene: PHv2Scene
+    ) {
+        phRepository.updateZoneScene(bridge, zone, scene)
     }
 
     //-------------------------

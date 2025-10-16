@@ -604,11 +604,11 @@ object PhilipsHueBridgeApi {
 
     /**
      * Sends a PUT request to the bridge to make this scene active.
-     * The scene knows which room (group) it's in.
+     * The scene knows which room/zone (group) it's in.
      *
      * @return  The response from the PUT request.  No analysis is done.
      */
-    suspend fun sendSceneToRoom(
+    suspend fun sendSceneToLightGroup(
         bridgeIp: String,
         bridgeToken: String,
         sceneToDisplay: PHv2Scene
@@ -618,6 +618,7 @@ object PhilipsHueBridgeApi {
             suffix = "$SUFFIX_PUT_ACTIVATE_SCENE/${sceneToDisplay.id}"
         )
 
+        // note: the scene knows which zone it is a part of
         val response = synchronousPut(
             url = url,
             bodyStr = UPDATE_SCENE_BODY,

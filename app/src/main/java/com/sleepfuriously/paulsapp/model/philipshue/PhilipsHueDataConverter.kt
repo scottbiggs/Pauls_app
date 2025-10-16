@@ -318,6 +318,7 @@ object PhilipsHueDataConverter {
                     v2Id = EMPTY_STRING,
                     name = EMPTY_STRING,
                     lights = mutableListOf(),
+                    currentSceneName = "",
                     groupedLightServices = groupedLightServices
                 )
             }
@@ -349,6 +350,7 @@ object PhilipsHueDataConverter {
                 on = onOff,
                 brightness = brightness,
                 lights = regularLightList,
+                currentSceneName = "",
                 groupedLightServices = groupedLightServices
             )
             return@withContext newRoom
@@ -361,6 +363,7 @@ object PhilipsHueDataConverter {
             on = false,
             brightness = 0,
             lights = mutableListOf(),
+            currentSceneName = "",
             groupedLightServices = groupedLightServices
         )
 
@@ -564,6 +567,7 @@ object PhilipsHueDataConverter {
                     v2Id = EMPTY_STRING,
                     name = EMPTY_STRING,
                     lights = listOf(),
+                    currentSceneName = "",
                     groupedLightServices = listOf()
                 )
             }
@@ -593,6 +597,7 @@ object PhilipsHueDataConverter {
                 on = onOff,
                 brightness = brightness,
                 lights = regularLightList,
+                currentSceneName = "",
                 groupedLightServices = groupedLightServices
             )
 
@@ -603,6 +608,7 @@ object PhilipsHueDataConverter {
                 v2Id = v2Zone.id,
                 name = v2Zone.metadata.name,
                 lights = mutableListOf(),
+                currentSceneName = "",
                 groupedLightServices = groupedLightServices
             )
         }

@@ -13,13 +13,11 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_BRIDGE_HOME
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_PRIVATE_GROUP
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ROOM
-import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_SCENE
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -573,6 +571,70 @@ class PhilipsHueBridgeModel(
                 Log.e(TAG, "   headers = ${response.headers}")
                 Log.e(TAG, "   body = ${response.body}")
             }
+        }
+    }
+
+
+    /**
+     * Whenever a room has its scene set, call this function.  It will modify
+     * the room so that it correctly reflects the new scene.  You can also call
+     * it to indicate that NO scene is being displayed (like the user has made
+     * changes, etc.).
+     *
+     * This is done here instead of through an sse because server-sent events
+     * don't really identify the room that was changed--just the lights (as far
+     * as I know, which is probably wrong).
+     *
+     * @param   room        The room that is currently undergoing a scene change.
+     *
+     * @param   scene       The details of the scene that is operating on the room.
+     */
+    fun updateRoomCurrentScene(
+        room: PhilipsHueRoomInfo,
+        scene: PHv2Scene
+    ) {
+        // construct a new room with the data we want
+        val newRoom = room.copy(currentSceneName = scene.metadata.name)
+
+        // remake the room list for this bridge
+        val newRoomList = mutableListOf<PhilipsHueRoomInfo>()
+        bridge.value.rooms.forEach {
+            if (it.v2Id == room.v2Id) {
+                newRoomList.add(newRoom)
+            }
+            else {
+                newRoomList.add(it)
+            }
+        }
+
+        // get the flow going
+        _bridge.update {
+            it.copy(rooms = newRoomList)
+        }
+    }
+
+    /** just like [updateRoomCurrentScene] for zones */
+    fun updateZoneCurrentScene(
+        zone: PhilipsHueZoneInfo,
+        scene: PHv2Scene
+    ) {
+        // construct a new zone with the data we want
+        val newZone = zone.copy(currentSceneName = scene.metadata.name)
+
+        // remake the zone list for this bridge
+        val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
+        bridge.value.zones.forEach {
+            if (it.v2Id == zone.v2Id) {
+                newZoneList.add(newZone)
+            }
+            else {
+                newZoneList.add(it)
+            }
+        }
+
+        // get the flow going
+        _bridge.update {
+            it.copy(zones = newZoneList)
         }
     }
 

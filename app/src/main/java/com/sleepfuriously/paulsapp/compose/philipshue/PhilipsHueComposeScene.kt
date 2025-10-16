@@ -101,7 +101,7 @@ fun ShowScenesForRoom(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.sceneSelected(bridge, scene)
+                                        viewmodel.sceneSelectedForRoom(bridge, room, scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)
@@ -210,7 +210,7 @@ fun ShowScenesForZone(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.sceneSelected(bridge, scene)
+                                        viewmodel.sceneSelectedForZone(bridge = bridge, zone = zone, scene = scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)

@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
@@ -54,6 +55,7 @@ import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 fun DisplayPhilipsHueZone(
     modifier: Modifier = Modifier,
     zoneName: String,
+    sceneName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
     zoneBrightnessChangedFunction: (newIllumination: Float) -> Unit,
@@ -104,6 +106,12 @@ fun DisplayPhilipsHueZone(
             modifier = Modifier
                 .padding(start = 16.dp)
         )
+
+
+        // display the name of the current scene
+        if (sceneName.isNotEmpty()) {
+            Text(sceneName, modifier = Modifier.fillMaxWidth().padding(end = 8.dp), textAlign = TextAlign.End)
+        }
 
         Row (
             modifier = Modifier

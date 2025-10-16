@@ -204,6 +204,7 @@ private fun DrawBridgeContents(
                     item {
                         DisplayPhilipsHueRoom(
                             roomName = room.name,
+                            sceneName = room.currentSceneName,
                             illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
                             lightSwitchOn = room.on,
 
@@ -238,6 +239,7 @@ private fun DrawBridgeContents(
                 item {
                     DisplayPhilipsHueZone(
                         zoneName = zone.name,
+                        sceneName = zone.currentSceneName,
                         illumination = zone.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
                         lightSwitchOn = zone.on,
                         zoneBrightnessChangedFunction = { newIllumination ->

@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
@@ -48,6 +49,9 @@ import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
  * UI for a single room.
  *
  * @param   roomName        The name to display for this room
+ *
+ * @param   sceneName       The name of the current scene.  Use empty string
+ *                          if no scene name should be displayed.
  *
  * @param   illumination    How much is this room currently illumniated.
  *                          0 = off all the way to 1 = full on.
@@ -65,6 +69,7 @@ import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
 fun DisplayPhilipsHueRoom(
     modifier: Modifier = Modifier,
     roomName: String,
+    sceneName: String,
     illumination: Float,
     lightSwitchOn: Boolean,
     roomBrightnessChangedFunction: (newBrightness: Float) -> Unit,
@@ -115,6 +120,14 @@ fun DisplayPhilipsHueRoom(
             modifier = Modifier
                 .padding(start = 16.dp)
         )
+
+        // display the name of the current scene
+        if (sceneName.isNotEmpty()) {
+            Text(
+                sceneName,
+                modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                textAlign = TextAlign.End)
+        }
 
         Row (
             modifier = Modifier

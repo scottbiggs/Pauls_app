@@ -12,7 +12,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
  * to keep things modularized (and reasonably sized).
  */
 // todo: is this usable?
-object PhilipsHueModelZones {
+object PhilipsHueZonesModel {
 
     //----------------------------
     //  flows

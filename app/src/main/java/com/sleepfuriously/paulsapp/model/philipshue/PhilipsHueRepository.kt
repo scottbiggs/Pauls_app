@@ -6,6 +6,7 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
+import com.sleepfuriously.paulsapp.model.philipshue.json.ZONE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -585,7 +586,7 @@ class PhilipsHueRepository(
 
         // Now that the scene and room matches, just tell the scene to turn on.  That's it.
         coroutineScope.launch(Dispatchers.IO) {
-            val response = PhilipsHueBridgeApi.sendSceneToRoom(
+            val response = PhilipsHueBridgeApi.sendSceneToLightGroup(
                 bridgeIp = bridge.ipAddress,
                 bridgeToken = bridge.token,
                 sceneToDisplay = scene
@@ -597,7 +598,54 @@ class PhilipsHueRepository(
             Log.d(TAG, "    body = ${response.body}")
             Log.d(TAG, "    headers = ${response.headers}")
 
-            // nothing else to do.  The bridge will update everything with an sse.
+            // update the room about its current scene. But first find the
+            // appropriate bridgeModel
+            val daBridgeModel = bridgeModelList.value.find { bridgeModel ->
+                bridgeModel.bridge.value.rooms.contains(room)
+            }
+            if (daBridgeModel == null) {
+                Log.e(TAG, "updateRoomScene() could not find a BridgeModel with the given room! Current bridge won't work!!!")
+                return@launch
+            }
+
+            daBridgeModel.updateRoomCurrentScene(room = room, scene = scene)
+        }
+    }
+
+    /** similar to [updateRoomScene] */
+    fun updateZoneScene(
+        bridge: PhilipsHueBridgeInfo,
+        zone: PhilipsHueZoneInfo,
+        scene: PHv2Scene
+    ) {
+        if ((scene.group.rtype != ZONE) || (scene.group.rid != zone.v2Id)) {
+            Log.e(TAG, "updateZoneScene() - zone does not match with scene. Aborting!")
+            return
+        }
+        coroutineScope.launch(Dispatchers.IO) {
+            val response = PhilipsHueBridgeApi.sendSceneToLightGroup(
+                bridgeIp = bridge.ipAddress,
+                bridgeToken = bridge.token,
+                sceneToDisplay = scene
+            )
+            Log.d(TAG, "updateZoneScene() response:")
+            Log.d(TAG, "    successful = ${response.isSuccessful}")
+            Log.d(TAG, "    code = ${response.code}")
+            Log.d(TAG, "    message = ${response.message}")
+            Log.d(TAG, "    body = ${response.body}")
+            Log.d(TAG, "    headers = ${response.headers}")
+
+            // update the zone about its current scene. But first find the
+            // appropriate bridgeModel
+            val daBridgeModel = bridgeModelList.value.find { bridgeModel ->
+                bridgeModel.bridge.value.zones.contains(zone)
+            }
+            if (daBridgeModel == null) {
+                Log.e(TAG, "updateZoneScene() could not find a BridgeModel with the given zone! Current bridge won't work!!!")
+                return@launch
+            }
+
+            daBridgeModel.updateZoneCurrentScene(zone = zone, scene = scene)
         }
     }
 
