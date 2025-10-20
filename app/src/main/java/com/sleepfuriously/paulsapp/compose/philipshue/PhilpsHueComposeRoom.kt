@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +57,8 @@ import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
  * @param   illumination    How much is this room currently illumniated.
  *                          0 = off all the way to 1 = full on.
  *
+ * @param   lightSwitchOn   Is the switch for the light on (true) or off (false)
+ *
  * @param   roomBrightnessChangedFunction   Function to call when the brightness
  *                          is changed by the user.  The parameter will be the
  *                          new illumination value.
@@ -64,6 +67,9 @@ import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
  *                          switches a room on or off.  The parameter is false
  *                          when the user wants the room off, and it'll be
  *                          true when the user wants to switch it on.
+ *
+ * @param   showScenesFunction      Function to call when the user wants to
+ *                          display all the scenes applicable to this Room.
  */
 @Composable
 fun DisplayPhilipsHueRoom(
@@ -77,8 +83,8 @@ fun DisplayPhilipsHueRoom(
     showScenesFunction: () -> Unit
 ) {
     // variables for displaying the lightbulb image
-    val lightImage = getProperLightImage(illumination)    // changes while hand is sliding
-    val lightImageColor = getLightColor(illumination)
+    val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
+    val lightImageColor = remember { getLightColor(illumination) }
 
     Column(modifier = modifier
         .fillMaxSize()
