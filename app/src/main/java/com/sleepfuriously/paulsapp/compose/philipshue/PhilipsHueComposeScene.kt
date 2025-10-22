@@ -32,9 +32,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.OverlappingRow
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.xyToRgbWithBrightness

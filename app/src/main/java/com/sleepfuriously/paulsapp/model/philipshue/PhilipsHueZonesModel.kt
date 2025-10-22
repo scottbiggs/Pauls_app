@@ -1,6 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Zone
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
@@ -108,7 +110,10 @@ object PhilipsHueZonesModel {
                     }
                     else {
                         // so far so good. Convert and add it
-                        val light = PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo(lightIndividual.data[0])
+                        val light = PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo(
+                            v2Light = lightIndividual.data[0],
+                            bridgeIpAddress = bridge.ipAddress
+                        )
                         lightList.add(light)
                     }
                 }

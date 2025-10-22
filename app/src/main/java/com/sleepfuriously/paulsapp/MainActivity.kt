@@ -59,7 +59,8 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -131,12 +132,12 @@ class MainActivity : ComponentActivity() {
                 val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
                 val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
-//                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgeModelsCompose
                 val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
-                Log.d(TAG, "onCreate() - philipsHueBridges = $philipsHueBridges")
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
                 val zoneSceneData = philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
+
+                val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
@@ -193,7 +194,8 @@ class MainActivity : ComponentActivity() {
                             philipsHueViewmodel = philipsHueViewmodel,
                             philipsHueBridges = philipsHueBridges,
                             roomSceneData = roomSceneData.value,
-                            zoneSceneData = zoneSceneData.value
+                            zoneSceneData = zoneSceneData.value,
+                            philipsHueFlocks = flocks.value,
                         )
                     }
 
@@ -223,6 +225,7 @@ class MainActivity : ComponentActivity() {
         roomSceneData: SceneDataForRoom?,
         zoneSceneData: SceneDataForZone?,
         philipsHueBridges: List<PhilipsHueBridgeInfo>,
+        philipsHueFlocks: List<PhilipsHueFlock>,
         modifier : Modifier = Modifier,
     ) {
 
@@ -311,7 +314,8 @@ class MainActivity : ComponentActivity() {
                             ShowMainScreenPhilipsHue(
                                 modifier = modifier,
                                 philipsHueViewmodel = philipsHueViewmodel,
-                                bridges = philipsHueBridges
+                                bridges = philipsHueBridges,
+                                flocks = philipsHueFlocks
                             )
                         }
                         else if (roomSceneData != null) {

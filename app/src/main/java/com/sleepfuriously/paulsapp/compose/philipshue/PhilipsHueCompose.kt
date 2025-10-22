@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -47,14 +46,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
+import com.sleepfuriously.paulsapp.compose.convertBrightnessFloatToInt
+import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
-import com.sleepfuriously.paulsapp.model.philipshue.MAX_BRIGHTNESS
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 
@@ -78,7 +79,8 @@ fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
     philipsHueViewmodel: PhilipsHueViewmodel,
 //    bridges: List<PhilipsHueBridgeModel>
-    bridges: List<PhilipsHueBridgeInfo>
+    bridges: List<PhilipsHueBridgeInfo>,
+    flocks: List<PhilipsHueFlock>
 ) {
     Log.d(TAG, "ShowMainScreenPhilpipsHue(). bridges.size = ${bridges.size}")
 
@@ -97,9 +99,9 @@ fun ShowMainScreenPhilipsHue(
             color = Color.White
         )
 
-        DrawBridgeContents(
-//            bridgeModels = bridges,
+        DrawPhilipsHueContents(
             bridges = bridges,
+            flocks = flocks,
             viewmodel = philipsHueViewmodel
         )
     }
@@ -121,8 +123,9 @@ fun ShowMainScreenPhilipsHue(
 }
 
 @Composable
-private fun DrawBridgeContents(
+private fun DrawPhilipsHueContents(
     bridges: List<PhilipsHueBridgeInfo>,
+    flocks: List<PhilipsHueFlock>,
     viewmodel: PhilipsHueViewmodel
 ) {
     Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridges.size}")
@@ -139,6 +142,43 @@ private fun DrawBridgeContents(
         verticalArrangement = Arrangement.Top,
         horizontalArrangement = Arrangement.Start
     ) {
+
+        //-------------
+        //  flocks
+        //-------------
+
+        item(span = { GridItemSpan(this.maxLineSpan) }) {
+            DrawFlocksSeparator(
+                flockList = flocks,
+                viewmodel = viewmodel
+            )
+        }
+
+        flocks.forEach { flock ->
+            item {
+                DisplayPhilipsHueFlock(
+                    flockName = flock.name,
+                    sceneName = flock.currentSceneName,
+                    illumination = convertBrightnessIntToFloat(flock.brightness),
+                    lightSwitchOn = flock.onOffState,
+                    flockOnOffChangedFunction = { newOnOff ->
+                        viewmodel.changeFlockOnOff(
+                            newOnOffState = newOnOff,
+                            changedFlock = flock
+                        )
+                    },
+                    flockBrightnessChangedFunction = { newBrightness ->
+                        viewmodel.changeFlockBrightness(
+                            newBrightness = convertBrightnessFloatToInt(newBrightness),
+                            changedFlock = flock
+                        )
+                    },
+                    showScenesFunction = {
+                        viewmodel.sceneDisplayStuffForFlock(flock)
+                    }
+                )
+            }
+        }
 
         // Each bridge will consist of:
         //  - separator
@@ -167,8 +207,7 @@ private fun DrawBridgeContents(
                         onClick = {
                             if (bridgeInfo.connected) {
                                 viewmodel.disconnectBridge(bridgeInfo)
-                            }
-                            else {
+                            } else {
                                 viewmodel.connectBridge(bridgeInfo)
                             }
                         },
@@ -205,7 +244,7 @@ private fun DrawBridgeContents(
                         DisplayPhilipsHueRoom(
                             roomName = room.name,
                             sceneName = room.currentSceneName,
-                            illumination = room.brightness.toFloat() / MAX_BRIGHTNESS.toFloat(),
+                            illumination = convertBrightnessIntToFloat(room.brightness),
                             lightSwitchOn = room.on,
 
                             roomBrightnessChangedFunction = { newIllumination ->
@@ -300,7 +339,6 @@ private fun DrawBridgeSeparator(
             bridge = bridge,
         )
     }
-
 }
 
 @Composable
@@ -345,7 +383,7 @@ private fun DotDotDotBridgeMenu(
         ) {
             // show bridge info
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.show_bridge_info)) },
+                text = { Text(stringResource(R.string.show_info)) },
                 onClick = {
                     isDropDownExpanded = false
                     showInfoDialog = true
@@ -441,7 +479,7 @@ private fun ShowBridgeInfoDialog(
                 LazyColumn {
                     // human name
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.name),
                             bridge.humanName
                         )
@@ -449,7 +487,7 @@ private fun ShowBridgeInfoDialog(
 
                     // id
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.id),
                             bridge.v2Id
                         )
@@ -457,7 +495,7 @@ private fun ShowBridgeInfoDialog(
 
                     // ip
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.ip),
                             bridge.ipAddress
                         )
@@ -465,7 +503,7 @@ private fun ShowBridgeInfoDialog(
 
                     // active
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.active),
                             bridge.active.toString()
                         )
@@ -473,7 +511,7 @@ private fun ShowBridgeInfoDialog(
 
                     // connected
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.connected),
                             bridge.connected.toString()
                         )
@@ -481,7 +519,7 @@ private fun ShowBridgeInfoDialog(
 
                     // token
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.token),
                             bridge.token
                         )
@@ -489,21 +527,21 @@ private fun ShowBridgeInfoDialog(
 
                     // rooms
                     item {
-                        DrawBridgeInfoLine(
+                        DrawInfoDialogLine(
                             stringResource(R.string.bridge_info_rooms),
                             bridge.rooms.size.toString()
                         )
                     }
                     bridge.rooms.forEach { room ->
                         item {
-                            DrawBridgeInfoLine(
+                            DrawInfoDialogLine(
                                 stringResource(R.string.bridge_info_room),
                                 room.name
                             )
                         }
 
                         item {
-                            DrawBridgeInfoLine(
+                            DrawInfoDialogLine(
                                 stringResource(R.string.bridge_info_lights),
                                 room.lights.size.toString(),
                                 width = 150
@@ -517,7 +555,7 @@ private fun ShowBridgeInfoDialog(
                                 )
                             val brightness = light.state.bri
                             item {
-                                DrawBridgeInfoLine(
+                                DrawInfoDialogLine(
                                     light.name,
                                     "$onStr, brightness = $brightness",
                                     width = 180
@@ -538,43 +576,6 @@ private fun ShowBridgeInfoDialog(
 
 }
 
-/**
- * Draws the given two texts in a Row suitable for displaying in the Bridge
- * Info screen.
- *
- * @param   title       The first part.  It'll be bigger and bolder.
- *                      Just a word or two.
- *
- * @param   body        The right part.  Should be the main data.
- *
- * @param   width       Width of the title section.  Default should be good for
- *                      a nice sized word.
- */
-@Composable
-private fun DrawBridgeInfoLine(
-    title: String,
-    body: String,
-    width: Int = 120
-) {
-    Row {
-        Text(
-            text = title,
-            textAlign = TextAlign.End,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .width(width.dp)
-                .alignByBaseline()
-                .padding(end = 8.dp)
-        )
-        Text(
-            text = body,
-            modifier = Modifier
-                .alignByBaseline()
-        )
-    }
-
-}
 
 @Composable
 private fun DrawBridgeTitle(text: String, modifier: Modifier = Modifier) {
@@ -635,4 +636,10 @@ private fun DrawMainPhilipsHueAddBridgeFab(
 private const val TAG = "PhilipsHueCompose"
 
 /** The grid of rooms in the PH section, each room must be at least this wide */
-private const val MIN_PH_ROOM_WIDTH = 130
+const val MIN_PH_ROOM_WIDTH = 130
+
+/** the maximum light that a light can put out */
+const val MAX_BRIGHTNESS = 100
+
+/** min light that a light can emit */
+const val MIN_BRIGHTNESS = 0

@@ -3,6 +3,11 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.google.gson.Gson
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V2
 import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE_V3
 import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
@@ -81,7 +86,7 @@ object PhilipsHueDataConverter {
     //------------------
 
     /**
-     * Converts a [PHv2ResourceBridge] to [PhilipsHueBridgeInfo]
+     * Converts a [PHv2ResourceBridge] to [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo]
      *
      * @param   v2Bridge        The data struct that was returned by the bridge
      * @param   bridgeIp        Ip used to contact this bridge
@@ -142,11 +147,12 @@ object PhilipsHueDataConverter {
     //------------------
 
     /**
-     * Converts from a [PHv2Light] to a [PhilipsHueLightInfo].
+     * Converts from a [PHv2Light] to a [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo].
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun convertV2LightToPhilipsHueLightInfo(
-        v2Light: PHv2Light
+        v2Light: PHv2Light,
+        bridgeIpAddress: String
     ) : PhilipsHueLightInfo {
 
         val state = PhilipsHueLightState(
@@ -160,6 +166,7 @@ object PhilipsHueDataConverter {
             name = v2Light.metadata.name,
             state = state,
             type = v2Light.type,
+            bridgeIpAddress = bridgeIpAddress
         )
 
         return light
@@ -173,6 +180,7 @@ object PhilipsHueDataConverter {
     @Suppress("unused")
     private fun convertV2ResourceLightsAllToLightList(
         v2ResourceLight: PHv2ResourceLightsAll,
+        bridgeIpAddress: String
     ) : List<PhilipsHueLightInfo> {
 
         val newLightList = mutableListOf<PhilipsHueLightInfo>()
@@ -195,7 +203,10 @@ object PhilipsHueDataConverter {
         // add it to our list.
         v2ResourceLight.data.forEach { data ->
             if (data.type == LIGHT) {
-                newLightList.add(convertV2LightToPhilipsHueLightInfo(data))
+                newLightList.add(convertV2LightToPhilipsHueLightInfo(
+                    v2Light = data,
+                    bridgeIpAddress = bridgeIpAddress
+                ))
             }
         }
         return newLightList
@@ -245,7 +256,8 @@ object PhilipsHueDataConverter {
                                         on = v2light.data[0].on.on,
                                         bri = v2light.data[0].dimming.brightness
                                     ),
-                                    type = v2light.data[0].type
+                                    type = v2light.data[0].type,
+                                    bridgeIpAddress = bridgeIp
                                 )
                                 regularLightList.add(regularLight)
                             }
@@ -279,7 +291,7 @@ object PhilipsHueDataConverter {
     //------------------
 
     /**
-     * Converts a [PHv2Room] datum into a [PhilipsHueRoomInfo]
+     * Converts a [PHv2Room] datum into a [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo]
      * instance.  This may require gathering more info from the
      * bridge, hence the suspend.  It's generally part of a larger
      * data call like [PHv2RoomIndividual] or [PHv2ResourceRoomsAll].
@@ -319,7 +331,8 @@ object PhilipsHueDataConverter {
                     name = EMPTY_STRING,
                     lights = mutableListOf(),
                     currentSceneName = "",
-                    groupedLightServices = groupedLightServices
+                    groupedLightServices = groupedLightServices,
+                    bridgeIpAddress = bridgeIp
                 )
             }
 
@@ -351,7 +364,8 @@ object PhilipsHueDataConverter {
                 brightness = brightness,
                 lights = regularLightList,
                 currentSceneName = "",
-                groupedLightServices = groupedLightServices
+                groupedLightServices = groupedLightServices,
+                bridgeIpAddress = bridgeIp
             )
             return@withContext newRoom
         }
@@ -364,7 +378,8 @@ object PhilipsHueDataConverter {
             brightness = 0,
             lights = mutableListOf(),
             currentSceneName = "",
-            groupedLightServices = groupedLightServices
+            groupedLightServices = groupedLightServices,
+            bridgeIpAddress = bridgeIp
         )
 
         return@withContext newRoom
@@ -473,7 +488,7 @@ object PhilipsHueDataConverter {
 
     /**
      * Converts the class read for all the zones, [PHv2ResourceZonesAll] into
-     * a list of [PhilipsHueZoneInfo].  This is the zone equivalent of
+     * a list of [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo].  This is the zone equivalent of
      * [convertPHv2ResourceRoomsAllToPhilipsHueRoomInfoList].
      */
     suspend fun convertPHv2ZonesAllToPhilipsHueZoneInfoList(
@@ -568,7 +583,8 @@ object PhilipsHueDataConverter {
                     name = EMPTY_STRING,
                     lights = listOf(),
                     currentSceneName = "",
-                    groupedLightServices = listOf()
+                    groupedLightServices = listOf(),
+                    bridgeIpAddress = bridgeIp
                 )
             }
 
@@ -598,7 +614,8 @@ object PhilipsHueDataConverter {
                 brightness = brightness,
                 lights = regularLightList,
                 currentSceneName = "",
-                groupedLightServices = groupedLightServices
+                groupedLightServices = groupedLightServices,
+                bridgeIpAddress = bridgeIp
             )
 
         }
@@ -609,7 +626,8 @@ object PhilipsHueDataConverter {
                 name = v2Zone.metadata.name,
                 lights = mutableListOf(),
                 currentSceneName = "",
-                groupedLightServices = groupedLightServices
+                groupedLightServices = groupedLightServices,
+                bridgeIpAddress = bridgeIp
             )
         }
     } // convertPHv2ZoneToPhilipsHueZoneInfo()

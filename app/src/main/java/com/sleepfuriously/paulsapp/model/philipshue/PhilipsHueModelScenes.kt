@@ -2,6 +2,9 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import com.sleepfuriously.paulsapp.model.philipshue.json.ZONE
 

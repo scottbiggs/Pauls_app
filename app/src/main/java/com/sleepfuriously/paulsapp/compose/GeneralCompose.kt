@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,11 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
 
 /**
@@ -306,6 +309,62 @@ fun OverlappingRow(
         content = content,
         modifier = modifier
     )
+}
+
+
+/**
+ * Draws the given two texts in a Row suitable for displaying in the Bridge
+ * Info screen.
+ *
+ * @param   title       The first part.  It'll be bigger and bolder.
+ *                      Just a word or two.
+ *
+ * @param   body        The right part.  Should be the main data.
+ *
+ * @param   width       Width of the title section.  Default should be good for
+ *                      a nice sized word.
+ */
+@Composable
+fun DrawInfoDialogLine(
+    title: String,
+    body: String,
+    width: Int = 120
+) {
+    Row {
+        Text(
+            text = title,
+            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .width(width.dp)
+                .alignByBaseline()
+                .padding(end = 8.dp)
+        )
+        Text(
+            text = body,
+            modifier = Modifier
+                .alignByBaseline()
+        )
+    }
+}
+
+
+/**
+ * Converts the Int version of brightness (ranging from 0 to [MAX_BRIGHTNESS])
+ * to the float version (from 0.0 to 1.0).
+ */
+fun convertBrightnessIntToFloat(intBrightness: Int) : Float {
+    return intBrightness.toFloat() / MAX_BRIGHTNESS.toFloat()
+}
+
+/**
+ * Converts a brightness from the Float version which ranges from [0.0 .. 1.0]
+ * to the Int version, ranging from [0 .. MAX_BRIGHTNESS].  Currently
+ * [MAX_BRIGHTNESS] is 100.
+ */
+fun convertBrightnessFloatToInt(floatBrightness: Float) : Int {
+    return (floatBrightness * MAX_BRIGHTNESS.toFloat()).toInt()
 }
 
 

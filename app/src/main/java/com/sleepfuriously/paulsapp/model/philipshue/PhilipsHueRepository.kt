@@ -3,6 +3,11 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
@@ -71,7 +76,7 @@ import kotlin.coroutines.coroutineContext
  *
  * Most of the data is stored in the default prefs file.  This includes
  * the info on how to access the different bridges.  The keys to access
- * the bridges are constructed thusly (based on [PhilipsHueBridgeInfo]):
+ * the bridges are constructed thusly (based on [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo]):
  *
  * bridge ip = PHILIPS_HUE_BRIDGE_IP_KEY + bridge_id
  * token key = PHILIPS_HUE_BRIDGE_TOKEN_KEY + bridge_id
@@ -102,7 +107,7 @@ class PhilipsHueRepository(
 
     /**
      * Holds our list of [PhilipsHueBridgeModel] as a StateFlow.  It's converted
-     * to a list of [PhilipsHueBridgeInfo] as a StateFlow (called [bridgeInfoList]).
+     * to a list of [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo] as a StateFlow (called [bridgeInfoList]).
      *
      * Changes anywhere down the line should percolate up and be sent along to any
      * observer of bridgeInfoList.
@@ -127,6 +132,32 @@ class PhilipsHueRepository(
                 combine(
                     flows = listOfStateFlowBridgeInfo,
                     transform = Array<PhilipsHueBridgeInfo>::toList
+                )
+            }
+        }.stateIn(
+            scope = coroutineScope,
+            started = SharingStarted.WhileSubscribed(100),
+            initialValue = listOf()
+        )
+    /**
+     * Our list of [PhilipsHueFlockModel]s.  When any data changes within
+     * a FlockModel, it's change will be reflected in the flow below.
+     */
+    private val flockModelList = MutableStateFlow<List<PhilipsHueFlockModel>>(emptyList())
+
+    /** Complete list of the Flocks with their associated data.  Ready to observe! */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val flockList: StateFlow<List<PhilipsHueFlock>> = flockModelList
+        .flatMapLatest { flockModels ->
+            if (flockModels.isEmpty()) {
+                MutableStateFlow(emptyList())
+            }
+            else {
+                val listOfStateFlowFlockInfo =
+                    flockModels.map(transform = PhilipsHueFlockModel::flock)
+                combine(
+                    flows = listOfStateFlowFlockInfo,
+                    transform = Array<PhilipsHueFlock>::toList
                 )
             }
         }.stateIn(
@@ -168,9 +199,6 @@ class PhilipsHueRepository(
 
         // Now for the real initializations!  Load up the bridge information,
         // make our list of bridges, and start talking to them.
-        //
-        // todo question:  should this be done BEFORE the flow is collected above?
-        //
         coroutineScope.launch(Dispatchers.IO) {
 
             // todo: use addBridge() here
@@ -365,7 +393,8 @@ class PhilipsHueRepository(
      * @return  True if all went well
      */
     suspend fun addBridge(
-        newBridge: PhilipsHueNewBridge) : Boolean {
+        newBridge: PhilipsHueNewBridge
+    ) : Boolean {
 
         // grab the id for this bridge
         val jsonResponseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
@@ -403,6 +432,43 @@ class PhilipsHueRepository(
         )
 
         return true
+    }
+
+    /**
+     * Adds a flock to our list.
+     *
+     * side effect
+     *  A brand-new [PhilipsHueFlockModel] will be created to deal with the new
+     *  flock.
+     */
+    fun addFlock(
+        id: String,
+        name: String,
+        brightness: Int,
+        onOffState: Boolean,
+        /** Set of all the lights to be controlled by the flock */
+        lightSet: Set<PhilipsHueLightInfo>,
+        /** Set of room Ids and corresponding bridgeId (roomId, bridgeId) */
+        roomSet: Set<PhilipsHueRoomInfo>,
+        /** Set of zone Ids and the bridgeId associated (zoneId, bridgeId) */
+        zoneSet: Set<PhilipsHueZoneInfo>
+    ) {
+        // make a new flock data by finding all the details
+        val newFlock = PhilipsHueFlock(
+            name = name,
+            currentSceneName = "",
+            brightness = brightness,
+            onOffState = onOffState,
+            lightSet = lightSet,
+            roomSet = roomSet,
+            zoneSet = zoneSet
+        )
+
+        // create a new Flock Model and add it to our list
+        val newFlockModel = PhilipsHueFlockModel(newFlock)
+        flockModelList.update {
+            it + newFlockModel
+        }
     }
 
     //-------------------------------
@@ -461,6 +527,19 @@ class PhilipsHueRepository(
         bridge: PhilipsHueBridgeInfo
     ) : List<PHv2Scene> {
         return PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+    }
+
+
+    /**
+     * Finds all the lights used by a bridge
+     */
+    fun getBridgeLights(bridgeIpAddress: String) : Set<PhilipsHueLightInfo> {
+        val bridgeModel = bridgeModelList.value.find { it.bridgeIpAddress == bridgeIpAddress }
+        if (bridgeModel == null) {
+            Log.e(TAG, "Unable to find bridge in getBridgeLights() ip = $bridgeIpAddress! Returning empty Set.")
+            return emptySet()
+        }
+        return bridgeModel.lights.value.toSet()
     }
 
     //-------------------------------
@@ -565,6 +644,34 @@ class PhilipsHueRepository(
             zone = foundZone,
             onStatus = newOnOff
         )
+    }
+
+    fun changeFlockOnOff(
+        changedFlock: PhilipsHueFlock,
+        newOnOff: Boolean
+    ) {
+        // find the FlockModel
+        for (flockModel in flockModelList.value) {
+            if (flockModel.flock.value.id == changedFlock.id) {
+                flockModel.changeOnOff(newOnOff)
+                return
+            }
+        }
+        Log.e(TAG, "changeFlockOnOff() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
+    }
+
+    fun changeFlockBrightness(
+        changedFlock: PhilipsHueFlock,
+        newBrightness: Int
+    ) {
+        // find the flockModel
+        for (flockModel in flockModelList.value) {
+            if (flockModel.flock.value.id == changedFlock.id) {
+                flockModel.changeBrightness(newBrightness)
+                return
+            }
+        }
+        Log.e(TAG, "changeFlockBrightness() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
     }
 
 

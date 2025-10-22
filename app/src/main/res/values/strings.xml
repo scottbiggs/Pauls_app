@@ -64,9 +64,9 @@
     <string name="add_button_content_desc">add bridge</string>
     <string name="lightbulb_content_desc">dimming light bulb</string>
     <string name="no_rooms_for_bridge">This bridge has no rooms</string>
-    <string name="brightness">brightness = %1d%%</string>
+    <string name="brightness">brightness</string>
     <string name="drop_down_menu_desc">drop down menu</string>
-    <string name="show_bridge_info">info</string>
+    <string name="show_info">info</string>
     <string name="disconnect_bridge">disconnect</string>
     <string name="reconnect_bridge">connect</string>
     <string name="show_bridge_info_title">Bridge Info</string>
@@ -85,6 +85,14 @@
     <string name="scenes_title">%1$s Scenes</string>
     <string name="scenes_butt">Scenes</string>
     <string name="no_colored_lights_in_scene">no colors</string>
+    <string name="scene_name_prefix">Scene</string>
+
+    <string name="add_flock">create new flock</string>
+    <string name="delete_flock">delete flock</string>
+    <string name="delete_flock_confirm_title">Delete Flock</string>
+    <string name="delete_flock_confirm_body">This action will remove the Flock from this application.  Tap \'confirm\' to continue with deletion.</string>
+    <string name="show_flock_info_title">Bridge Info</string>
+    <string name="flock_size">flocks</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
@@ -113,8 +121,11 @@
     <string name="token">token</string>
     <string name="room">room</string>
     <string name="zone">zone</string>
+    <string name="flock">flock</string>
     <string name="connected">connected</string>
+    <string name="on_title">on</string>
     <string name="light_on">on</string>
     <string name="light_off">off</string>
+    <string name="lights">lights</string>
 
 </resources>

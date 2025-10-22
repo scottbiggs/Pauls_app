@@ -6,6 +6,9 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.*
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +65,7 @@ import kotlinx.coroutines.withContext
  *
  * Most of the data is stored in the default prefs file.  This includes
  * the info on how to access the different bridges.  The keys to access
- * the bridges are constructed thusly (based on [PhilipsHueBridgeInfo]):
+ * the bridges are constructed thusly (based on [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo]):
  *
  * bridge ip = PHILIPS_HUE_BRIDGE_IP_KEY + bridge_id
  * token key = PHILIPS_HUE_BRIDGE_TOKEN_KEY + bridge_id

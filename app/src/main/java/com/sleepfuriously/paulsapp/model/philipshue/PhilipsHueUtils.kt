@@ -7,6 +7,10 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceIdentifier
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +29,7 @@ import java.io.IOException
 /**
  * Helper function.  From a list of [PHv2ResourceIdentifier]s, this finds the
  * first that is of type [RTYPE_LIGHT], finds it's full info, and returns its
- * [PhilipsHueRoomInfo] form.
+ * [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo] form.
  *
  * @return  Null if a light can't be found or there was some sort of error.
  */
@@ -62,7 +66,8 @@ private suspend fun getLightInfoFromServiceList(
                     on = v2ApiLight.data[0].on.on,
                     bri = v2ApiLight.data[0].dimming.brightness
                 ),
-                type = v2ApiLight.data[0].type
+                type = v2ApiLight.data[0].type,
+                bridgeIpAddress = bridge.ipAddress
             )
         }
     }

@@ -11,12 +11,14 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueNewBridge
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRoomInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
@@ -95,6 +97,11 @@ class PhilipsHueViewmodel : ViewModel() {
     /** similar to [sceneDisplayStuffForRoom] */
     val sceneDisplayStuffForZone = _sceneDisplayStuffForZone.asStateFlow()
 
+
+    private val _flocks = MutableStateFlow<List<PhilipsHueFlock>>(emptyList())
+    /** Holder of the Flocks observed from the repository  */
+    val flocks = _flocks.asStateFlow()
+
     //-------------------------
     //  private data
     //-------------------------
@@ -107,9 +114,7 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     init {
-
         viewModelScope.launch {
-
             // convert list of BridgeModels to a list Bridges
             phRepository.bridgeInfoList.collectLatest { bridgeModel ->
                 Log.d(TAG, "phRepository changed")
@@ -120,6 +125,15 @@ class PhilipsHueViewmodel : ViewModel() {
                 Log.d(TAG, "collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
                 Log.d(TAG, "    bridgeList = $tmpBridgeList")
                 philipsHueBridgesCompose = tmpBridgeList
+            }
+        }
+
+        viewModelScope.launch {
+            // convert the BridgeModels list to a list of Flocks too.
+            // I'm pretty sure we can't combine this with the bridge list above.
+            phRepository.flockList.collectLatest { flockList ->
+                Log.d(TAG, "repository flock info changed")
+                _flocks.update { flockList }
             }
         }
     }
@@ -179,6 +193,26 @@ class PhilipsHueViewmodel : ViewModel() {
     ) {
         phRepository.changeZoneOnOff(
             zone = changedZone,
+            newOnOff = newOnOffState
+        )
+    }
+
+    fun changeFlockBrightness(
+        newBrightness: Int,
+        changedFlock: PhilipsHueFlock
+    ) {
+        phRepository.changeFlockBrightness(
+            changedFlock = changedFlock,
+            newBrightness = newBrightness
+        )
+    }
+
+    fun changeFlockOnOff(
+        newOnOffState: Boolean,
+        changedFlock: PhilipsHueFlock
+    ) {
+        phRepository.changeFlockOnOff(
+            changedFlock = changedFlock,
             newOnOff = newOnOffState
         )
     }
@@ -650,6 +684,49 @@ class PhilipsHueViewmodel : ViewModel() {
         scene: PHv2Scene
     ) {
         phRepository.updateZoneScene(bridge, zone, scene)
+    }
+
+    //-------------------------
+    //  flock functions
+    //-------------------------
+
+    private var flockCounter = 0
+    /**
+     * Adds a flock -- fixme: temporary test flock done now.  I'm just doing a couple of random
+     *                  lights to test things
+     */
+    fun addFlock() {
+        flockCounter++
+
+        // TESTING: make a light list
+        val lightSet = mutableSetOf<PhilipsHueLightInfo>()
+        for (i in 0 until 3) {
+            val randBridge = phRepository.bridgeInfoList.value.random()
+            Log.d(TAG, "addFlock() randBridge ip = ${randBridge.ipAddress}")
+            val bridgeLights = phRepository.getBridgeLights(randBridge.ipAddress)
+            val randLight = bridgeLights.random()
+            Log.d(TAG, "   light = ${randLight.name}")
+            lightSet.add(randLight)
+            Log.d(TAG, "   lightSet now has ${lightSet.size} lights")
+        }
+
+        phRepository.addFlock(
+            id = "foo_${(1..10_000).random()}",
+            name = "name $flockCounter",
+            brightness = (0..100).random(),
+            onOffState = false,
+            lightSet = lightSet,
+            roomSet = setOf(),
+            zoneSet = setOf()
+        )
+    }
+
+    fun deleteFlock() {
+        Log.e(TAG, "deleteFlock() not implemented!")
+    }
+
+    fun sceneDisplayStuffForFlock(flock: PhilipsHueFlock) {
+        Log.e(TAG, "sceneDisplayStuffForFlock() not implemented")
     }
 
     //-------------------------

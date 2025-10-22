@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getDeviceIndividualFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.BRIDGE
 import com.sleepfuriously.paulsapp.model.philipshue.json.DEVICE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
@@ -23,7 +25,7 @@ import kotlinx.coroutines.withContext
  * only when initialize is called, which can be called
  * at any later time to reset the bridge data.
  *
- * A [PhilipsHueBridgeInfo] is produced as a flow so
+ * A [com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo] is produced as a flow so
  * observers can detect changes.
  *
  * Other information that is produced in flows includes:

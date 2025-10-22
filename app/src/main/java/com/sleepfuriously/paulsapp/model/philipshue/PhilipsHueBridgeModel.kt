@@ -5,6 +5,11 @@ import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_DELETE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ERROR
@@ -37,9 +42,10 @@ import kotlinx.coroutines.withContext
  *  an ip, and token are needed).  This will try to contact the bridge and get
  *  all relevant data (rooms, scenes, zones).
  *
- *  - Receive flow.  Once the bridge is setup, it will start a stateflow to [bridge],
- *  which will notify all listeners about the state of the bridge.  Any changes will
- *  be sent through the flow.  Null means that the bridge is still gathering data.
+ *  - Receive flow from this.  Once the bridge is setup, it will start a stateflow to
+ *  [bridge], which will notify all listeners about the state of the bridge.
+ *  Any changes will be sent through the flow.  Null means that the bridge is still
+ *  gathering data.
  *
  *  - Connect SSE.  This tells the bridge to start receiving server-sent events
  *  to this class.  It's done automatically the first time if initialization was
@@ -81,7 +87,8 @@ class PhilipsHueBridgeModel(
             scenes = emptyList(),
             zones = emptyList(),
             humanName = "default"
-        ))
+        )
+    )
     /** Flow for this bridge. Collectors will be notified of changes to this bridge. */
     val bridge = _bridge.asStateFlow()
 
@@ -246,7 +253,7 @@ class PhilipsHueBridgeModel(
 
                 val newLightList = mutableListOf<PhilipsHueLightInfo>()
                 v2LightsList.data.forEach { v2Light ->
-                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light))
+                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light, bridgeIpAddress))
                 }
                 newLightList
             }
@@ -1004,7 +1011,8 @@ class PhilipsHueBridgeModel(
                                 on = newLightV2.data[0].on.on,
                                 bri = newLightV2.data[0].dimming.brightness
                             ),
-                            type = newLightV2.data[0].type
+                            type = newLightV2.data[0].type,
+                            bridgeIpAddress = bridgeIpAddress
                         )
                         Log.d(TAG, "interpretAddEvent() adding light: $newLightV2")
                         it + newLight
