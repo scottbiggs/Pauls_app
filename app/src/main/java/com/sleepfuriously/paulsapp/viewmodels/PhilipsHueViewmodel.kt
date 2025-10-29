@@ -116,15 +116,18 @@ class PhilipsHueViewmodel : ViewModel() {
     init {
         viewModelScope.launch {
             // convert list of BridgeModels to a list Bridges
-            phRepository.bridgeInfoList.collectLatest { bridgeModel ->
+            phRepository.bridgeInfoList.collectLatest { bridgeModelList ->
                 Log.d(TAG, "phRepository changed")
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
-                bridgeModel.forEach { bridgeInfo ->
+                bridgeModelList.forEach { bridgeInfo ->
                     tmpBridgeList.add(bridgeInfo)
                 }
                 Log.d(TAG, "collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
                 Log.d(TAG, "    bridgeList = $tmpBridgeList")
                 philipsHueBridgesCompose = tmpBridgeList
+//
+//                // pass back to flocks
+//                phRepository.sendChangeToFlocks(bridgeModelList)
             }
         }
 
@@ -576,7 +579,7 @@ class PhilipsHueViewmodel : ViewModel() {
         Log.d(TAG, "bridgeAllGoodAndDone() begin - addNewBridgeState = ${addNewBridgeState.value}")
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (phRepository.addBridge(workingNewBridge!!)) {
+            if (phRepository.addNewBridge(workingNewBridge!!)) {
                 // signal that we're done with the new bridge stuff
                 workingNewBridge = null
                 _addNewBridgeState.update { BridgeInitStates.NOT_INITIALIZING }

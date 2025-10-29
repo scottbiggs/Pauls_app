@@ -1,10 +1,10 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
-import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
-import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
+import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
+import com.sleepfuriously.paulsapp.compose.philipshue.MIN_BRIGHTNESS
 
 /**
  * Basic data class for Flocks, a data class of my own invention.
@@ -17,7 +17,7 @@ data class PhilipsHueFlock(
     val name: String,
     /** The name of the currently displayed scene. Empty if not applicble (default) */
     val currentSceneName: String = "",
-    /** brightness from 0 to [com.sleepfuriously.paulsapp.model.philipshue.data.MAX_BRIGHTNESS] */
+    /** brightness from 0 to [MAX_BRIGHTNESS] */
     val brightness: Int,
     /** on = true, off = false */
     val onOffState: Boolean,

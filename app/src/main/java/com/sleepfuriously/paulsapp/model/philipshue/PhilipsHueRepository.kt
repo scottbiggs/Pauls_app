@@ -18,7 +18,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -126,6 +125,11 @@ class PhilipsHueRepository(
                 MutableStateFlow(emptyList())
             }
             else {
+                // tell the flocks about this change
+                Log.d(TAG, "   while converting, sending info to flocks")
+                sendLightChangeToFlocks(getAllLights())
+
+                // convert
                 val listOfStateFlowBridgeInfo =
                     bridgeModels.map(transform = PhilipsHueBridgeModel::bridge)
                 Log.d(TAG, "   transforming into BridgeInfoList. size = ${bridgeModels.size}")
@@ -139,6 +143,8 @@ class PhilipsHueRepository(
             started = SharingStarted.WhileSubscribed(100),
             initialValue = listOf()
         )
+
+
     /**
      * Our list of [PhilipsHueFlockModel]s.  When any data changes within
      * a FlockModel, it's change will be reflected in the flow below.
@@ -175,27 +181,35 @@ class PhilipsHueRepository(
     //
 
     init {
-        // start consuming bridge flow from Model
-        coroutineScope.launch {
-            bridgeModelList.collectLatest {
-                Log.d(TAG, "collecting bridgeFlowSet from bridgeModel:")
-                Log.d(TAG, "    size = ${it.size}")
-                Log.d(TAG, "    change = $it")
-                Log.d(TAG, "    hash = ${System.identityHashCode(it)}")
 
-                // rebuilding a copy of the bridge set
-                val newBridgeList = mutableListOf<PhilipsHueBridgeModel>()
-                it.forEach { bridge ->
-                    newBridgeList.add(bridge)
-                    Log.d(TAG, "Setting bridge for flow:")
-                }
-                // producing flow
-                bridgeModelList.update {
-                    Log.d(TAG, "updating bridgeList: $bridgeModelList")
-                    newBridgeList
+//        // inform the flocks when bridgeInfoFlist changes
+//        coroutineScope.launch {
+//            bridgeInfoList.collect {
+//                sendChangeToFlocks(it)
+//            }
+//        }
+
+        coroutineScope.launch {
+            while (true) {
+                bridgeInfoList.collect {
+                    Log.d(TAG, "bridgeInfoList collected: size = ${it.size}")
+                    it.forEach { bridgeInfo ->
+                        Log.d(TAG, "   bridgeInfo: ${bridgeInfo.humanName}, lights size = ${bridgeInfo.lights.size}")
+                    }
+
+                    // create new light set
+                    val newLightSet = mutableSetOf<PhilipsHueLightInfo>()
+                    it.forEach { bridgeInfo ->
+                        bridgeInfo.lights.forEach { lightInfo ->
+                            newLightSet.add(lightInfo)
+                        }
+                    }
+                    // create set of lights
+                    sendLightChangeToFlocks(newLightSet)
                 }
             }
         }
+
 
         // Now for the real initializations!  Load up the bridge information,
         // make our list of bridges, and start talking to them.
@@ -392,7 +406,7 @@ class PhilipsHueRepository(
      *
      * @return  True if all went well
      */
-    suspend fun addBridge(
+    suspend fun addNewBridge(
         newBridge: PhilipsHueNewBridge
     ) : Boolean {
 
@@ -539,7 +553,18 @@ class PhilipsHueRepository(
             Log.e(TAG, "Unable to find bridge in getBridgeLights() ip = $bridgeIpAddress! Returning empty Set.")
             return emptySet()
         }
-        return bridgeModel.lights.value.toSet()
+        return bridgeModel.bridge.value.lights.toSet()
+    }
+
+    /**
+     * Finds ALL the lights used in all the bridges!
+     */
+    fun getAllLights() : Set<PhilipsHueLightInfo> {
+        val lightSet = mutableSetOf<PhilipsHueLightInfo>()
+        bridgeModelList.value.forEach { bridgeModel ->
+            lightSet.addAll(bridgeModel.bridge.value.lights)
+        }
+        return lightSet
     }
 
     //-------------------------------
@@ -774,6 +799,42 @@ class PhilipsHueRepository(
         }
     }
 
+
+    /**
+     * Sends changes to all the Flocks.  This is called from within the state
+     * flow that is updated whenever there's a change to a bridge.  It's up
+     * to each Flock to determine if the information is relevant or not.
+     *
+     * side effects
+     *  - potentially every Flock can change.  Those changes will be reflected
+     *  through the flocks' flow.
+     */
+//    fun sendChangeToFlocks(bridgeModelList: List<PhilipsHueBridgeModel>) {
+//        Log.d(TAG, "sendChangeToFlocks() begin - bridgeModelList.size = ${bridgeModelList.size}")
+//
+//        // build a light info list for all the lights in all the bridges!
+//        val bigLightList = mutableListOf<PhilipsHueLightInfo>()
+//        bridgeModelList.forEach { bridgeModel ->
+//            bridgeModel.lights.value.forEach { light ->
+//                bigLightList.add(light)
+//            }
+//        }
+//
+//        flockModelList.value.forEach { flock ->
+////            flock.updateBridgesChanged(bridgeModelList)
+//            flock.updateBridgesChanged(bigLightList)
+//        }
+//    }
+
+    /**
+     * Tells the flocks to update their lights
+     */
+    fun sendLightChangeToFlocks(lightSet: Set<PhilipsHueLightInfo>) {
+        flockModelList.value.forEach { flockModel ->
+            flockModel.updateBridgesChanged(lightSet)
+        }
+    }
+
     //-------------------------------
     //  delete
     //-------------------------------
@@ -922,6 +983,16 @@ class PhilipsHueRepository(
         val bridgeModel: PhilipsHueBridgeModel,
         val zone: PhilipsHueZoneInfo
     )
+
+    /**
+     * A convenient way to hold both a [PhilipsHueLightInfo] and
+     * a [PhilipsHueBridgeModel].
+     */
+    private data class BridgeModelAndLight(
+        val bridgeModel: PhilipsHueBridgeModel,
+        val lightInfo: PhilipsHueLightInfo
+    )
+
 }
 
 /**

@@ -6,21 +6,21 @@ package com.sleepfuriously.paulsapp.model.philipshue.data
  */
 data class PhilipsHueLightState(
     /** Simply tells if the light is currently on. */
-    var on: Boolean = false,
+    val on: Boolean = false,
     /** Range [0..100] */
-    var bri: Int = 100,
+    val bri: Int = 100,
     /** Range [0..65535] */
-    var hue: Int = 65535,
+    val hue: Int = 65535,
     /** Range [0..254] */
-    var sat: Int = 254,
+    val sat: Int = 254,
     /** Color as an array of xy-coords */
-    var xy: Pair<Float, Float> = Pair(0f,0f),
+    val xy: Pair<Float, Float> = Pair(0f,0f),
     /** Color temperature of white. 154 (cold) - 500 (warm) */
-    var ct: Int = 154,
+    val ct: Int = 154,
     /** "select" flashes once, "lselect" flashes repeatedly for 10 seconds */
-    var alert: String = "none",
-    var effect: String = "none",
-    var colormode: String = "ct",
-    var reachable: Boolean = true
+    val alert: String = "none",
+    val effect: String = "none",
+    val colormode: String = "ct",
+    val reachable: Boolean = true
 )
 

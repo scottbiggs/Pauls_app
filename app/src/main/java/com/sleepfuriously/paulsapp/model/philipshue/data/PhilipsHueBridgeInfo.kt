@@ -34,9 +34,11 @@ data class PhilipsHueBridgeInfo(
     /** All the rooms controlled by this bridge */
     val rooms: List<PhilipsHueRoomInfo> = listOf(),
     /** all the scenes for this bridge */
-    val scenes: List<PHv2Scene> = listOf(),
+    val scenes: List<PHv2Scene> = emptyList(),
     /** all the zones for this bridge */
-    val zones: List<PhilipsHueZoneInfo> = listOf()
+    val zones: List<PhilipsHueZoneInfo> = emptyList(),
+    /** all the lights controlled by this bridge */
+    val lights: List<PhilipsHueLightInfo> = emptyList()
 ) {
 
     companion object {
@@ -51,7 +53,8 @@ data class PhilipsHueBridgeInfo(
                 ipAddress = newBridge.ip,
                 token = newBridge.token,
                 active = newBridge.active,
-                connected = false
+                connected = false,
+                lights = emptyList()
             )
         }
     }

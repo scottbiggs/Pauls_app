@@ -12,7 +12,7 @@ data class PhilipsHueLightInfo(
     val deviceId: String,
     /** human-readable name for this light (find in the metadata of PHv2Device), the parent of the light. */
     val name: String = "",
-    var state: PhilipsHueLightState = PhilipsHueLightState(),
+    val state: PhilipsHueLightState = PhilipsHueLightState(),
     val type: String = "",
     val modelid: String = "",
     val swversion: String = "",

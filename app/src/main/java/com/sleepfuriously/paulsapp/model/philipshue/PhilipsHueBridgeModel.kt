@@ -4,7 +4,6 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
@@ -23,6 +22,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_PRIVATE_GROUP
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ROOM
+import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_SCENE
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +85,7 @@ class PhilipsHueBridgeModel(
             connected = false,
             rooms = emptyList(),
             scenes = emptyList(),
+            lights = emptyList(),
             zones = emptyList(),
             humanName = "default"
         )
@@ -99,10 +100,6 @@ class PhilipsHueBridgeModel(
     private val _devices = MutableStateFlow<List<PHv2Device>>(emptyList())
     /** master list of all devices on this bridge */
     val devices = _devices.asStateFlow()
-
-    private val _lights = MutableStateFlow<List<PhilipsHueLightInfo>>(emptyList())
-    /** master list of all lights for this bridge */
-    val lights = _lights.asStateFlow()
 
     private val _groupedLights = MutableStateFlow<List<PHv2GroupedLight>>(emptyList())
     /** master list of all the light groups for this bridge */
@@ -245,18 +242,19 @@ class PhilipsHueBridgeModel(
                 )
             }
 
-            _lights.update {
-                val v2LightsList = PhilipsHueBridgeApi.getAllLightsFromApi(
-                    bridgeIp = bridgeIpAddress,
-                    bridgeToken = bridgeToken
-                )
-
-                val newLightList = mutableListOf<PhilipsHueLightInfo>()
-                v2LightsList.data.forEach { v2Light ->
-                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light, bridgeIpAddress))
-                }
-                newLightList
-            }
+            // smb - this seens to work, or does it?  Does this change really propogate upstream?
+//            _lights.update {
+//                val v2LightsList = PhilipsHueBridgeApi.getAllLightsFromApi(
+//                    bridgeIp = bridgeIpAddress,
+//                    bridgeToken = bridgeToken
+//                )
+//
+//                val newLightList = mutableListOf<PhilipsHueLightInfo>()
+//                v2LightsList.data.forEach { v2Light ->
+//                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light, bridgeIpAddress))
+//                }
+//                newLightList
+//            }
 
             _groupedLights.update {
                 val apiGroup = PhilipsHueBridgeApi.getAllGroupedLightsFromApi(
@@ -280,8 +278,9 @@ class PhilipsHueBridgeModel(
 
             // load up the various groupings
             val rooms = loadRoomsFromApi() ?: emptyList()
-            val scenes = loadScenesFromApi()
-            val zones = loadZonesFromApi()
+            val scenes = loadScenesFromApi() ?: emptyList()
+            val zones = loadZonesFromApi() ?: emptyList()
+            val lights = loadLightsFromApi() ?: emptyList()
 
             // use the devices to find the bridge human name
             val humanName = PhilipsHueDataConverter.getBridgeUsername(
@@ -298,7 +297,8 @@ class PhilipsHueBridgeModel(
                     scenes = scenes,
                     zones = zones,
                     bridgeId = bridgeId,
-                    humanName = humanName
+                    humanName = humanName,
+                    lights = lights
                 )
             }
 
@@ -725,15 +725,45 @@ class PhilipsHueBridgeModel(
     }
 
     /**
+     * Asks the bridge to get all its lights.  Returns null if the bridge isn't
+     * working or some network error occurs.
+     */
+    private suspend fun loadLightsFromApi() : List<PhilipsHueLightInfo>?
+            = withContext(Dispatchers.IO) {
+        val v2Resourcelights = PhilipsHueBridgeApi.getAllLightsFromApi(
+            bridgeIp = bridgeIpAddress,
+            bridgeToken = bridgeToken
+        )
+
+        if (v2Resourcelights.errors.isNotEmpty()) {
+            Log.e(TAG, "loadLightsFromApi() error getting lights:")
+            Log.e(TAG, "   err msg = ${v2Resourcelights.errors[0].description}")
+            return@withContext null
+        }
+
+        val lightsList = mutableListOf<PhilipsHueLightInfo>()
+        v2Resourcelights.data.forEach { v2Light ->
+            lightsList.add(PhilipsHueDataConverter.convertV2LightToPhilipsHueLightInfo(v2Light, bridgeIpAddress))
+        }
+
+        return@withContext lightsList
+    }
+
+
+    /**
      * Asks the bridge to get all its zones.  Will return null if the bridge
      * isn't working.  Note that this could be an empty list.
      */
-    private suspend fun loadZonesFromApi() : List<PhilipsHueZoneInfo>
+    private suspend fun loadZonesFromApi() : List<PhilipsHueZoneInfo>?
             = withContext(Dispatchers.IO) {
         val v2AllZones = PhilipsHueBridgeApi.getAllZonesFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
+
+        if (v2AllZones.errors.isNotEmpty()) {
+            return@withContext null
+        }
 
         return@withContext PhilipsHueDataConverter.convertPHv2ZonesAllToPhilipsHueZoneInfoList(
             v2ZonesAll = v2AllZones,
@@ -746,11 +776,15 @@ class PhilipsHueBridgeModel(
      * Finds all the scenes from the bridge.  Returns null if bridge is not
      * responding.  Could be an empty list.
      */
-    private suspend fun loadScenesFromApi() : List<PHv2Scene> {
+    private suspend fun loadScenesFromApi() : List<PHv2Scene>? {
         val v2AllScenes = PhilipsHueBridgeApi.getAllScenesFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
+
+        if (v2AllScenes.errors.isNotEmpty()) {
+            return null
+        }
 
         return PhilipsHueDataConverter.convertV2ScenesAllToV2Scene(v2AllScenes)
     }
@@ -813,36 +847,54 @@ class PhilipsHueBridgeModel(
             // What kind of device changed?
             when (eventDatum.type) {
                 RTYPE_LIGHT -> {
-                    val foundLight = findLightFromId(eventDatum.owner!!.rid, bridge.value)
+                    Log.d(TAG, "interpretUpdateEvent() - RTYPE_LIGHT")
+                    var foundLight = findLightFromId(eventDatum.owner!!.rid, bridge.value)
                     if (foundLight == null) {
                         Log.e(TAG, "unable to find changed light in interpretEvent()!")
-                    } else {
-                        // yep, there is indeed a light. What changed?
-                        Log.d(TAG, "updating light event (id = ${foundLight.lightId}, deviceId = ${foundLight.deviceId})")
-                        if (eventDatum.on != null) {
-                            // On/Off changed.  Set the light approprately.
-                            foundLight.state.on = eventDatum.on.on
-                        }
-
-                        if (eventDatum.dimming != null) {
-                            foundLight.state.bri = eventDatum.dimming.brightness
-                        }
-
-                        // save the changed light in our lights list flow
-                        _lights.update {
-                            val newLightsList = mutableListOf<PhilipsHueLightInfo>()
-                            it.forEach { light ->
-                                if (foundLight.lightId == light.lightId) {
-                                    newLightsList.add(foundLight)
-                                }
-                                else {
-                                    newLightsList.add(light)
-                                }
-                            }
-                            newLightsList
-                        }
-                        Log.d(TAG, "light change detected and recorded")
+                        break
                     }
+                    // yep, there is indeed a light. What changed?
+                    Log.d(TAG, "updating light event (id = ${foundLight.lightId}, deviceId = ${foundLight.deviceId})")
+                    if (eventDatum.on != null) {
+                        // On/Off changed.  Set the light approprately.
+                        val tmpNewState = foundLight.state.copy(on = eventDatum.on.on)
+                        foundLight = foundLight.copy(state = tmpNewState)
+                    }
+
+                    if (eventDatum.dimming != null) {
+                        // Did the dimming change?
+                        val tmpNewState = foundLight.state.copy(bri = eventDatum.dimming.brightness)
+                        foundLight = foundLight.copy(state = tmpNewState)
+                    }
+
+                    // save the changed light in our lights list flow
+//                    _lights.update {
+//                        val newLightsList = mutableListOf<PhilipsHueLightInfo>()
+//                        it.forEach { light ->
+//                            if (foundLight.lightId == light.lightId) {
+//                                newLightsList.add(foundLight)
+//                            }
+//                            else {
+//                                newLightsList.add(light)
+//                            }
+//                        }
+//                        newLightsList
+//                    }
+
+                    // save the light in the bridge too
+                    _bridge.update {
+                        val newLightsList = mutableListOf<PhilipsHueLightInfo>()
+                        it.lights.forEach { light ->
+                            if (foundLight.lightId == light.lightId) {
+                                newLightsList.add(foundLight)
+                            }
+                            else {
+                                newLightsList.add(light)
+                            }
+                        }
+                        it.copy(lights = newLightsList)
+                    }
+                    Log.d(TAG, "light change detected and recorded")
                 }
 
                 //--------
@@ -857,7 +909,8 @@ class PhilipsHueBridgeModel(
                 //    even find it in the docs.  Why did I make it?
                 //
                 RTYPE_GROUP_LIGHT -> {
-                    Log.d(TAG, "updating grouped_light event. owner = ${eventDatum.owner}")
+                    Log.d(TAG, "interpretUpdateEvent() - RTYPE_GROUP_LIGHT")
+                    Log.d(TAG, "   updating grouped_light event. owner = ${eventDatum.owner}")
 
                     // figure out what rtype the owner of this grouped_light event is
                     when (eventDatum.owner?.rtype) {
@@ -920,6 +973,7 @@ class PhilipsHueBridgeModel(
                 }
 
                 RTYPE_ROOM -> {
+                    Log.d(TAG, "interpretUpdateEvent() - RTYPE_ROOM")
                     if (eventDatum.owner == null) {
                         Log.e(TAG, "interpretUpdateEvent() - can't find the owner of the room! aborting.")
                         continue
@@ -956,13 +1010,17 @@ class PhilipsHueBridgeModel(
                     }
                 }
 
+                RTYPE_SCENE -> {
+                    Log.e(TAG, "todo: implement handling updating a scene!")
+                }
+
                 else -> {
                     Log.e(TAG, "interpretUpdateEvent() - ${eventDatum.type} is an unknown type of update event!")
                 }
 
             } // when (eventDatum.type)
         }
-        Log.d(TAG, "interpretUpdateEvent() done - bridge = ${bridge.value}")
+        Log.d(TAG, "interpretUpdateEvent() done - bridge = ${bridge.value}")    // simple light state looked unchanged
     } // interpretUpdateEvent()
 
     /**
@@ -1001,22 +1059,22 @@ class PhilipsHueBridgeModel(
                         continue
                     }
 
-                    _lights.update {
-                        // convert this into our data structure
-                        val newLight = PhilipsHueLightInfo(
-                            lightId = newLightV2.data[0].id,
-                            deviceId = newLightV2.data[0].owner.rid,
-                            name = newLightV2.data[0].metadata.name,
-                            state = PhilipsHueLightState(
-                                on = newLightV2.data[0].on.on,
-                                bri = newLightV2.data[0].dimming.brightness
-                            ),
-                            type = newLightV2.data[0].type,
-                            bridgeIpAddress = bridgeIpAddress
-                        )
-                        Log.d(TAG, "interpretAddEvent() adding light: $newLightV2")
-                        it + newLight
-                    }
+//                    _lights.update {
+//                        // convert this into our data structure
+//                        val newLight = PhilipsHueLightInfo(
+//                            lightId = newLightV2.data[0].id,
+//                            deviceId = newLightV2.data[0].owner.rid,
+//                            name = newLightV2.data[0].metadata.name,
+//                            state = PhilipsHueLightState(
+//                                on = newLightV2.data[0].on.on,
+//                                bri = newLightV2.data[0].dimming.brightness
+//                            ),
+//                            type = newLightV2.data[0].type,
+//                            bridgeIpAddress = bridgeIpAddress
+//                        )
+//                        Log.d(TAG, "interpretAddEvent() adding light: $newLightV2")
+//                        it + newLight
+//                    }
                 }
 
                 RTYPE_GROUP_LIGHT -> {
@@ -1110,6 +1168,16 @@ class PhilipsHueBridgeModel(
                         it - deviceToDelete
                     }
 
+//                    // remove from light list
+//                    for(light in lights.value) {
+//                        if (light.lightId == lightToDeleteId.rid) {
+//                            _lights.update {
+//                                it - light
+//                            }
+//                            break
+//                        }
+//                    }
+
                     // find the room that needs updating
                     val roomToUpdate = bridge.value.rooms.find { it.v2Id == deviceToDelete.id }
                     if (roomToUpdate == null) {
@@ -1161,10 +1229,18 @@ class PhilipsHueBridgeModel(
                             else { newScenesList.add(it) }
                         }
 
+                        val newLightList = mutableListOf<PhilipsHueLightInfo>()
+                        currentBridge.lights.forEach {
+                            if (it.lightId != lightToDeleteId.rid) {
+                                newLightList.add(it)
+                            }
+                        }
+
                         currentBridge.copy(
                             rooms = newRoomsList,
                             zones = newZoneList,
-                            scenes = newScenesList
+                            scenes = newScenesList,
+                            lights = newLightList
                         )
                     }
 
