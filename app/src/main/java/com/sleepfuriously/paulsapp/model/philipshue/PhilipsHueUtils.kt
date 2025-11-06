@@ -34,7 +34,6 @@ import kotlin.streams.asSequence
  *
  * @return  Null if a light can't be found or there was some sort of error.
  */
-@Suppress("unused")
 private suspend fun getLightInfoFromServiceList(
     serviceList: List<PHv2ResourceIdentifier>,
     bridge: PhilipsHueBridgeInfo
@@ -81,7 +80,6 @@ private suspend fun getLightInfoFromServiceList(
  * Another helper.  This finds the room that a light resides in.
  * Returns null if not found.
  */
-@Suppress("unused")
 private fun findRoomFromLight(
     light: PhilipsHueLightInfo,
     bridge: PhilipsHueBridgeInfo
@@ -275,7 +273,6 @@ fun getDefaultInstanceName(ctx: Context) : String {
 /**
  * Checks to see if the given bridge is active.
  */
-@SuppressWarnings("WeakerAccess")
 suspend fun isBridgeActive(bridge: PhilipsHueBridgeInfo) : Boolean = withContext(Dispatchers.IO) {
 
     if (doesBridgeRespondToIp(bridge) && doesBridgeAcceptToken(bridge)) {

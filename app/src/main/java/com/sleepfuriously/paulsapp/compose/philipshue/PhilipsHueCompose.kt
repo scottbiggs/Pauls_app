@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -81,8 +83,6 @@ fun ShowMainScreenPhilipsHue(
     bridges: List<PhilipsHueBridgeInfo>,
     flocks: List<PhilipsHueFlock>
 ) {
-//    Log.d(TAG, "ShowMainScreenPhilpipsHue(). bridges.size = ${bridges.size}")
-
     // the content
     Column(
         modifier = modifier
@@ -127,10 +127,6 @@ private fun DrawPhilipsHueContents(
     flocks: List<PhilipsHueFlock>,
     viewmodel: PhilipsHueViewmodel
 ) {
-//    Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridges.size}")
-//    bridges.forEach { bridge ->
-//        Log.d(TAG, "   $bridge")
-//    }
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
     LazyVerticalGrid(
@@ -526,6 +522,10 @@ private fun ShowBridgeInfoDialog(
 
                     // rooms
                     item {
+                        HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    }
+
+                    item {
                         DrawInfoDialogLine(
                             stringResource(R.string.bridge_info_rooms),
                             bridge.rooms.size.toString()
@@ -564,6 +564,10 @@ private fun ShowBridgeInfoDialog(
                     }
 
                     // zones
+                    item {
+                        HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    }
+
                     item {
                         DrawInfoDialogLine(
                             stringResource(R.string.bridge_info_zones),
