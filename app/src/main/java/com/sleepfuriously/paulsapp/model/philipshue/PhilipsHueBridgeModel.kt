@@ -6,7 +6,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridg
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ADD
@@ -369,7 +368,8 @@ class PhilipsHueBridgeModel(
     }
 
     /**
-     * Use this to turn on or off an entire room.
+     * Use this to turn on or off an entire room by sending a message to the
+     * controlling bridge.
      *
      * @param   roomInfo        The room to modify.  It *really* should exist!
      *
@@ -381,7 +381,7 @@ class PhilipsHueBridgeModel(
      *  work of changing everything.  Then it will send us an sse with all the new details
      *  which will cause the [bridge] to update.  Long chain, but should work.
      */
-    fun setRoomOnOffStatus(
+    fun sendRoomOnOffStatusToBridge(
         roomInfo: PhilipsHueRoomInfo,
         onStatus: Boolean? = null,
         ) {
@@ -427,7 +427,8 @@ class PhilipsHueBridgeModel(
     }
 
     /**
-     * Use this to change the brightness of an entire room.
+     * Use this to change the brightness of an entire room.  It'll tell the
+     * bridge what to do.
      *
      * @param   roomInfo        The room to modify.  It *really* should exist!
      *
@@ -439,7 +440,7 @@ class PhilipsHueBridgeModel(
      *  work of changing everything.  Then it will send us an sse with all the new details
      *  which will cause the [bridge] to update.  Long chain, but should work.
      */
-    fun setRoomBrightness(
+    fun sendRoomBrightnessToBridge(
         roomInfo: PhilipsHueRoomInfo,
         brightness: Int
     ) {
@@ -486,9 +487,10 @@ class PhilipsHueBridgeModel(
 
 
     /**
-     * Use this to turn on or off an entire zone.  Very similar to [setRoomOnOffStatus].
+     * Use this to tell the bridge to turn on or off an entire zone.  Very
+     * similar to [sendRoomOnOffStatusToBridge].
      */
-    fun setZoneOnOffStatus(
+    fun sendZoneOnOffToBridge(
         zone: PhilipsHueZoneInfo,
         onStatus: Boolean? = null,
     ) {
@@ -534,9 +536,9 @@ class PhilipsHueBridgeModel(
     }
 
     /**
-     * Very similar to [setRoomBrightness]
+     * Very similar to [sendRoomBrightnessToBridge]
      */
-    fun setZoneBrightness(
+    fun sendZoneBrightnessToBridge(
         zone: PhilipsHueZoneInfo,
         brightness: Int
     ) {
@@ -1010,6 +1012,44 @@ class PhilipsHueBridgeModel(
                     }
                 }
 
+                RTYPE_ZONE -> {
+                    Log.d(TAG, "interpretUpdateEvent() - RTYPE_ZONE")
+                    if (eventDatum.owner == null) {
+                        Log.e(TAG, "interpretUpdateEvent() - can't find the owner of the zone! aborting.")
+                        continue
+                    }
+                    // ok, so a zone has changed. which one?
+                    val changedZoneId = eventDatum.owner.rid
+                    val changedZone = bridge.value.getZoneById(changedZoneId)
+                    if (changedZone == null) {
+                        Log.e(TAG, "interpretUpdateEvent() - can't find the zone that changed! aborting.")
+                        continue
+                    }
+
+                    // Check event and figure out what changed
+                    var newZone = changedZone
+                    if (eventDatum.on != null) {
+                        newZone = changedZone.copy(on = eventDatum.on.on)
+                    }
+
+                    if (eventDatum.dimming != null) {
+                        newZone = changedZone.copy(brightness = eventDatum.dimming.brightness)
+                    }
+
+                    // update the bridge to hold the newly changed zone
+                    _bridge.update {
+                        // redo the zones list
+                        val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
+                        it.zones.forEach { zone ->
+                            if (zone.v2Id == changedZoneId) {
+                                newZoneList.add(newZone)
+                            }
+                            else { newZoneList.add(zone) }
+                        }
+                        it.copy(zones = newZoneList)
+                    }
+                }
+
                 RTYPE_SCENE -> {
                     Log.e(TAG, "todo: implement handling updating a scene!")
                 }
@@ -1111,6 +1151,30 @@ class PhilipsHueBridgeModel(
                                 it.copy(rooms = newRoomsList)
                             }
                         }
+
+                        RTYPE_ZONE -> {
+                            Log.d(TAG, "interpretAddEvent() RTYPE_GROUP_LIGHT / RTYPE_ZONE")
+                            // Ah, the owner is a zone.  Signal that a zone is added.
+                            val zoneId = eventDatum.owner.rid
+                            val zone = bridge.value.getZoneById(zoneId)
+                            if (zone == null) {
+                                Log.e(TAG, "interpretAddEvent()--can't find the added zone! id = $zoneId")
+                                continue
+                            }
+
+                            // create a new list of zones
+                            val newZonesList = mutableListOf<PhilipsHueZoneInfo>()
+                            bridge.value.zones.forEach {
+                                newZonesList.add(it)
+                            }
+                            newZonesList.add(zone)
+
+                            // add the zone to the bridge
+                            _bridge.update {
+                                it.copy(zones = newZonesList)
+                            }
+                        }
+
                     }
                 }
 

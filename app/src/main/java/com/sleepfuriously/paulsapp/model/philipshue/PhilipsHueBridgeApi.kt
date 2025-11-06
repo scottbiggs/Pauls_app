@@ -3,7 +3,9 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.MyResponse
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
+import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Error
@@ -24,8 +26,12 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Room
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2RoomIndividual
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_GROUP_LIGHT
+import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
+import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
 
 /**
@@ -39,6 +45,82 @@ object PhilipsHueBridgeApi {
     //-------------------------
     //  create
     //-------------------------
+
+    /**
+     * Tells the bridge to make a light group.
+     *
+     * Actually, this will create a Zone.  As far as I know, you can't make
+     * a generic light group.
+     *
+     * @param   lights      A Set of [PhilipsHueLightInfo] that are the lights
+     *                      that will comprise the group.
+     *
+     * @param   name        The name (human readable) to use for this light group.
+     * @return      The v2Id of this light group.
+     */
+    suspend fun createLightGroup(
+        bridgeIpStr: String,
+        token: String,
+        lights: Set<PhilipsHueLightInfo>,
+        name: String,
+        archetype: String
+    ) : String = withContext(Dispatchers.IO) {
+
+        val metadataClass = CreateMetadata(
+            archetype = archetype,
+            name = name
+        )
+
+        // todo: is this right?  Perhaps I'm missing something with this ID!!!
+        val serviceId = generateV2Id()
+        val services = listOf(CreateService(rtype = RTYPE_GROUP_LIGHT, rid = serviceId))
+
+        val children = lights.map { lightInfo ->
+            CreateChild(
+                rtype = RTYPE_LIGHT,
+                rid = lightInfo.lightId
+            )
+        }
+
+        // id for this light group
+        val id = generateV2Id()
+
+        val body = CreateZoneBody(
+            type = RTYPE_ZONE,
+            id = id,
+            metadata = metadataClass,
+            services = services,
+            children = children
+        )
+
+        val bodyStr = Json.encodeToString(body)
+
+        Log.d(TAG, "createLightGroup() bodyStr = $bodyStr")
+
+        val fullAddress = createFullAddress(
+            ip = bridgeIpStr,
+            suffix = SUFFIX_POST_CREATE_LIGHT_GROUP,
+        )
+
+        val response = synchronousPost(
+            url = fullAddress,
+            headerList = listOf(Pair(HEADER_TOKEN_KEY, token)),
+            bodyStr = bodyStr,
+            trustAll = true     // fixme: when we start higher security
+        )
+
+        if (response.isSuccessful == false) {
+            Log.e(TAG, "createLightGroup() unsuccessful!")
+            Log.e(TAG, "   code = ${response.code}")
+            Log.e(TAG, "   message = ${response.message}")
+            Log.e(TAG, "   body = ${response.body}")
+            return@withContext ""
+        }
+
+        TODO("still need to process this information")
+
+        id
+    }
 
     //-------------------------
     //  read
@@ -628,6 +710,59 @@ object PhilipsHueBridgeApi {
         return response
     }
 
+    /**
+     * Tell the bridge to change the on/off state of the all the lights
+     * in the given list.
+     *
+     * @param   newOnOff    Whether all the lights should be turned on (true)
+     *                      or off (false).
+     *
+     * @param   Set of the lights to change.
+     *
+     * @return  The response of this PUT request.  Caller needs to decide
+     *          what to do.
+     */
+    suspend fun sendGroupedLightsOnOffToBridge(
+        newOnOff: Boolean,
+        lightGroup: PhilipsHueLightGroup,
+        bridgeIp: String,
+        bridgeToken: String
+    ) : MyResponse = withContext(Dispatchers.IO) {
+
+        TODO()
+
+//        val url = createFullAddress(
+//            ip = bridgeIp,
+//            suffix = "$SUFFIX_PUT_CHANGE_LIGHTS_ON_OFF_STATUS/${sceneToDisplay.id}"
+//        )
+
+    }
+
+    /**
+     * Like [sendGroupedLightsOnOffToBridge] but send brightness info.
+     */
+    suspend fun sendGroupedLightBrightnessToBridge(
+        newBrightness: Int,
+        lightGroup: PhilipsHueLightGroup,
+        bridgeIp: String,
+        bridgeToken: String
+    ) : MyResponse = withContext(Dispatchers.IO) {
+        TODO()
+    }
+
+    /**
+     * Like [sendGroupedLightsOnOffToBridge] but send onOff AND brightness info.
+     */
+    suspend fun sendGroupedLightAllToBridge(
+        newBrightness: Int,
+        lightGroup: PhilipsHueLightGroup,
+        bridgeIp: String,
+        bridgeToken: String
+    ) : MyResponse = withContext(Dispatchers.IO) {
+        TODO()
+    }
+
+
     //-------------------------
     //  delete
     //-------------------------
@@ -668,6 +803,41 @@ object PhilipsHueBridgeApi {
 
 
 }
+
+//------------------------------------
+//  data classes
+//------------------------------------
+
+/**
+ * Serializer to construct the body string (in json) representing a zone.
+ */
+@Serializable
+data class CreateZoneBody(
+    val type: String,
+    val id: String,
+    val metadata: CreateMetadata,
+    val services: List<CreateService>,
+    val children: List<CreateChild>
+)
+
+@Serializable
+data class CreateMetadata(
+    val archetype: String,
+    val name: String
+)
+
+@Serializable
+data class CreateService(
+    val rtype: String,
+    val rid: String
+)
+
+@Serializable
+data class CreateChild(
+    val rtype: String,
+    val rid: String
+)
+
 
 //------------------------------------
 //  constants
@@ -727,8 +897,14 @@ const val SUFFIX_GET_BRIDGE = "/clip/v2/resource/bridge"
  */
 const val SUFFIX_GET_GROUPED_LIGHTS = "/clip/v2/resource/grouped_light"
 
+/** Suffix for creating a light group (actually a zone) */
+const val SUFFIX_POST_CREATE_LIGHT_GROUP = "/clip/v2/resource/zone"
+
 /** Suffix for making a scene active.  Needs to be followed by "/<scene_id>". */
 const val SUFFIX_PUT_ACTIVATE_SCENE = "/clip/v2/resource/scene"
+
+/** Suffix for changing a bunch of lights on/off status */
+const val SUFFIX_PUT_CHANGE_LIGHTS_ON_OFF_STATUS = "/clip/v2/resource/light"
 
 //----------------
 //  bodies (for POSTs and PUTs)

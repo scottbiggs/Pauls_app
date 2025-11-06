@@ -11,6 +11,7 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightSetAndBridge
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
@@ -117,13 +118,13 @@ class PhilipsHueViewmodel : ViewModel() {
         viewModelScope.launch {
             // convert list of BridgeModels to a list Bridges
             phRepository.bridgeInfoList.collectLatest { bridgeModelList ->
-                Log.d(TAG, "phRepository changed")
+                Log.d(TAG, "phRepository change noticed...")
                 val tmpBridgeList = mutableListOf<PhilipsHueBridgeInfo>()
                 bridgeModelList.forEach { bridgeInfo ->
                     tmpBridgeList.add(bridgeInfo)
                 }
-                Log.d(TAG, "collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
-                Log.d(TAG, "    bridgeList = $tmpBridgeList")
+                Log.d(TAG, "    - collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
+                Log.d(TAG, "      bridgeList = $tmpBridgeList")
                 philipsHueBridgesCompose = tmpBridgeList
 //
 //                // pass back to flocks
@@ -147,77 +148,96 @@ class PhilipsHueViewmodel : ViewModel() {
 
     /**
      * User has changed the brightness of a room, either by turning a light on/off
-     * or by changing the dimming level.  Tell the model about it.
+     * or by changing the dimming level.  Tell the repository about it.
      *
      * @param   newBrightness       The new brightness level: Int [0..MAX_BRIGHTNESS].
      *
      * @param   changedRoom         The room in question.
      */
-    fun changeRoomBrightness(
+    fun sendRoomBrightness(
         newBrightness: Int,
         changedRoom: PhilipsHueRoomInfo,
     ) {
-        phRepository.changeRoomBrightness(
+        phRepository.sendRoomBrightnessToBridge(
             room = changedRoom,
             newBrightness = newBrightness
         )
     }
 
     /**
-     * Changes the on/off state of the given room
+     * Tells the repository to change the on/off state of the given room.
      *
      * @param   newOnOffState       Turned on = true.  Off = false.
      *
      * @param   changedRoom         The room in question.
      */
-    fun changeRoomOnOff(
+    fun sendRoomOnOff(
         newOnOffState: Boolean,
         changedRoom: PhilipsHueRoomInfo
     ) {
-        phRepository.changeRoomOnOff(
+        phRepository.sendRoomOnOffToBridge(
             room = changedRoom,
             newOnStatus = newOnOffState
         )
     }
 
-    fun changeZoneBrightness(
+    /**
+     * Inform the repository that the user wants to change the brightness
+     * of a zone.
+     */
+    fun sendZoneBrightness(
         newBrightness: Int,
         changedZone: PhilipsHueZoneInfo,
     ) {
-        phRepository.changeZoneBrightness(
+        phRepository.sendZoneBrightnessToBridge(
             zone = changedZone,
             newBrightness = newBrightness
         )
     }
 
-    fun changeZoneOnOff(
+    /**
+     * Tell the repository that the user has changed the on/off status
+     * of a zone.
+     */
+    fun sendZoneOnOff(
         newOnOffState: Boolean,
         changedZone: PhilipsHueZoneInfo
     ) {
-        phRepository.changeZoneOnOff(
+        phRepository.sendZoneOnOffToBridges(
             zone = changedZone,
             newOnOff = newOnOffState
         )
     }
 
-    fun changeFlockBrightness(
+    /**
+     * Tell the flock that the user wants a brightness change.
+     */
+    fun sendFlockBrightness(
         newBrightness: Int,
         changedFlock: PhilipsHueFlock
     ) {
-        phRepository.changeFlockBrightness(
-            changedFlock = changedFlock,
-            newBrightness = newBrightness
-        )
+        viewModelScope.launch {
+            phRepository.sendFlockBrightnessToBridges(
+                changedFlock = changedFlock,
+                newBrightness = newBrightness
+            )
+        }
     }
 
-    fun changeFlockOnOff(
+    /**
+     * Tell the given flock that the user want it to turn on or off.  This will eventually
+     * cause the flock to send on/off signals to relevant bridges.
+     */
+    fun sendFlockOnOffToBridges(
         newOnOffState: Boolean,
         changedFlock: PhilipsHueFlock
     ) {
-        phRepository.changeFlockOnOff(
-            changedFlock = changedFlock,
-            newOnOff = newOnOffState
-        )
+        viewModelScope.launch {
+            phRepository.sendFlockOnOffToBridges(
+                changedFlock = changedFlock,
+                newOnOff = newOnOffState
+            )
+        }
     }
 
     /**
@@ -299,7 +319,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * If the bridgeId is invalid, then nothing is done (of course).
      */
     fun deleteBridge(bridgeId: String) {
-        phRepository.deletePhilipsHueBridge(bridgeId)
+        phRepository.deletePhilipsHueBridge(bridgeId)       // fixme: crash!!!
     }
 
     /**
@@ -675,7 +695,7 @@ class PhilipsHueViewmodel : ViewModel() {
         scene: PHv2Scene
     ) {
         // Tell the repo that something changed in the room.
-        phRepository.updateRoomScene(bridge, room, scene)
+        phRepository.sendRoomSceneToBridge(bridge, room, scene)
     }
 
     /**
@@ -686,7 +706,7 @@ class PhilipsHueViewmodel : ViewModel() {
         zone: PhilipsHueZoneInfo,
         scene: PHv2Scene
     ) {
-        phRepository.updateZoneScene(bridge, zone, scene)
+        phRepository.sendZoneSceneToBridge(bridge, zone, scene)
     }
 
     //-------------------------
@@ -703,33 +723,74 @@ class PhilipsHueViewmodel : ViewModel() {
 
         // TESTING: make a light list
         val lightSet = mutableSetOf<PhilipsHueLightInfo>()
-        for (i in 0 until 3) {
-            val randBridge = phRepository.bridgeInfoList.value.random()
-            Log.d(TAG, "addFlock() randBridge ip = ${randBridge.ipAddress}")
-            val bridgeLights = phRepository.getBridgeLights(randBridge.ipAddress)
-            val randLight = bridgeLights.random()
-            Log.d(TAG, "   light = ${randLight.name}")
-            lightSet.add(randLight)
-            Log.d(TAG, "   lightSet now has ${lightSet.size} lights")
+
+        // construct our lights and bridges set.  Start by making a list of
+        // valid bridges
+        val validBridges = mutableSetOf<PhilipsHueBridgeInfo>()
+        phRepository.bridgeInfoList.value.forEach { bridgeInfo ->
+            if (bridgeInfo.active) {
+                validBridges.add(bridgeInfo)
+            }
+        }
+
+        // find 3 lights, each from a random bridge
+        val lightsBridges = mutableSetOf<PhilipsHueLightSetAndBridge>()
+        (0 until 3).forEach { _ ->      // loop 3 times
+            // get random bridge
+            val randBridge = validBridges.random()
+
+            // get a random light
+            val light = randBridge.lights.random()
+
+            // and add it.  Since it's a set, we don't have to worry about dupes
+            lightSet.add(light)
+        }
+
+        // Yeah, I know this is inefficient, but we now have to reverse-engineer
+        // and find the bridge for each light.
+        lightSet.forEach { light ->
+            val bridge = phRepository.getBridgeUsedByLight(light.lightId)
+            if (bridge == null) {
+                Log.e(TAG, "addFlock() error!  Confusingly could not find bridge AFTER finding its light! Aborting!")
+                return
+            }
+
+            // Now for the hard part.  Has this bridge already been used?
+            val bridgeAlreadyThereLightSetAndBridge = lightsBridges.find { it.bridgeInfo == bridge }
+            if (bridgeAlreadyThereLightSetAndBridge != null) {
+                // Yes, it's already there.  Do some fiddling to add the
+                // new light to existing bridge
+                val newLightSetAndBridge = bridgeAlreadyThereLightSetAndBridge.copy(
+                    lightSet = bridgeAlreadyThereLightSetAndBridge.lightSet + light
+                )
+                lightsBridges.remove(bridgeAlreadyThereLightSetAndBridge)
+                lightsBridges.add(newLightSetAndBridge)
+            }
+            else {
+                // no, the bridge is not already there.  Create our data and add it
+                lightsBridges.add(PhilipsHueLightSetAndBridge(
+                    lightSet = setOf(light),
+                    bridgeInfo = bridge
+                ))
+            }
         }
 
         phRepository.addFlock(
-            id = "foo_${(1..10_000).random()}",
-            name = "name $flockCounter",
+            name = "flock $flockCounter",
             brightness = (0..100).random(),
             onOffState = false,
-            lightSet = lightSet,
-            roomSet = setOf(),
-            zoneSet = setOf()
+            lightsAndBridges = lightsBridges,
         )
     }
 
     fun deleteFlock() {
         Log.e(TAG, "deleteFlock() not implemented!")
+        TODO()
     }
 
     fun sceneDisplayStuffForFlock(flock: PhilipsHueFlock) {
         Log.e(TAG, "sceneDisplayStuffForFlock() not implemented")
+        TODO()
     }
 
     //-------------------------

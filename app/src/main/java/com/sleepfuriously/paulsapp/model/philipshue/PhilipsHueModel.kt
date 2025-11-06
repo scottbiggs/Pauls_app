@@ -429,60 +429,6 @@ class PhilipsHueModel(
     //  update
     //-------------------------------------
 
-    /**
-     * The brightness of a room has changed (also includes on/off).
-     * Do the necessary work so that the bridge flow reports the change.
-     */
-    @Deprecated("This is now done in PhilipsHueBridge.setRoomBrightness()")
-    suspend fun updateRoomBrightness(
-        newBrightness: Int,
-        newOnStatus: Boolean,
-        changedRoom: PhilipsHueRoomInfo,
-        changedBridge: PhilipsHueBridgeInfo
-    ) {
-        // what's the name of the group of lights in this room?
-        var groupedLightId = ""
-        changedRoom.groupedLightServices.forEach { groupedLight ->
-            if (groupedLight.rtype == "grouped_light") {
-                groupedLightId = groupedLight.rid
-            }
-        }
-        if (groupedLightId.isEmpty()) {
-            Log.e(TAG, "Unable to find grouped_lights in roomBrightnessChanged(). room id = ${changedRoom.v2Id}. Aborting!")
-            return
-        }
-
-        // construct the body. consists of on and brightness in json format
-        val body = "{\"on\": {\"on\": $newOnStatus}, \"dimming\": {\"brightness\": $newBrightness}}"
-        Log.d(TAG, "---> body = $body")
-
-        // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
-            ip = changedBridge.ipAddress,
-            suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
-        )
-
-        // send the PUT
-        val response = synchronousPut(
-            url = url,
-            bodyStr = body,
-            headerList = listOf(Pair(HEADER_TOKEN_KEY, changedBridge.token)),
-            trustAll = true     // fixme when we have full security going
-        )
-
-        // did it work?
-        if (response.isSuccessful) {
-            Log.d(TAG, "roomBrightnessChanged() PUT request successful!")
-        } else {
-            Log.e(TAG, "error sending PUT request in roomBrightnessChanged()!")
-            Log.e(TAG, "response:")
-            Log.e(TAG, "   code = ${response.code}")
-            Log.e(TAG, "   message = ${response.message}")
-            Log.e(TAG, "   headers = ${response.headers}")
-            Log.e(TAG, "   body = ${response.body}")
-        }
-    }
-
     //-------------------------------------
     //  delete
     //-------------------------------------

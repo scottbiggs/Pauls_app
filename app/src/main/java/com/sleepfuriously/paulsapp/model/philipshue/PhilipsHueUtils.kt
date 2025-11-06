@@ -16,6 +16,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_LIGHT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import kotlin.streams.asSequence
 
 /**
  * Collection of general utilities that pertain to dealing with
@@ -299,6 +300,32 @@ suspend fun isBridgeActive(
     return@withContext false
 }
 
+
+/**
+ * Use this handy function to create an almost-certainly unique id.  It'll
+ * be in the form that the API expects, and the chances that it's a repeat
+ * are astronomical.
+ */
+fun generateV2Id() : String {
+    val p1 = generateIdHelper(8)
+    val p2 = generateIdHelper(4)
+    val p3 = generateIdHelper(4)
+    val p4 = generateIdHelper(4)
+    val p5 = generateIdHelper(12)
+    return "$p1-$p2-$p3-$p4-$p5"
+}
+
+/**
+ * found here:
+ *      https://stackoverflow.com/a/46944275/624814
+ */
+private fun generateIdHelper(length: Int) : String {
+    val source = "0123456789abcdef"
+    return java.util.Random().ints(length.toLong(), 0, source.length)
+        .asSequence()
+        .map(source::get)
+        .joinToString("")
+}
 
 //-------------------------------------
 //  constants

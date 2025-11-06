@@ -78,11 +78,10 @@ import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
     philipsHueViewmodel: PhilipsHueViewmodel,
-//    bridges: List<PhilipsHueBridgeModel>
     bridges: List<PhilipsHueBridgeInfo>,
     flocks: List<PhilipsHueFlock>
 ) {
-    Log.d(TAG, "ShowMainScreenPhilpipsHue(). bridges.size = ${bridges.size}")
+//    Log.d(TAG, "ShowMainScreenPhilpipsHue(). bridges.size = ${bridges.size}")
 
     // the content
     Column(
@@ -128,10 +127,10 @@ private fun DrawPhilipsHueContents(
     flocks: List<PhilipsHueFlock>,
     viewmodel: PhilipsHueViewmodel
 ) {
-    Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridges.size}")
-    bridges.forEach { bridge ->
-        Log.d(TAG, "   $bridge")
-    }
+//    Log.d(TAG, "DrawBridgeContents() start: bridges.size = ${bridges.size}")
+//    bridges.forEach { bridge ->
+//        Log.d(TAG, "   $bridge")
+//    }
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
 
     LazyVerticalGrid(
@@ -162,13 +161,13 @@ private fun DrawPhilipsHueContents(
                     illumination = convertBrightnessIntToFloat(flock.brightness),
                     lightSwitchOn = flock.onOffState,
                     flockOnOffChangedFunction = { newOnOff ->
-                        viewmodel.changeFlockOnOff(
+                        viewmodel.sendFlockOnOffToBridges(
                             newOnOffState = newOnOff,
                             changedFlock = flock
                         )
                     },
                     flockBrightnessChangedFunction = { newBrightness ->
-                        viewmodel.changeFlockBrightness(
+                        viewmodel.sendFlockBrightness(
                             newBrightness = convertBrightnessFloatToInt(newBrightness),
                             changedFlock = flock
                         )
@@ -249,14 +248,14 @@ private fun DrawPhilipsHueContents(
 
                             roomBrightnessChangedFunction = { newIllumination ->
                                 val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
-                                viewmodel.changeRoomBrightness(
+                                viewmodel.sendRoomBrightness(
                                     newBrightness = intIllumination,
                                     changedRoom = room
                                 )
                             },
 
                             roomOnOffChangedFunction = { newOnOff ->
-                                viewmodel.changeRoomOnOff(
+                                viewmodel.sendRoomOnOff(
                                     newOnOffState = newOnOff,
                                     changedRoom = room
                                 )
@@ -283,13 +282,13 @@ private fun DrawPhilipsHueContents(
                         lightSwitchOn = zone.on,
                         zoneBrightnessChangedFunction = { newIllumination ->
                             val intIllumination = (newIllumination * MAX_BRIGHTNESS).toInt()
-                            viewmodel.changeZoneBrightness(
+                            viewmodel.sendZoneBrightness(
                                 newBrightness = intIllumination,
                                 changedZone = zone
                             )
                         },
                         zoneOnOffChangedFunction = { newOffStatus ->
-                            viewmodel.changeZoneOnOff(
+                            viewmodel.sendZoneOnOff(
                                 newOnOffState = newOffStatus,
                                 changedZone = zone
                             )
@@ -563,6 +562,48 @@ private fun ShowBridgeInfoDialog(
                             }
                         }
                     }
+
+                    // zones
+                    item {
+                        DrawInfoDialogLine(
+                            stringResource(R.string.bridge_info_zones),
+                            body = bridge.zones.size.toString()
+                        )
+                    }
+                    bridge.zones.forEach { zoneInfo ->
+                        item {
+                            DrawInfoDialogLine(
+                                stringResource(R.string.bridge_info_zone),
+                                zoneInfo.name
+                            )
+                        }
+
+                        item {
+                            DrawInfoDialogLine(
+                                stringResource(R.string.bridge_info_lights),
+                                zoneInfo.lights.size.toString(),
+                                width = 150
+                            )
+                        }
+
+                        // fixme: no lights!!!
+                        zoneInfo.lights.forEach { light ->
+                            val onStr =
+                                if (light.state.on) ctx.getString(R.string.light_on) else ctx.getString(
+                                    R.string.light_off
+                                )
+                            val brightness = light.state.bri
+                            item {
+                                DrawInfoDialogLine(
+                                    light.name,
+                                    "$onStr, brightness = $brightness",
+                                    width = 180
+                                )
+                            }
+                        }
+
+                    }
+
                 }
             }
         },

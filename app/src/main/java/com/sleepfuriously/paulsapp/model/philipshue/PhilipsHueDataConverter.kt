@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.google.gson.Gson
+import com.sleepfuriously.paulsapp.compose.philipshue.MIN_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
@@ -230,41 +231,70 @@ object PhilipsHueDataConverter {
 
         val regularLightList = mutableListOf<PhilipsHueLightInfo>()
         children.forEach { child ->
-            if (child.rtype == RTYPE_DEVICE) {
-                // Oddly, lights are listed here as devices.  But to distinguish
-                // it from others, we have to search its services.
-                val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(
-                    deviceRid = child.rid,
-                    bridgeIp = bridgeIp,
-                    bridgeToken = bridgeToken
-                )
-                if (device.data.isNotEmpty() && (device.data[0].type == DEVICE)) {
-                    // yes it's a device and probably a light, but to be sure we search its services
-                    device.data[0].services.forEach { service ->
-                        if (service.rtype == RTYPE_LIGHT) {
-                            val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(
-                                lightId = service.rid,
-                                bridgeIp = bridgeIp,
-                                bridgeToken = bridgeToken
-                            )
-                            if (v2light != null) {
-                                val regularLight = PhilipsHueLightInfo(
-                                    lightId = v2light.data[0].id,
-                                    deviceId = v2light.data[0].owner.rid,
-                                    name = v2light.data[0].metadata.name,
-                                    state = PhilipsHueLightState(
-                                        on = v2light.data[0].on.on,
-                                        bri = v2light.data[0].dimming.brightness
-                                    ),
-                                    type = v2light.data[0].type,
-                                    bridgeIpAddress = bridgeIp
+            when (child.rtype) {
+                RTYPE_DEVICE -> {
+                    // Sometimes lights are listed as devices.  But to distinguish
+                    // it from others, we have to search its services.
+                    val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(
+                        deviceRid = child.rid,
+                        bridgeIp = bridgeIp,
+                        bridgeToken = bridgeToken
+                    )
+                    if (device.data.isNotEmpty() && (device.data[0].type == DEVICE)) {
+                        // yes it's a device and probably a light, but to be sure we search its services
+                        device.data[0].services.forEach { service ->
+                            if (service.rtype == RTYPE_LIGHT) {
+                                val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(
+                                    lightId = service.rid,
+                                    bridgeIp = bridgeIp,
+                                    bridgeToken = bridgeToken
                                 )
-                                regularLightList.add(regularLight)
-                            }
-                            else {
-                                Log.e(TAG, "getLightListFromV2ItemInArrayList() problem finding light!!!")
+                                if (v2light != null) {
+                                    val regularLight = PhilipsHueLightInfo(
+                                        lightId = v2light.data[0].id,
+                                        deviceId = v2light.data[0].owner.rid,
+                                        name = v2light.data[0].metadata.name,
+                                        state = PhilipsHueLightState(
+                                            on = v2light.data[0].on.on,
+                                            bri = v2light.data[0].dimming.brightness
+                                        ),
+                                        type = v2light.data[0].type,
+                                        bridgeIpAddress = bridgeIp
+                                    )
+                                    regularLightList.add(regularLight)
+                                }
+                                else {
+                                    Log.e(TAG, "getLightListFromV2ItemInArrayList() problem finding light!!!")
+                                }
                             }
                         }
+                    }
+                }
+
+                RTYPE_LIGHT -> {
+                    // Sometimes lights are listed as lights.  This is slightly easier.
+                    val phv2Light = PhilipsHueBridgeApi.getLightInfoFromApi(
+                        lightId = child.rid,
+                        bridgeIp = bridgeIp,
+                        bridgeToken = bridgeToken
+                    )
+                    if (phv2Light == null) {
+                        Log.e(TAG, "getLightListFromV2ItemInArrayList() error: problem getting details for a light!!")
+                    }
+                    else {
+                        // worked!
+                        val regularLight = PhilipsHueLightInfo(
+                            lightId = phv2Light.data[0].id,
+                            deviceId = phv2Light.data[0].owner.rid,
+                            name = phv2Light.data[0].metadata.name,
+                            state = PhilipsHueLightState(
+                                on = phv2Light.data[0].on.on,
+                                bri = phv2Light.data[0].dimming.brightness
+                            ),
+                            type = phv2Light.data[0].type,
+                            bridgeIpAddress = bridgeIp
+                        )
+                        regularLightList.add(regularLight)
                     }
                 }
             }
@@ -500,12 +530,12 @@ object PhilipsHueDataConverter {
         val newZoneList = mutableListOf<PhilipsHueZoneInfo>()
 
         // go through the data and find the zones
-        v2ZonesAll.data.forEach { zone ->
+        for (zone in v2ZonesAll.data) {
             if (zone.type != ZONE) {
                 // idiot check--should never happen
                 Log.e(TAG, "convertPHv2ZonesAllToPhilipsHueZoneInfoList() - room (id = ${zone.id} has wrong type!")
                 Log.e(TAG, "    Type = ${zone.type}, but should be '$ZONE'!")
-                return@forEach      // (aka continue)
+                continue
             }
 
             val v2ZoneIndividual = PhilipsHueBridgeApi.getZoneIndividualFromApi(
@@ -516,7 +546,7 @@ object PhilipsHueDataConverter {
             if (v2ZoneIndividual.errors.isNotEmpty()) {
                 Log.e(TAG, "convertPHv2ZonesAllToPhilipsHueZoneInfoList() error getting individual zone!")
                 Log.e(TAG, "    error: ${v2ZoneIndividual.errors[0].description}")
-                return@forEach      // (aka continue)
+                continue
             }
 
             // so far so good
@@ -584,7 +614,8 @@ object PhilipsHueDataConverter {
                     lights = listOf(),
                     currentSceneName = "",
                     groupedLightServices = listOf(),
-                    bridgeIpAddress = bridgeIp
+                    bridgeIpAddress = bridgeIp,
+                    brightness = MIN_BRIGHTNESS
                 )
             }
 
@@ -624,10 +655,11 @@ object PhilipsHueDataConverter {
             return@withContext PhilipsHueZoneInfo(
                 v2Id = v2Zone.id,
                 name = v2Zone.metadata.name,
-                lights = mutableListOf(),
+                lights = listOf(),
                 currentSceneName = "",
                 groupedLightServices = groupedLightServices,
-                bridgeIpAddress = bridgeIp
+                bridgeIpAddress = bridgeIp,
+                brightness = MIN_BRIGHTNESS
             )
         }
     } // convertPHv2ZoneToPhilipsHueZoneInfo()

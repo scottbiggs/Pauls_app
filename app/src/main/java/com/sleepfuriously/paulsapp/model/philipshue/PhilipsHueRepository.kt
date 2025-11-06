@@ -127,7 +127,7 @@ class PhilipsHueRepository(
             else {
                 // tell the flocks about this change
                 Log.d(TAG, "   while converting, sending info to flocks")
-                sendLightChangeToFlocks(getAllLights())
+                updateFlocksLights(getAllLights())
 
                 // convert
                 val listOfStateFlowBridgeInfo =
@@ -205,7 +205,7 @@ class PhilipsHueRepository(
                         }
                     }
                     // create set of lights
-                    sendLightChangeToFlocks(newLightSet)
+                    updateFlocksLights(newLightSet)
                 }
             }
         }
@@ -456,30 +456,22 @@ class PhilipsHueRepository(
      *  flock.
      */
     fun addFlock(
-        id: String,
         name: String,
         brightness: Int,
         onOffState: Boolean,
         /** Set of all the lights to be controlled by the flock */
-        lightSet: Set<PhilipsHueLightInfo>,
-        /** Set of room Ids and corresponding bridgeId (roomId, bridgeId) */
-        roomSet: Set<PhilipsHueRoomInfo>,
-        /** Set of zone Ids and the bridgeId associated (zoneId, bridgeId) */
-        zoneSet: Set<PhilipsHueZoneInfo>
+        lightsAndBridges: Set<PhilipsHueLightSetAndBridge>
     ) {
-        // make a new flock data by finding all the details
-        val newFlock = PhilipsHueFlock(
-            name = name,
-            currentSceneName = "",
-            brightness = brightness,
-            onOffState = onOffState,
-            lightSet = lightSet,
-            roomSet = roomSet,
-            zoneSet = zoneSet
-        )
 
         // create a new Flock Model and add it to our list
-        val newFlockModel = PhilipsHueFlockModel(newFlock)
+        val newFlockModel = PhilipsHueFlockModel(
+            coroutineScope = coroutineScope,
+            startLightsAndBridges = lightsAndBridges,
+            humanName = name,
+            brightness = brightness,
+            onOff = onOffState
+        )
+
         flockModelList.update {
             it + newFlockModel
         }
@@ -567,18 +559,39 @@ class PhilipsHueRepository(
         return lightSet
     }
 
+    /**
+     * Searches through all the bridges to find which one controls the
+     * specified light.  Returns NULL if not found.
+     */
+    fun getBridgeUsedByLight(lightV2Id: String) : PhilipsHueBridgeInfo? {
+        // go through each bridge
+        bridgeInfoList.value.forEach { bridge ->
+            // try to find that light
+            val foundLight = bridge.lights.find {
+                light -> light.lightId == lightV2Id
+            }
+            if (foundLight != null) {
+                // Yes, found it!  Return this bridge
+                return bridge
+            }
+        }
+        // No luck, didn't find it.
+        return null
+    }
+
     //-------------------------------
-    //  update
+    //  senders (tell the bridge what to do)
     //-------------------------------
 
     /**
-     * Change the over-all brightness of the given room.
+     * Inform the bridge that we want to change the over-all brightness of
+     * the given room.
      *
      * @param   room            The room that is changing its on/off or brightness.
      *
      * @param   newBrightness   New brightness for this room [0..MAX_BRIGHTNESS]
      */
-    fun changeRoomBrightness(
+    fun sendRoomBrightnessToBridge(
         room: PhilipsHueRoomInfo,
         newBrightness: Int
     ) {
@@ -591,20 +604,21 @@ class PhilipsHueRepository(
         val foundBridgeModel = bridgeModelAndRoom.bridgeModel
         val foundRoom = bridgeModelAndRoom.room
 
-        foundBridgeModel.setRoomBrightness(
+        foundBridgeModel.sendRoomBrightnessToBridge(
             roomInfo = foundRoom,
             brightness = newBrightness
         )
     }
 
     /**
-     * Tells a room to either turn on all lights or turn off all lights
+     * Tells a room to either turn on all lights or turn off all lights via the
+     * bridge (down the line).
      *
      * @param   room            The room that is changing its on/off or brightness.
      *
      * @param   newOnStatus     When TRUE, switch room on.  FALSE: turn room off.
      */
-    fun changeRoomOnOff(
+    fun sendRoomOnOffToBridge(
         room: PhilipsHueRoomInfo,
         newOnStatus: Boolean
     ) {
@@ -617,17 +631,16 @@ class PhilipsHueRepository(
         val foundBridgeModel = bridgeModelAndRoom.bridgeModel
         val foundRoom = bridgeModelAndRoom.room
 
-        foundBridgeModel.setRoomOnOffStatus(
+        foundBridgeModel.sendRoomOnOffStatusToBridge(
             roomInfo = foundRoom,
             onStatus = newOnStatus
         )
     }
 
-
     /**
      * Change the brightness of a given zone.
      */
-    fun changeZoneBrightness(
+    fun sendZoneBrightnessToBridge(
         zone: PhilipsHueZoneInfo,
         newBrightness: Int
     ) {
@@ -640,19 +653,19 @@ class PhilipsHueRepository(
         val foundBridgeModel = bridgeModelAndRoom.bridgeModel
         val foundZone = bridgeModelAndRoom.zone
 
-        foundBridgeModel.setZoneBrightness(
+        foundBridgeModel.sendZoneBrightnessToBridge(
             zone = foundZone,
             brightness = newBrightness
         )
     }
 
     /**
-     * Turn on or off a given zone.
+     * Tell the relevant bridge to turn on or off a given zone.
      *
      * @param   newOnOff        True -> turn zone on.
      *                          False -> turn zone off.
      */
-    fun changeZoneOnOff(
+    fun sendZoneOnOffToBridges(
         zone: PhilipsHueZoneInfo,
         newOnOff: Boolean
     ) {
@@ -665,46 +678,18 @@ class PhilipsHueRepository(
         val foundBridgeModel = bridgeModelAndRoom.bridgeModel
         val foundZone = bridgeModelAndRoom.zone
 
-        foundBridgeModel.setZoneOnOffStatus(
+        foundBridgeModel.sendZoneOnOffToBridge(
             zone = foundZone,
             onStatus = newOnOff
         )
     }
 
-    fun changeFlockOnOff(
-        changedFlock: PhilipsHueFlock,
-        newOnOff: Boolean
-    ) {
-        // find the FlockModel
-        for (flockModel in flockModelList.value) {
-            if (flockModel.flock.value.id == changedFlock.id) {
-                flockModel.changeOnOff(newOnOff)
-                return
-            }
-        }
-        Log.e(TAG, "changeFlockOnOff() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
-    }
-
-    fun changeFlockBrightness(
-        changedFlock: PhilipsHueFlock,
-        newBrightness: Int
-    ) {
-        // find the flockModel
-        for (flockModel in flockModelList.value) {
-            if (flockModel.flock.value.id == changedFlock.id) {
-                flockModel.changeBrightness(newBrightness)
-                return
-            }
-        }
-        Log.e(TAG, "changeFlockBrightness() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
-    }
-
-
     /**
-     * Another intermediary: tell the PH model to update a room so
-     * that it's displaying the given scene.
+     * Another intermediary: tell the bridge model to change a room so
+     * that it's displaying the given scene.  The bridge model will in
+     * turn tell the bridge itself to implement the scene.
      */
-    fun updateRoomScene(
+    fun sendRoomSceneToBridge(
         bridge: PhilipsHueBridgeInfo,
         room: PhilipsHueRoomInfo,
         scene: PHv2Scene
@@ -749,13 +734,11 @@ class PhilipsHueRepository(
                 Log.e(TAG, "updateRoomScene() could not find a BridgeModel with the given room! Current bridge won't work!!!")
                 return@launch
             }
-
-            daBridgeModel.updateRoomCurrentScene(room = room, scene = scene)
         }
     }
 
-    /** similar to [updateRoomScene] */
-    fun updateZoneScene(
+    /** similar to [sendRoomSceneToBridge] */
+    fun sendZoneSceneToBridge(
         bridge: PhilipsHueBridgeInfo,
         zone: PhilipsHueZoneInfo,
         scene: PHv2Scene
@@ -799,41 +782,60 @@ class PhilipsHueRepository(
         }
     }
 
+    /**
+     * Tells the flock to send an on or off event to its bridges for its lights.
+     */
+    suspend fun sendFlockOnOffToBridges(
+        changedFlock: PhilipsHueFlock,
+        newOnOff: Boolean
+    ) {
+        // find the FlockModel
+        for (flockModel in flockModelList.value) {
+            if (flockModel.flock.value.id == changedFlock.id) {
+                // just do the first that matches (should be no other matching flocks!)
+                flockModel.sendOnOffToBridges(newOnOff)
+                return
+            }
+        }
+        Log.e(TAG, "changeFlockOnOff() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
+    }
+
+    //-------------------------------
+    //  update (based on sse from bridge)
+    //-------------------------------
 
     /**
-     * Sends changes to all the Flocks.  This is called from within the state
-     * flow that is updated whenever there's a change to a bridge.  It's up
-     * to each Flock to determine if the information is relevant or not.
+     * Tell the flock that it should change its brightness.  This will eventually
+     * propogate down to the bridges that the flock uses.  Those bridges will
+     * actually tell its lights to change their brightness.
+     */
+    suspend fun sendFlockBrightnessToBridges(
+        changedFlock: PhilipsHueFlock,
+        newBrightness: Int
+    ) {
+        // find the flockModel
+        for (flockModel in flockModelList.value) {
+            if (flockModel.flock.value.id == changedFlock.id) {
+                flockModel.sendBrightnessToBridges(newBrightness)
+                return
+            }
+        }
+        Log.e(TAG, "changeFlockBrightness() Unable to find flock id = ${changedFlock.id}, name = ${changedFlock.name}!")
+    }
+
+    /**
+     * Tells the flocks to update their lights.  Should be called after
+     * an sse from one or more bridges.
      *
-     * side effects
-     *  - potentially every Flock can change.  Those changes will be reflected
-     *  through the flocks' flow.
+     * todo: this is called from two places--make sure that both are really needed.
      */
-//    fun sendChangeToFlocks(bridgeModelList: List<PhilipsHueBridgeModel>) {
-//        Log.d(TAG, "sendChangeToFlocks() begin - bridgeModelList.size = ${bridgeModelList.size}")
-//
-//        // build a light info list for all the lights in all the bridges!
-//        val bigLightList = mutableListOf<PhilipsHueLightInfo>()
-//        bridgeModelList.forEach { bridgeModel ->
-//            bridgeModel.lights.value.forEach { light ->
-//                bigLightList.add(light)
-//            }
-//        }
-//
-//        flockModelList.value.forEach { flock ->
-////            flock.updateBridgesChanged(bridgeModelList)
-//            flock.updateBridgesChanged(bigLightList)
-//        }
-//    }
-
-    /**
-     * Tells the flocks to update their lights
-     */
-    fun sendLightChangeToFlocks(lightSet: Set<PhilipsHueLightInfo>) {
+    fun updateFlocksLights(lightSet: Set<PhilipsHueLightInfo>) {
+        Log.d(TAG, "updateFlocksLights() begin")
         flockModelList.value.forEach { flockModel ->
-            flockModel.updateBridgesChanged(lightSet)
+            flockModel.updateAllFromBridges(lightSet)
         }
     }
+
 
     //-------------------------------
     //  delete
@@ -893,6 +895,7 @@ class PhilipsHueRepository(
                 bridgeModelList.value
             }
             else {
+                // todo: crashes here!!!  "lateinit property phSse has not been initialized"
                 Log.d(TAG, "updating _bridgeModelFlowList by removing ${bridgeModelList.value[index]}")
                 bridgeModelList.value - bridgeModelList.value[index]
             }
@@ -982,15 +985,6 @@ class PhilipsHueRepository(
     private data class BridgeModelAndZone(
         val bridgeModel: PhilipsHueBridgeModel,
         val zone: PhilipsHueZoneInfo
-    )
-
-    /**
-     * A convenient way to hold both a [PhilipsHueLightInfo] and
-     * a [PhilipsHueBridgeModel].
-     */
-    private data class BridgeModelAndLight(
-        val bridgeModel: PhilipsHueBridgeModel,
-        val lightInfo: PhilipsHueLightInfo
     )
 
 }
