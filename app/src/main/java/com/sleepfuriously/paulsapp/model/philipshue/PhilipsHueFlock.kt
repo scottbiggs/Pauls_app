@@ -2,7 +2,8 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 
 /**
@@ -22,17 +23,13 @@ data class PhilipsHueFlock(
     val onOffState: Boolean,
     /** All the bridges used by this Flock */
     val bridgeSet: Set<PhilipsHueBridgeInfo>,
-    /** All the lights used by this Flock */
-    val lightSet: Set<PhilipsHueLightInfo>,
-    /**
-     * A group of lights that belong to the same bridge.  All the lights in
-     * all the groups = the lights controlled by this Flock.  Each lightGroup
-     * knows what bridge controls it.
-     */
-    val lightGroups: Set<PhilipsHueLightGroup>
+    /** All the Rooms used by this Flock */
+    val roomSet: Set<PhilipsHueRoomInfo>,
+    /** All the Zones used by this Flock */
+    val zoneSet: Set<PhilipsHueZoneInfo>
 ) {
     /** unique id used for this object. Not perfect, but should be good enough. */
-    val id = "${hashCode()}_${System.currentTimeMillis()}"
+    val id = generateV2Id()
 
 
     /**
@@ -41,6 +38,36 @@ data class PhilipsHueFlock(
     fun getBridgeIds() : List<String> {
         return bridgeSet.map { it.bridgeId }
     }
+
+    /**
+     * Given the ID of a Room, this returns the Bridge that controls
+     * this room.  Returns null if not found.
+     */
+    fun getBridgeForRoom(roomId: String) : PhilipsHueBridgeInfo? {
+        // simply go through the rooms until we find a matching id
+        roomSet.forEach { room ->
+            if (room.v2Id == roomId) {
+                // Id matched, so find the bridge with that Id
+                return bridgeSet.find { it.ipAddress == room.bridgeIpAddress }
+            }
+        }
+        // not found
+        return null
+    }
+
+    /**
+     * Finds the bridge that controls the specified Zone. Returns null if
+     * not found.  Similar to [getBridgeForRoom]
+     */
+    fun getBridgeForZone(zoneId: String) : PhilipsHueBridgeInfo? {
+        zoneSet.forEach { zone ->
+            if (zone.v2Id == zoneId) {
+                return bridgeSet.find { it.ipAddress == zone.bridgeIpAddress }
+            }
+        }
+        return null
+    }
+
 
 }
 

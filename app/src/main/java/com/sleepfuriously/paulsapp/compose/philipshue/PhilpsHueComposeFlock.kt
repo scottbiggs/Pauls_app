@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,9 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -57,58 +53,11 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
-import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
-
-@Composable
-fun DrawFlocks(
-    modifier: Modifier = Modifier,
-    flocks: List<PhilipsHueFlock>,
-    viewmodel: PhilipsHueViewmodel
-) {
-
-    LazyVerticalGrid(
-        modifier = modifier
-            .padding(horizontal = 4.dp),
-        columns = GridCells.Adaptive(MIN_PH_ROOM_WIDTH.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalArrangement = Arrangement.Start
-    ) {
-        item(span = { GridItemSpan(this.maxLineSpan) }) {
-            DrawFlocksSeparator(
-                flockList = flocks,
-                viewmodel = viewmodel,
-                modifier = modifier
-            )
-        }
-
-        flocks.forEach { flock ->
-            item {
-                DisplayPhilipsHueFlock(
-                    flockName = flock.name,
-                    sceneName = flock.currentSceneName,
-                    illumination = convertBrightnessIntToFloat(flock.brightness),
-                    lightSwitchOn = flock.onOffState,
-                    flockOnOffChangedFunction = {
-                        TODO()
-                    },
-                    flockBrightnessChangedFunction = {
-                        TODO()
-                    },
-                    showScenesFunction = {
-                        TODO()
-                    }
-                )
-            }
-        }
-
-    }
-
-}
 
 /**
  * UI for a [PhilipsHueFlock].  Similar to PhilipsHueComposeRoom.
@@ -392,6 +341,7 @@ private fun ShowFlockInfoDialog(
                         )
                     }
 
+                    // for each flock...
                     for (flock in flockList) {
                         item { HorizontalDivider() }
 
@@ -419,18 +369,34 @@ private fun ShowFlockInfoDialog(
                             )
                         }
 
-                        // lights
+                        // rooms
                         item {
                             DrawInfoDialogLine(
-                                title = stringResource(R.string.lights),
-                                body = flock.lightSet.size.toString()
+                                title = stringResource(R.string.bridge_info_rooms),
+                                body = flock.roomSet.size.toString()
                             )
                         }
-                        for (light in flock.lightSet) {
+                        for (room in flock.roomSet) {
                             item {
                                 DrawInfoDialogLine(
                                     title = "",
-                                    body = "${light.name} (ip ${light.bridgeIpAddress}) : ${if (light.state.on) "on" else "off"}, ${light.state.bri}"
+                                    body = "${room.name} (ip ${room.bridgeIpAddress}) : ${if (room.on) "on" else "off"}, ${room.brightness}"
+                                )
+                            }
+                        }
+
+                        // zones
+                        item {
+                            DrawInfoDialogLine(
+                                title = stringResource(R.string.bridge_info_zones),
+                                body = flock.zoneSet.size.toString()
+                            )
+                        }
+                        for (zone in flock.zoneSet) {
+                            item {
+                                DrawInfoDialogLine(
+                                    title = "",
+                                    body = "${zone.name} (ip ${zone.bridgeIpAddress}) : ${if (zone.on) "on" else "off"}, ${zone.brightness}"
                                 )
                             }
                         }

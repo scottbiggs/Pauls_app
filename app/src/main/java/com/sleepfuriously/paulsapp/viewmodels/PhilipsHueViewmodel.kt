@@ -11,10 +11,8 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueLightSetAndBridge
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
@@ -203,7 +201,7 @@ class PhilipsHueViewmodel : ViewModel() {
         newOnOffState: Boolean,
         changedZone: PhilipsHueZoneInfo
     ) {
-        phRepository.sendZoneOnOffToBridges(
+        phRepository.sendZoneOnOffToBridge(
             zone = changedZone,
             newOnOff = newOnOffState
         )
@@ -715,73 +713,115 @@ class PhilipsHueViewmodel : ViewModel() {
 
     private var flockCounter = 0
     /**
-     * Adds a flock -- fixme: temporary test flock done now.  I'm just doing a couple of random
-     *                  lights to test things
+     * Adds a [PhilipsHueFlock] and all the associated stuff.
+     *
+     * @param   name        Human name for this flock.  Use blank (default)
+     *                      for testing.
+     *
+     * @param   roomSet     The rooms controlled by this flock. Default
+     *                      is null for testing.
+     *
+     * @param   zoneSet     The zones that are used by this flock.
+     *                      Defaults to null (testing).
      */
-    fun addFlock() {
+    fun addFlock(
+        name: String = "",
+        roomSet: Set<PhilipsHueRoomInfo>? = null,
+        zoneSet: Set<PhilipsHueZoneInfo>? = null,
+    ) {
         flockCounter++
 
-        // TESTING: make a light list
-        val lightSet = mutableSetOf<PhilipsHueLightInfo>()
+        var workingName = name
+        var workingRoomSet = roomSet?.toMutableSet()
+        var workingZoneSet = zoneSet?.toMutableSet()
 
-        // construct our lights and bridges set.  Start by making a list of
-        // valid bridges
-        val validBridges = mutableSetOf<PhilipsHueBridgeInfo>()
-        phRepository.bridgeInfoList.value.forEach { bridgeInfo ->
-            if (bridgeInfo.active) {
-                validBridges.add(bridgeInfo)
+        // check for testing
+        if (name.isEmpty() || (roomSet == null) || (zoneSet == null)) {
+            //
+            // TESTING flock
+            //
+
+            workingName = "test flock $flockCounter"
+
+            // find all the possible rooms and zones
+            workingRoomSet = mutableSetOf()
+            workingZoneSet = mutableSetOf()
+            phRepository.bridgeInfoList.value.forEach { bridgeInfo ->
+                workingRoomSet += bridgeInfo.rooms
+                workingZoneSet += bridgeInfo.zones
+            }
+
+            // now make our selections
+            val selectedRooms = mutableSetOf<PhilipsHueRoomInfo>()
+            val selectedZones = mutableSetOf<PhilipsHueZoneInfo>()
+            (0..2).forEach { _ ->
+                val numGroups = (workingRoomSet.size + workingZoneSet.size)
+                val chosen = (0 until numGroups).random()
+                if (chosen < workingRoomSet.size) {
+                    // we chose a room
+                    workingRoomSet.forEachIndexed { i, room ->
+                        if (i == chosen) {
+                            selectedRooms.add(room)
+                        }
+                    }
+                }
+                else {
+                    // chose a zone
+                    workingZoneSet.forEachIndexed { i, zone ->
+                        if (i + workingRoomSet.size - 1 == chosen) {
+                            selectedZones.add(zone)
+                        }
+                    }
+                }
+            }
+
+            workingRoomSet = selectedRooms
+            workingZoneSet = selectedZones
+        }
+
+        else {
+            // normal flock creation
+        }
+
+        // calculate brightness and on/off
+        // fixme: this duplicates calculations done in the Flock Model.
+        var on = false
+        for(room in workingRoomSet!!) {
+            if (room.on) {
+                on = true
+                break
+            }
+        }
+        for (zone in workingZoneSet!!) {
+            if (zone.on) {
+                on = true
+                break
             }
         }
 
-        // find 3 lights, each from a random bridge
-        val lightsBridges = mutableSetOf<PhilipsHueLightSetAndBridge>()
-        (0 until 3).forEach { _ ->      // loop 3 times
-            // get random bridge
-            val randBridge = validBridges.random()
-
-            // get a random light
-            val light = randBridge.lights.random()
-
-            // and add it.  Since it's a set, we don't have to worry about dupes
-            lightSet.add(light)
+        var brightness = 0
+        var brightnessCounter = 0
+        workingRoomSet.forEach { room ->
+            brightnessCounter++
+            brightness += room.brightness
         }
-
-        // Yeah, I know this is inefficient, but we now have to reverse-engineer
-        // and find the bridge for each light.
-        lightSet.forEach { light ->
-            val bridge = phRepository.getBridgeUsedByLight(light.lightId)
-            if (bridge == null) {
-                Log.e(TAG, "addFlock() error!  Confusingly could not find bridge AFTER finding its light! Aborting!")
-                return
-            }
-
-            // Now for the hard part.  Has this bridge already been used?
-            val bridgeAlreadyThereLightSetAndBridge = lightsBridges.find { it.bridgeInfo == bridge }
-            if (bridgeAlreadyThereLightSetAndBridge != null) {
-                // Yes, it's already there.  Do some fiddling to add the
-                // new light to existing bridge
-                val newLightSetAndBridge = bridgeAlreadyThereLightSetAndBridge.copy(
-                    lightSet = bridgeAlreadyThereLightSetAndBridge.lightSet + light
-                )
-                lightsBridges.remove(bridgeAlreadyThereLightSetAndBridge)
-                lightsBridges.add(newLightSetAndBridge)
-            }
-            else {
-                // no, the bridge is not already there.  Create our data and add it
-                lightsBridges.add(PhilipsHueLightSetAndBridge(
-                    lightSet = setOf(light),
-                    bridgeInfo = bridge
-                ))
-            }
+        workingZoneSet.forEach { zone ->
+            brightnessCounter++
+            brightness += zone.brightness
         }
+        brightness /= brightnessCounter
 
+        Log.d(TAG, "Creating new flock with ${workingRoomSet.size} rooms and ${workingZoneSet.size} zones.")
         phRepository.addFlock(
-            name = "flock $flockCounter",
-            brightness = (0..100).random(),
-            onOffState = false,
-            lightsAndBridges = lightsBridges,
+            name = workingName,
+            brightness = brightness,
+            onOffState = on,
+            roomSet = workingRoomSet,
+            zoneSet = workingZoneSet,
         )
     }
+
+
 
     fun deleteFlock() {
         Log.e(TAG, "deleteFlock() not implemented!")

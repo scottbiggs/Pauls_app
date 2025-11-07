@@ -15,6 +15,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.ZONE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.collections.plus
-import kotlin.coroutines.coroutineContext
 
 /**
  * This is the communicator between all the Philips Hue components
@@ -127,7 +127,10 @@ class PhilipsHueRepository(
             else {
                 // tell the flocks about this change
                 Log.d(TAG, "   while converting, sending info to flocks")
-                updateFlocksLights(getAllLights())
+                updateFlocks(
+                    roomSet = getAllRooms(bridgeModels),
+                    zoneSet = getAllZones(bridgeModels)
+                )
 
                 // convert
                 val listOfStateFlowBridgeInfo =
@@ -182,13 +185,6 @@ class PhilipsHueRepository(
 
     init {
 
-//        // inform the flocks when bridgeInfoFlist changes
-//        coroutineScope.launch {
-//            bridgeInfoList.collect {
-//                sendChangeToFlocks(it)
-//            }
-//        }
-
         coroutineScope.launch {
             while (true) {
                 bridgeInfoList.collect {
@@ -204,8 +200,11 @@ class PhilipsHueRepository(
                             newLightSet.add(lightInfo)
                         }
                     }
-                    // create set of lights
-                    updateFlocksLights(newLightSet)
+
+                    updateFlocks(
+                        roomSet = getAllRooms(bridgeModelList.value),
+                        zoneSet = getAllZones(bridgeModelList.value)
+                    )
                 }
             }
         }
@@ -428,7 +427,7 @@ class PhilipsHueRepository(
             bridgeV2Id = id,
             bridgeIpAddress = newBridge.ip,
             bridgeToken = newBridge.token,
-            coroutineScope = CoroutineScope(coroutineContext)
+            coroutineScope = CoroutineScope(currentCoroutineContext())
         )
 
         bridgeModelList.update {
@@ -459,17 +458,27 @@ class PhilipsHueRepository(
         name: String,
         brightness: Int,
         onOffState: Boolean,
-        /** Set of all the lights to be controlled by the flock */
-        lightsAndBridges: Set<PhilipsHueLightSetAndBridge>
+        /** Set of all the rooms to be controlled by the flock */
+        roomSet: Set<PhilipsHueRoomInfo>,
+        /** all the zones controlled by this flock */
+        zoneSet: Set<PhilipsHueZoneInfo>
     ) {
+        Log.d(TAG,"addFlock() begin")
+
+        // figure out the bridges we're using for this flock
+        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        bridgeSet += getBridgesFromRoomSet(roomSet)
+        bridgeSet += getBridgesFromZoneSet(zoneSet)
 
         // create a new Flock Model and add it to our list
         val newFlockModel = PhilipsHueFlockModel(
-            coroutineScope = coroutineScope,
-            startLightsAndBridges = lightsAndBridges,
             humanName = name,
             brightness = brightness,
-            onOff = onOffState
+            onOff = onOffState,
+            roomSet = roomSet,
+            zoneSet = zoneSet,
+            bridgeSet = bridgeSet,
+            repository = this
         )
 
         flockModelList.update {
@@ -560,6 +569,35 @@ class PhilipsHueRepository(
     }
 
     /**
+     * Helper. Finds all the rooms used by all the given [PhilipsHueBridgeModel].
+     */
+    private fun getAllRooms(
+        bridgeModels: List<PhilipsHueBridgeModel>
+    ) : Set<PhilipsHueRoomInfo> {
+
+        val roomSet = mutableSetOf<PhilipsHueRoomInfo>()
+        bridgeModels.forEach { bridgeModel ->
+            roomSet += bridgeModel.bridge.value.rooms
+        }
+        return roomSet
+    }
+
+    /**
+     * Helper. Finds all the rooms used by all the given [PhilipsHueBridgeModel].
+     */
+    private fun getAllZones(
+        bridgeModels: List<PhilipsHueBridgeModel>
+    ) : Set<PhilipsHueZoneInfo> {
+
+        val zoneSet = mutableSetOf<PhilipsHueZoneInfo>()
+        bridgeModels.forEach { bridgeModel ->
+            zoneSet += bridgeModel.bridge.value.zones
+        }
+        return zoneSet
+    }
+
+
+    /**
      * Searches through all the bridges to find which one controls the
      * specified light.  Returns NULL if not found.
      */
@@ -578,6 +616,41 @@ class PhilipsHueRepository(
         // No luck, didn't find it.
         return null
     }
+
+    /**
+     * Finds all the bridges used by the given set of rooms.
+     *
+     * @return  A Set of [PhilipsHueBridgeInfo] that fits the bill.
+     *          Could be empty.
+     */
+    fun getBridgesFromRoomSet(roomSet: Set<PhilipsHueRoomInfo>) : Set<PhilipsHueBridgeInfo> {
+        val foundBridges = mutableSetOf<PhilipsHueBridgeInfo>()
+
+        roomSet.forEach { room ->
+            // check to see if this room's bridge IP matches any of our bridges
+            val found = bridgeInfoList.value.find { it.ipAddress == room.bridgeIpAddress }
+            if (found != null) {
+                foundBridges.add(found)
+            }
+        }
+
+        return foundBridges
+    }
+
+    /**
+     * Similar to [getBridgesFromRoomSet] except for zones!
+     */
+    fun getBridgesFromZoneSet(zoneSet: Set<PhilipsHueZoneInfo>) : Set<PhilipsHueBridgeInfo> {
+        val foundBridges = mutableSetOf<PhilipsHueBridgeInfo>()
+        zoneSet.forEach { zone ->
+            val found = bridgeInfoList.value.find { it.ipAddress == zone.bridgeIpAddress }
+            if (found != null) {
+                foundBridges.add(found)
+            }
+        }
+        return foundBridges
+    }
+
 
     //-------------------------------
     //  senders (tell the bridge what to do)
@@ -665,7 +738,7 @@ class PhilipsHueRepository(
      * @param   newOnOff        True -> turn zone on.
      *                          False -> turn zone off.
      */
-    fun sendZoneOnOffToBridges(
+    fun sendZoneOnOffToBridge(
         zone: PhilipsHueZoneInfo,
         newOnOff: Boolean
     ) {
@@ -785,7 +858,7 @@ class PhilipsHueRepository(
     /**
      * Tells the flock to send an on or off event to its bridges for its lights.
      */
-    suspend fun sendFlockOnOffToBridges(
+    fun sendFlockOnOffToBridges(
         changedFlock: PhilipsHueFlock,
         newOnOff: Boolean
     ) {
@@ -809,7 +882,7 @@ class PhilipsHueRepository(
      * propogate down to the bridges that the flock uses.  Those bridges will
      * actually tell its lights to change their brightness.
      */
-    suspend fun sendFlockBrightnessToBridges(
+    fun sendFlockBrightnessToBridges(
         changedFlock: PhilipsHueFlock,
         newBrightness: Int
     ) {
@@ -829,10 +902,13 @@ class PhilipsHueRepository(
      *
      * todo: this is called from two places--make sure that both are really needed.
      */
-    fun updateFlocksLights(lightSet: Set<PhilipsHueLightInfo>) {
+    fun updateFlocks(
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>
+    ) {
         Log.d(TAG, "updateFlocksLights() begin")
         flockModelList.value.forEach { flockModel ->
-            flockModel.updateAllFromBridges(lightSet)
+            flockModel.updateAllFromBridges(roomSet, zoneSet)
         }
     }
 
