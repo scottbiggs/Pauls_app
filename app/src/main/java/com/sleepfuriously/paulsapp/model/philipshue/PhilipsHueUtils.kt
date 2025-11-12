@@ -42,7 +42,7 @@ private suspend fun getLightInfoFromServiceList(
     serviceList.forEach { service ->
         if (service.rtype == RTYPE_LIGHT) {
             // yep found it!
-            val v2ApiLight = PhilipsHueBridgeApi.getLightInfoFromApi(
+            val v2ApiLight = PhilipsHueApi.getLightInfoFromApi(
                 lightId = service.rid,
                 bridgeIp = bridge.ipAddress,
                 bridgeToken = bridge.token
@@ -142,7 +142,7 @@ suspend fun doesBridgeAcceptToken(bridgeIp: String, token: String) :
         Boolean = withContext(Dispatchers.IO) {
 
     // try getting the bridge's general info to see if the token works
-    val fullAddress = PhilipsHueBridgeApi.createFullAddress(
+    val fullAddress = PhilipsHueApi.createFullAddress(
         ip = bridgeIp,
         suffix = SUFFIX_GET_BRIDGE,
     )
@@ -185,7 +185,7 @@ suspend fun doesBridgeRespondToIp(ip: String) : Boolean {
     }
 
     try {
-        val fullIp = PhilipsHueBridgeApi.createFullAddress(
+        val fullIp = PhilipsHueApi.createFullAddress(
 //                prefix = PHILIPS_HUE_BRIDGE_URL_SECURE_PREFIX,
             prefix = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
             ip = ip,

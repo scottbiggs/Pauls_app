@@ -1,6 +1,5 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -57,7 +55,7 @@ import com.sleepfuriously.paulsapp.compose.convertBrightnessFloatToInt
 import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 
@@ -81,7 +79,7 @@ fun ShowMainScreenPhilipsHue(
     modifier: Modifier = Modifier,
     philipsHueViewmodel: PhilipsHueViewmodel,
     bridges: List<PhilipsHueBridgeInfo>,
-    flocks: List<PhilipsHueFlock>
+    flocks: List<PhilipsHueFlockInfo>
 ) {
     // the content
     Column(
@@ -124,7 +122,7 @@ fun ShowMainScreenPhilipsHue(
 @Composable
 private fun DrawPhilipsHueContents(
     bridges: List<PhilipsHueBridgeInfo>,
-    flocks: List<PhilipsHueFlock>,
+    flocks: List<PhilipsHueFlockInfo>,
     viewmodel: PhilipsHueViewmodel
 ) {
     val noRoomsFound = stringResource(id = R.string.no_rooms_for_bridge)
@@ -169,7 +167,7 @@ private fun DrawPhilipsHueContents(
                         )
                     },
                     showScenesFunction = {
-                        viewmodel.sceneDisplayStuffForFlock(flock)
+                        viewmodel.showScenesForFlock(flock)
                     }
                 )
             }

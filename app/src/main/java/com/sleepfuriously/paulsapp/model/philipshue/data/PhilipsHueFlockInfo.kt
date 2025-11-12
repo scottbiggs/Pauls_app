@@ -1,18 +1,18 @@
-package com.sleepfuriously.paulsapp.model.philipshue
+package com.sleepfuriously.paulsapp.model.philipshue.data
 
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.generateV2Id
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 
 /**
  * Basic data class for Flocks, a data class of my own invention.
  * Flocks are light groups that span bridges.
  *
- * Should only be instantiated by [PhilipsHueFlockModel].
+ * Should only be instantiated by [com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlockModel].
  */
-data class PhilipsHueFlock(
+data class PhilipsHueFlockInfo(
+    /** unique id used for this object. Use generateV2Id() for a pretty good one. */
+    val id: String,
     /** human-readable name.  Does not have to be unique */
     val name: String,
     /** The name of the currently displayed scene. Empty if not applicble (default) */
@@ -28,10 +28,6 @@ data class PhilipsHueFlock(
     /** All the Zones used by this Flock */
     val zoneSet: Set<PhilipsHueZoneInfo>
 ) {
-    /** unique id used for this object. Not perfect, but should be good enough. */
-    val id = generateV2Id()
-
-
     /**
      * Returns ALL the bridge v2Ids used by this Flock--both zones and rooms.
      */
@@ -77,16 +73,15 @@ data class PhilipsHueFlock(
  * Defines a light group for my system.  Related to [PHv2GroupedLight].
  */
 data class PhilipsHueLightGroup(
+    /** unique id used for this object. Use generateV2Id() for a pretty good one. */
+    val id: String,
     /** The v2Id that the bridge uses to access this light group */
     val groupId: String,
     /** v2Id of the bridge that controls this group of lights */
     val bridgeId: String,
     /** all the v2Ids of the lights that are in this group */
-    val lightIds: Set<String>,
-) {
-    /** unique id used for this object. Not perfect, but should be good enough. */
-    val id = "${hashCode()}lightGroup${System.currentTimeMillis()}"
-}
+    val lightIds: Set<String>
+)
 
 
-private const val TAG = "PhilipsHueFlock"
+private const val TAG = "PhilipsHueFlockInfo"

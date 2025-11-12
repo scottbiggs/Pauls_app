@@ -5,6 +5,7 @@ import com.sleepfuriously.paulsapp.model.MyResponse
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightGroup
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
@@ -40,7 +41,7 @@ import org.json.JSONObject
  * These CRUD functions are suspend functions and will return values.
  * How the data is handled and passed along is up to the caller.
  */
-object PhilipsHueBridgeApi {
+object PhilipsHueApi {
 
     //-------------------------
     //  create
@@ -133,13 +134,15 @@ object PhilipsHueBridgeApi {
     /**
      * Gets all the information about a particular bridge.  This is straight
      * from the bridge itself.  It can easily be parsed with [PHv2ResourceBridge].
+     * By the way, you probably would rather call [getBridgeFromApi] as it does the
+     * exact same thing, but returns a filled-out data rather than just a string.
      *
      * @return      The JSON string that was returned in the body of the api
      *              call to the bridge.
      *              Returns empty string if the bridge doesn't exist, token
      *              is not recognized, or some other error.
      */
-    suspend fun getBridgeDataStrFromApi(bridgeIp: String, token: String) : String {
+    suspend fun getBridgeStrFromApi(bridgeIp: String, token: String) : String {
 
         val fullAddress = createFullAddress(
             ip = bridgeIp,
@@ -160,16 +163,15 @@ object PhilipsHueBridgeApi {
 
     /**
      * Gets the [PHv2ResourceBridge] data from a bridge.  According to
-     * the docs, this is IDENTICAL to getting a bridge with the bridge id.
-     * Makes sense as a bridge can only know about itself.
+     * the docs, this is IDENTICAL to getting a bridge with the bridge id
+     * (as in [getBridgeStrFromApi]).  Makes sense as a bridge can only
+     * know about itself.
      *
-     * This call is useful when you don't much info about the bridge yet.
-     * You'll get that info here!
-     *
-     * @return  On error, error portion of [PHv2ResourceBridge] will be
+     * @return  A fully filled out [PHv2ResourceBridge] data about this bridge.
+     *          On error, error portion of [PHv2ResourceBridge] will be
      *          filled in.
      */
-    suspend fun getBridgeApi(
+    suspend fun getBridgeFromApi(
         bridgeIpStr: String,
         token: String
     ) : PHv2ResourceBridge = withContext(Dispatchers.IO) {

@@ -3,7 +3,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.util.Log
 import com.google.gson.Gson
 import com.sleepfuriously.paulsapp.compose.philipshue.MIN_BRIGHTNESS
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getAllDevicesFromApi
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueApi.getAllDevicesFromApi
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState
@@ -235,7 +235,7 @@ object PhilipsHueDataConverter {
                 RTYPE_DEVICE -> {
                     // Sometimes lights are listed as devices.  But to distinguish
                     // it from others, we have to search its services.
-                    val device = PhilipsHueBridgeApi.getDeviceIndividualFromApi(
+                    val device = PhilipsHueApi.getDeviceIndividualFromApi(
                         deviceRid = child.rid,
                         bridgeIp = bridgeIp,
                         bridgeToken = bridgeToken
@@ -244,7 +244,7 @@ object PhilipsHueDataConverter {
                         // yes it's a device and probably a light, but to be sure we search its services
                         device.data[0].services.forEach { service ->
                             if (service.rtype == RTYPE_LIGHT) {
-                                val v2light = PhilipsHueBridgeApi.getLightInfoFromApi(
+                                val v2light = PhilipsHueApi.getLightInfoFromApi(
                                     lightId = service.rid,
                                     bridgeIp = bridgeIp,
                                     bridgeToken = bridgeToken
@@ -273,7 +273,7 @@ object PhilipsHueDataConverter {
 
                 RTYPE_LIGHT -> {
                     // Sometimes lights are listed as lights.  This is slightly easier.
-                    val phv2Light = PhilipsHueBridgeApi.getLightInfoFromApi(
+                    val phv2Light = PhilipsHueApi.getLightInfoFromApi(
                         lightId = child.rid,
                         bridgeIp = bridgeIp,
                         bridgeToken = bridgeToken
@@ -367,7 +367,7 @@ object PhilipsHueDataConverter {
             }
 
             // The grouped_light has info on on/off and brightness
-            val groupedLight = PhilipsHueBridgeApi.getGroupedLightFromApi(
+            val groupedLight = PhilipsHueApi.getGroupedLightFromApi(
                 groupId = groupedLightServices[0].rid,
                 bridgeIp = bridgeIp,
                 bridgeToken = bridgeToken
@@ -445,7 +445,7 @@ object PhilipsHueDataConverter {
                 return@forEach      // this is the equivalent of continue (will skip this iteration)
             }
 
-            val v2RoomIndividual = PhilipsHueBridgeApi.getRoomIndividualFromApi(
+            val v2RoomIndividual = PhilipsHueApi.getRoomIndividualFromApi(
                 roomId = v2Room.id,
                 bridgeIp = bridgeIp,
                 bridgeToken = bridgeToken
@@ -538,7 +538,7 @@ object PhilipsHueDataConverter {
                 continue
             }
 
-            val v2ZoneIndividual = PhilipsHueBridgeApi.getZoneIndividualFromApi(
+            val v2ZoneIndividual = PhilipsHueApi.getZoneIndividualFromApi(
                 zoneId = zone.id,
                 bridgeIp = bridgeIp,
                 bridgeToken = bridgeToken
@@ -620,7 +620,7 @@ object PhilipsHueDataConverter {
             }
 
             // the light group has info about its on/off status and brightness
-            val groupedLight = PhilipsHueBridgeApi.getGroupedLightFromApi(
+            val groupedLight = PhilipsHueApi.getGroupedLightFromApi(
                 groupId = groupedLightServices[0].rid,
                 bridgeIp = bridgeIp,
                 bridgeToken = bridgeToken

@@ -4,6 +4,7 @@ import android.util.Log
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
@@ -156,7 +157,7 @@ class PhilipsHueRepository(
 
     /** Complete list of the Flocks with their associated data.  Ready to observe! */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val flockList: StateFlow<List<PhilipsHueFlock>> = flockModelList
+    val flockList: StateFlow<List<PhilipsHueFlockInfo>> = flockModelList
         .flatMapLatest { flockModels ->
             if (flockModels.isEmpty()) {
                 MutableStateFlow(emptyList())
@@ -166,7 +167,7 @@ class PhilipsHueRepository(
                     flockModels.map(transform = PhilipsHueFlockModel::flock)
                 combine(
                     flows = listOfStateFlowFlockInfo,
-                    transform = Array<PhilipsHueFlock>::toList
+                    transform = Array<PhilipsHueFlockInfo>::toList
                 )
             }
         }.stateIn(
@@ -239,7 +240,7 @@ class PhilipsHueRepository(
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
                 if (isActive) {
-                    val jsonBridgeResponseString = PhilipsHueBridgeApi.getBridgeDataStrFromApi(ip, token)
+                    val jsonBridgeResponseString = PhilipsHueApi.getBridgeStrFromApi(ip, token)
                     if (jsonBridgeResponseString.isEmpty()) {
                         Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
                     } else {
@@ -364,7 +365,7 @@ class PhilipsHueRepository(
         bridgeIp: String
     ) : Pair<String, GetBridgeTokenErrorEnum> {
 
-        val fullAddress = PhilipsHueBridgeApi.createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
+        val fullAddress = PhilipsHueApi.createFullAddress(ip = bridgeIp, suffix = SUFFIX_API)
         Log.d(TAG, "registerAppToBridge() - fullAddress = $fullAddress")
 
         val response = synchronousPost(
@@ -410,12 +411,12 @@ class PhilipsHueRepository(
     ) : Boolean {
 
         // grab the id for this bridge
-        val jsonResponseStr = PhilipsHueBridgeApi.getBridgeDataStrFromApi(
-            bridgeIp = newBridge.ip,
+        val v2Bridge = PhilipsHueApi.getBridgeFromApi(
+            bridgeIpStr = newBridge.ip,
             token = newBridge.token
         )
-        val v2Bridge = PHv2ResourceBridge(jsonResponseStr)
-        if (v2Bridge.hasData() == false) {
+
+        if (v2Bridge.hasErrors()) {
             Log.e(TAG, "Unable to get info about bridge in addBridge--aborting!")
             Log.e(TAG, "   error msg: ${v2Bridge.getError()}")
             return false
@@ -478,7 +479,8 @@ class PhilipsHueRepository(
             roomSet = roomSet,
             zoneSet = zoneSet,
             bridgeSet = bridgeSet,
-            repository = this
+            repository = this,
+            coroutineScope = coroutineScope
         )
 
         flockModelList.update {
@@ -758,9 +760,14 @@ class PhilipsHueRepository(
     }
 
     /**
-     * Another intermediary: tell the bridge model to change a room so
+     * Another intermediary: tell the bridge to change a room so
      * that it's displaying the given scene.  The bridge model will in
      * turn tell the bridge itself to implement the scene.
+     *
+     * Note
+     *  Unlike most send... functions, this also does an update.  That's
+     *  because the scene name needs to be passed to the room, which does
+     *  not occur during the sse after the lights have changed.
      */
     fun sendRoomSceneToBridge(
         bridge: PhilipsHueBridgeInfo,
@@ -774,9 +781,9 @@ class PhilipsHueRepository(
             return
         }
 
-        // Now that the scene and room matches, just tell the scene to turn on.  That's it.
+        // Now that the scene and room matches, just tell the scene to turn on.
         coroutineScope.launch(Dispatchers.IO) {
-            val response = PhilipsHueBridgeApi.sendSceneToLightGroup(
+            val response = PhilipsHueApi.sendSceneToLightGroup(
                 bridgeIp = bridge.ipAddress,
                 bridgeToken = bridge.token,
                 sceneToDisplay = scene
@@ -788,8 +795,12 @@ class PhilipsHueRepository(
             Log.d(TAG, "    body = ${response.body}")
             Log.d(TAG, "    headers = ${response.headers}")
 
-            // update the room about its current scene. But first find the
-            // appropriate bridgeModel
+            // Update the room about its current scene. But first find the
+            // appropriate bridgeModel.
+            //
+            // This step is necessary so that the room knows what scene it
+            // is currently displaying (that info is not provided in the sse).
+            //
             val daBridgeModel = bridgeModelList.value.find { bridgeModel ->
                 // Gotta do this manually because the room's current scene can
                 // change before it's finally saved (which will make the built-in
@@ -807,6 +818,7 @@ class PhilipsHueRepository(
                 Log.e(TAG, "updateRoomScene() could not find a BridgeModel with the given room! Current bridge won't work!!!")
                 return@launch
             }
+            daBridgeModel.updateRoomCurrentScene(room = room, scene = scene)
         }
     }
 
@@ -821,7 +833,7 @@ class PhilipsHueRepository(
             return
         }
         coroutineScope.launch(Dispatchers.IO) {
-            val response = PhilipsHueBridgeApi.sendSceneToLightGroup(
+            val response = PhilipsHueApi.sendSceneToLightGroup(
                 bridgeIp = bridge.ipAddress,
                 bridgeToken = bridge.token,
                 sceneToDisplay = scene
@@ -850,16 +862,47 @@ class PhilipsHueRepository(
                 Log.e(TAG, "updateZoneScene() could not find a BridgeModel with the given zone! Current bridge won't work!!!")
                 return@launch
             }
-
             daBridgeModel.updateZoneCurrentScene(zone = zone, scene = scene)
         }
     }
 
     /**
+     * Similar to [sendRoomSceneToBridge], except that this has the extra
+     * complication of Flocks.  So that's where most of the work happens.
+     */
+    fun sendFlockSceneToBridge(
+        flock: PhilipsHueFlockInfo,
+        scene: PHv2Scene
+    ) {
+        Log.d(TAG, "sendFlockSceneToBridge() - flock = ${flock.name}, ${flock.id}")
+
+        // find the right flock model
+//        val flockModel = flockModelList.value.find {
+//            it.flock.value.id == flock.id
+//        }
+        var flockModel: PhilipsHueFlockModel? = null
+        Log.d(TAG, "sendFlockSceneToBridge() - flockModel size = ${flockModelList.value.size}")
+        for (fm in flockModelList.value) {
+            Log.d(TAG, "   fm.flock.value.id = ${fm.flock.value.id}, flock.id = ${flock.id}")
+            if (fm.flock.value.id == flock.id) {
+                flockModel = fm
+                break
+            }
+        }
+
+        if (flockModel == null) {
+            Log.e(TAG, "sendFlockSceneToBridge() - unable to find flock model! Aborting!")
+            return
+        }
+        flockModel.sendSceneToBridge(scene)
+    }
+
+
+    /**
      * Tells the flock to send an on or off event to its bridges for its lights.
      */
     fun sendFlockOnOffToBridges(
-        changedFlock: PhilipsHueFlock,
+        changedFlock: PhilipsHueFlockInfo,
         newOnOff: Boolean
     ) {
         // find the FlockModel
@@ -883,7 +926,7 @@ class PhilipsHueRepository(
      * actually tell its lights to change their brightness.
      */
     fun sendFlockBrightnessToBridges(
-        changedFlock: PhilipsHueFlock,
+        changedFlock: PhilipsHueFlockInfo,
         newBrightness: Int
     ) {
         // find the flockModel

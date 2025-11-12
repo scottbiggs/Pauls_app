@@ -12,7 +12,7 @@ import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.model.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueModelScenes
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
@@ -96,8 +96,13 @@ class PhilipsHueViewmodel : ViewModel() {
     /** similar to [sceneDisplayStuffForRoom] */
     val sceneDisplayStuffForZone = _sceneDisplayStuffForZone.asStateFlow()
 
+    private val _sceneDisplayStuffForFlock = MutableStateFlow<SceneDataForFlock?>(null)
+    /**
+     * If not null -> a Flock's scene info should be displayed.
+     */
+    val sceneDisplayStuffForFlock = _sceneDisplayStuffForFlock.asStateFlow()
 
-    private val _flocks = MutableStateFlow<List<PhilipsHueFlock>>(emptyList())
+    private val _flocks = MutableStateFlow<List<PhilipsHueFlockInfo>>(emptyList())
     /** Holder of the Flocks observed from the repository  */
     val flocks = _flocks.asStateFlow()
 
@@ -212,7 +217,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun sendFlockBrightness(
         newBrightness: Int,
-        changedFlock: PhilipsHueFlock
+        changedFlock: PhilipsHueFlockInfo
     ) {
         viewModelScope.launch {
             phRepository.sendFlockBrightnessToBridges(
@@ -228,7 +233,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun sendFlockOnOffToBridges(
         newOnOffState: Boolean,
-        changedFlock: PhilipsHueFlock
+        changedFlock: PhilipsHueFlockInfo
     ) {
         viewModelScope.launch {
             phRepository.sendFlockOnOffToBridges(
@@ -612,6 +617,10 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
 
+    //-------------------------
+    //  rooms, zones, flocks
+    //-------------------------
+
     /**
      * Finds out which scenes are used by a room.
      *
@@ -637,6 +646,39 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
+     * Right now just returns all the scenes for all the rooms and zones
+     * controlled by the given flock.
+     *
+     * @return      List of appropriate scenes (could be empty).
+     *              Null on error.
+     *
+     * todo: a MUCH richer way to handle scenes needs to be implemented
+     */
+    fun getSceneListForFlock(flock: PhilipsHueFlockInfo) : List<PHv2Scene>? {
+        // the master list of all scenes
+        val sceneList = mutableListOf<PHv2Scene>()
+
+        flock.roomSet.forEach { room ->
+            val bridge = flock.getBridgeForRoom(room.v2Id)
+            if (bridge == null) {
+                Log.e(TAG, "getSceneListForFlock() - can't find bridge for room ${room.name}! Aborting!")
+                return null
+            }
+            sceneList += PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+        }
+
+        flock.zoneSet.forEach { zone ->
+            val bridge = flock.getBridgeForZone(zone.v2Id)
+            if (bridge == null) {
+                Log.e(TAG, "getSceneListForFlock() - can't find bridge for zone ${zone.name}! Aborting!")
+                return null
+            }
+            sceneList += PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+        }
+        return sceneList
+    }
+
+    /**
      * UI calls this to indicate that user wants to show the scenes for a
      * given room.
      *
@@ -658,8 +700,31 @@ class PhilipsHueViewmodel : ViewModel() {
     fun showScenesForZone(bridge: PhilipsHueBridgeInfo, zone: PhilipsHueZoneInfo) {
         _sceneDisplayStuffForZone.update {
             Log.d(TAG, "showScenesForZone, zone = ${zone.name}")
-            val sceneList = getSceneListForZone(zone =zone, bridge = bridge)
+            val sceneList = getSceneListForZone(zone = zone, bridge = bridge)
             SceneDataForZone(bridge, zone, sceneList)
+        }
+    }
+
+    /**
+     * UI wants to show the scenes for a flock.  This is trickier than Rooms
+     * or Zones as Flocks are supersets of such.
+     *
+     * side effects
+     *  - [sceneDisplayStuffForFlock] will be loaded with all the scenes
+     *      available to this flock (which may be far less than everything).
+     *
+     * todo - do this right, so that scenes can be applied universally to all
+     *  grouped lights in this flock
+     */
+    fun showScenesForFlock(flock: PhilipsHueFlockInfo) {
+        _sceneDisplayStuffForFlock.update {
+            Log.d(TAG, "showScenesForFlock() flock = ${flock.name}")
+            val sceneList = getSceneListForFlock(flock)
+            if (sceneList == null) {
+                Log.e(TAG, "showScenesForFlock() - error getting scene list, aborting!")
+                return
+            }
+            SceneDataForFlock(flock, sceneList)
         }
     }
 
@@ -673,6 +738,7 @@ class PhilipsHueViewmodel : ViewModel() {
         Log.d(TAG, "dontShowScenes()")
         _sceneDisplayStuffForRoom.update { null }
         _sceneDisplayStuffForZone.update { null }
+        _sceneDisplayStuffForFlock.update { null }
     }
 
     /**
@@ -707,13 +773,20 @@ class PhilipsHueViewmodel : ViewModel() {
         phRepository.sendZoneSceneToBridge(bridge, zone, scene)
     }
 
-    //-------------------------
-    //  flock functions
-    //-------------------------
+    /**
+     * Similar to [sceneSelectedForRoom].
+     */
+    fun sceneSelectedForFlock(
+        flock: PhilipsHueFlockInfo,
+        scene: PHv2Scene
+    ) {
+        phRepository.sendFlockSceneToBridge(flock, scene)
+    }
+
 
     private var flockCounter = 0
     /**
-     * Adds a [PhilipsHueFlock] and all the associated stuff.
+     * Adds a [PhilipsHueFlockInfo] and all the associated stuff.
      *
      * @param   name        Human name for this flock.  Use blank (default)
      *                      for testing.
@@ -828,10 +901,6 @@ class PhilipsHueViewmodel : ViewModel() {
         TODO()
     }
 
-    fun sceneDisplayStuffForFlock(flock: PhilipsHueFlock) {
-        Log.e(TAG, "sceneDisplayStuffForFlock() not implemented")
-        TODO()
-    }
 
     //-------------------------
     //  private functions
@@ -930,6 +999,11 @@ data class SceneDataForZone(
 //    val lights: List<PhilipsHueLightInfo>  todo
 )
 
+/** todo: this is a temporary solution--should do more */
+data class SceneDataForFlock(
+    val flock: PhilipsHueFlockInfo,
+    val scenes: List<PHv2Scene>
+)
 
 enum class TestStatus {
     /** test hos not taken place yet, nor has it been started */

@@ -2,12 +2,19 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ROOM
+import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * This class handles communication between a Flock and the rest of the app.
@@ -20,6 +27,8 @@ import kotlinx.coroutines.flow.update
  * along as flows of an updated Flock (ahem, are you listening,
  * [PhilipsHueRepository]?).  Those updates should call [updateOnOffFromBridge],
  * [updateBrightnessFromBridges], and [updateAllFromBridges].
+ *
+ * @param   coroutineScope      Needed to do some network stuff.
  *
  * @param   bridgeSet           Set of all bridges used by this flock.
  *
@@ -40,6 +49,7 @@ import kotlinx.coroutines.flow.update
  *                              rooms and zones this flock uses.
  */
 class PhilipsHueFlockModel(
+    private val coroutineScope: CoroutineScope,
     bridgeSet: Set<PhilipsHueBridgeInfo>,
     roomSet: Set<PhilipsHueRoomInfo>,
     zoneSet: Set<PhilipsHueZoneInfo>,
@@ -55,15 +65,17 @@ class PhilipsHueFlockModel(
     //  flows
     //-------------------------------------
 
-    private val _flock = MutableStateFlow<PhilipsHueFlock>(
-        PhilipsHueFlock(
+    // make a new flock from supplied data
+    private val _flock = MutableStateFlow<PhilipsHueFlockInfo>(
+        PhilipsHueFlockInfo(
             name = humanName,
             currentSceneName = currentSceneName,
             brightness = brightness,
             onOffState = onOff,
             bridgeSet = bridgeSet,
             roomSet = roomSet,
-            zoneSet = zoneSet
+            zoneSet = zoneSet,
+            id = generateV2Id()
         )
     )
     /** Flow of the Flock. Observers will be notified of changes */
@@ -117,6 +129,76 @@ class PhilipsHueFlockModel(
         }
     }
 
+    /**
+     * Tell the flock to do its best to display the given scene.
+     * Right now, we just go through the bridges and check to see if
+     * any rooms or zones implement the scene.  If they do, turn those
+     * on.
+     *
+     * Secondary: let the flock know that this is the scene it's displaying.
+     *
+     * todo: do a better job
+     */
+    fun sendSceneToBridge(scene: PHv2Scene) {
+        when (scene.group.rtype) {
+            RTYPE_ROOM -> {
+                // Is there a room controlled by this scene? todo: i think matching by scene NAME would be better!
+                val sceneRooms = flock.value.roomSet.filter { it.v2Id == scene.group.rid }
+                if (sceneRooms.isEmpty()) {
+                    Log.v(TAG, "sendSceneToBridge() - no matching rooms. Nothing to do.")
+                    return
+                }
+
+                // send the scene for each room
+                coroutineScope.launch((Dispatchers.IO)) {
+                    sceneRooms.forEach { room ->
+                        // find the bridge for this room.
+                        val bridge = flock.value.getBridgeForRoom(room.v2Id)
+                        if (bridge == null) {
+                            Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for room ${room.name}. aborting!")
+                            return@launch
+                        }
+
+                        PhilipsHueApi.sendSceneToLightGroup(
+                            bridgeIp = bridge.ipAddress,
+                            bridgeToken = bridge.token,
+                            sceneToDisplay = scene
+                        )
+                    }
+                }
+            }
+
+            RTYPE_ZONE -> {
+                // find the zone controlled by this scene todo: scene name???
+                val zones = flock.value.zoneSet.filter { it.v2Id == scene.group.rid }
+                if (zones.isEmpty()) {
+                    Log.v(TAG, "sendSceneToBridge() - no matching zones. Nothing to do.")
+                    return
+                }
+
+                coroutineScope.launch(Dispatchers.IO) {
+                    zones.forEach { zone ->
+                        // find the bridge for this zone
+                        val bridge = flock.value.getBridgeForZone(zone.v2Id)
+                        if (bridge == null) {
+                            Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for zone ${zone.name}. aborting!")
+                            return@launch
+                        }
+                        PhilipsHueApi.sendSceneToLightGroup(
+                            bridgeIp = bridge.ipAddress,
+                            bridgeToken = bridge.token,
+                            sceneToDisplay = scene
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                Log.e(TAG, "sendSceneToBridge() - Scene does apply to room or zone. Nothing to do")
+                Log.e(TAG, "   scene.group.rtype = ${scene.group.rtype}")
+            }
+        }
+    }
 
     /**
      * Receives the result of an sse that at least one room or zone has
@@ -157,7 +239,9 @@ class PhilipsHueFlockModel(
             }
 
             // update and refresh
-            refreshOnOff(workFlock.copy(roomSet = newRoomSet, zoneSet = newZoneSet))
+            val retVal = refreshOnOff(workFlock.copy(roomSet = newRoomSet, zoneSet = newZoneSet))
+            Log.d(TAG, "updateOnOffFromBridge()  retVal.id = ${retVal.id}")
+            retVal
         }
     }
 
@@ -207,6 +291,7 @@ class PhilipsHueFlockModel(
         val newRoomSet = mutableSetOf<PhilipsHueRoomInfo>()
         val newZoneSet = mutableSetOf<PhilipsHueZoneInfo>()
         _flock.update { workFlock ->
+            Log.d(TAG, "updateAllFromBridges() - workFlock id = ${workFlock.id}")
             workFlock.roomSet.forEach { roomInfo ->
                 val foundChangedRoom = changedRoomSet.find { it.v2Id == roomInfo.v2Id }
                 newRoomSet.add(foundChangedRoom ?: roomInfo)
@@ -216,7 +301,9 @@ class PhilipsHueFlockModel(
                 newZoneSet.add(foundChangedZone ?: zoneInfo)
             }
 
-            refreshOnOffAndBrightness(workFlock.copy(roomSet = newRoomSet, zoneSet = newZoneSet))
+            val returnVal = refreshOnOffAndBrightness(workFlock.copy(roomSet = newRoomSet, zoneSet = newZoneSet))
+            Log.d(TAG, "updateAllFromBridge()  returnVal id = ${returnVal.id}")
+            returnVal
         }
     }
 
@@ -231,7 +318,7 @@ class PhilipsHueFlockModel(
      *
      * @return  A copy of the given flock with brightness refreshed.
      */
-    fun refreshBrightness(flock: PhilipsHueFlock) : PhilipsHueFlock {
+    fun refreshBrightness(flock: PhilipsHueFlockInfo) : PhilipsHueFlockInfo {
         var brightnessSum = 0
         var groupCount = 0
 
@@ -256,7 +343,7 @@ class PhilipsHueFlockModel(
      *
      * @return  A flock just like the input but with the on/off state correct.
      */
-    fun refreshOnOff(flock: PhilipsHueFlock) : PhilipsHueFlock {
+    fun refreshOnOff(flock: PhilipsHueFlockInfo) : PhilipsHueFlockInfo {
 
         flock.roomSet.forEach { room ->
             if (room.on) {
@@ -274,10 +361,12 @@ class PhilipsHueFlockModel(
 
     /**
      * For convenience, call this to refresh both the brightness and on/off
-     * state of a [PhilipsHueFlock].
+     * state of a [PhilipsHueFlockInfo].
+     *
+     * @return  A [PhilipsHueFlockInfo] with the newly refreshed everything.
      */
-    fun refreshOnOffAndBrightness(flock: PhilipsHueFlock)
-            : PhilipsHueFlock {
+    fun refreshOnOffAndBrightness(flock: PhilipsHueFlockInfo)
+            : PhilipsHueFlockInfo {
 
         val flockWithNewBrightness = refreshBrightness(flock)
         return refreshOnOff(flockWithNewBrightness)

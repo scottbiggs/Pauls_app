@@ -58,13 +58,15 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForFlock
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.almostBlack
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.SceneDataForFlock
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForRoom
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForZone
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
@@ -136,6 +138,7 @@ class MainActivity : ComponentActivity() {
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
                 val zoneSceneData = philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
+                val flockSceneData = philipsHueViewmodel.sceneDisplayStuffForFlock.collectAsStateWithLifecycle()
 
                 val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
 
@@ -195,6 +198,7 @@ class MainActivity : ComponentActivity() {
                             philipsHueBridges = philipsHueBridges,
                             roomSceneData = roomSceneData.value,
                             zoneSceneData = zoneSceneData.value,
+                            flockSceneData = flockSceneData.value,
                             philipsHueFlocks = flocks.value,
                         )
                     }
@@ -224,14 +228,16 @@ class MainActivity : ComponentActivity() {
         philipsHueViewmodel: PhilipsHueViewmodel,
         roomSceneData: SceneDataForRoom?,
         zoneSceneData: SceneDataForZone?,
+        flockSceneData: SceneDataForFlock?,
         philipsHueBridges: List<PhilipsHueBridgeInfo>,
-        philipsHueFlocks: List<PhilipsHueFlock>,
+        philipsHueFlocks: List<PhilipsHueFlockInfo>,
         modifier : Modifier = Modifier,
     ) {
 
         Log.d(TAG, "FourPanes() start.  num bridges = ${philipsHueViewmodel.philipsHueBridgesCompose.size}")
         Log.d(TAG, "roomSceneData = $roomSceneData")
         Log.d(TAG, "zoneSceneData = $zoneSceneData")
+        Log.d(TAG, "flockSceneData = $flockSceneData")
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -309,7 +315,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        if ((roomSceneData == null) && (zoneSceneData == null)) {
+                        if ((roomSceneData == null) && (zoneSceneData == null) && (flockSceneData == null)) {
                             // show regular PH stuff
                             ShowMainScreenPhilipsHue(
                                 modifier = modifier,
@@ -335,6 +341,15 @@ class MainActivity : ComponentActivity() {
                                 bridge = zoneSceneData.bridge,
                                 zone = zoneSceneData.zone,
                                 scenes = zoneSceneData.scenes,
+                                viewmodel = philipsHueViewmodel,
+                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                            )
+                        }
+
+                        else if (flockSceneData != null) {
+                            // show flock scene info
+                            ShowScenesForFlock(
+                                flockSceneData = flockSceneData,
                                 viewmodel = philipsHueViewmodel,
                                 onDismiss = { philipsHueViewmodel.dontShowScenes() }
                             )

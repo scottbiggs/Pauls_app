@@ -31,7 +31,7 @@ object PhilipsHueModelScenes {
      */
     suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Scene> {
         val newScenesList = mutableListOf<PHv2Scene>()
-        val v2ScenesAll = PhilipsHueBridgeApi.getAllScenesFromApi(
+        val v2ScenesAll = PhilipsHueApi.getAllScenesFromApi(
             bridgeIp = bridge.ipAddress,
             bridgeToken = bridge.token
         )
@@ -54,7 +54,7 @@ object PhilipsHueModelScenes {
      * null is returned.
      */
     suspend fun getIndividualSceneFromApi(sceneId: String, bridge: PhilipsHueBridgeInfo) : PHv2Scene? {
-        val scene = PhilipsHueBridgeApi.getSceneIndividualFromApi(
+        val scene = PhilipsHueApi.getSceneIndividualFromApi(
             sceneId = sceneId,
             bridgeIp = bridge.ipAddress,
             bridgeToken = bridge.token
@@ -86,16 +86,16 @@ object PhilipsHueModelScenes {
         bridge: PhilipsHueBridgeInfo
     ) : List<PHv2Scene> {
 
-        Log.d(TAG, "getAllScenes() - room = ${room.name}")
+        Log.d(TAG, "getAllScenesForRoom()  room = ${room.name}")
 
         // Go through all the scenes in the bridge.  If any have a group that
         // matches the room id, we add it to the list.
         val sceneList = mutableListOf<PHv2Scene>()
         bridge.scenes.forEach { scene ->
-            Log.d(TAG, "                 scene = ${scene.metadata.name}")
+            Log.d(TAG, "   scene = ${scene.metadata.name}")
             if ((scene.group.rtype == ROOM) && (scene.group.rid == room.v2Id)) {
                 sceneList.add(scene)
-                Log.d(TAG, "                 added!")
+                Log.d(TAG, "      added!")
             }
         }
         return sceneList
@@ -108,7 +108,7 @@ object PhilipsHueModelScenes {
         zone: PhilipsHueZoneInfo,
         bridge: PhilipsHueBridgeInfo
     ) : List<PHv2Scene> {
-        Log.d(TAG, "getAllScenesForZone() - zone = ${zone.name}")
+        Log.d(TAG, "getAllScenesForZone()  zone = ${zone.name}")
 
         val sceneList = mutableListOf<PHv2Scene>()
         bridge.scenes.forEach { scene ->

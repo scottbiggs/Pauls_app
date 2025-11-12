@@ -53,14 +53,14 @@ import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueFlock
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
 
 /**
- * UI for a [PhilipsHueFlock].  Similar to PhilipsHueComposeRoom.
+ * UI for a [PhilipsHueFlockInfo].  Similar to PhilipsHueComposeRoom.
  *
  * @param   flockName       The name to display
  *
@@ -193,7 +193,7 @@ fun DisplayPhilipsHueFlock(
  */
 @Composable
 fun DrawFlocksSeparator(
-    flockList: List<PhilipsHueFlock>,
+    flockList: List<PhilipsHueFlockInfo>,
     viewmodel: PhilipsHueViewmodel,
     modifier: Modifier = Modifier
 ) {
@@ -226,7 +226,7 @@ fun DrawFlocksSeparator(
 private fun DotDotDotFlockMenu(
     modifier : Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
-    flocks: List<PhilipsHueFlock>
+    flocks: List<PhilipsHueFlockInfo>
 ) {
     var isDropDownExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -320,7 +320,7 @@ private fun DotDotDotFlockMenu(
  */
 @Composable
 private fun ShowFlockInfoDialog(
-    flockList: List<PhilipsHueFlock>,
+    flockList: List<PhilipsHueFlockInfo>,
     onClick: () -> Unit
 ) {
     AlertDialog(

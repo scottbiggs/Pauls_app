@@ -2,7 +2,7 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueBridgeApi.getBridgeApi
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueApi.getBridgeFromApi
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
@@ -228,14 +228,14 @@ class PhilipsHueBridgeModel(
             // yep, active. continue
             //
 
-            val v2bridgeResource = getBridgeApi(
+            val v2bridgeResource = getBridgeFromApi(
                 bridgeIpStr = bridgeIpAddress,
                 token = bridgeToken
             )
             val bridgeId = v2bridgeResource.getDeviceName()
 
             _devices.update {
-                PhilipsHueBridgeApi.getAllDevicesFromApi(
+                PhilipsHueApi.getAllDevicesFromApi(
                     bridgeIp = bridgeIpAddress,
                     bridgeToken = bridgeToken
                 )
@@ -256,7 +256,7 @@ class PhilipsHueBridgeModel(
 //            }
 
             _groupedLights.update {
-                val apiGroup = PhilipsHueBridgeApi.getAllGroupedLightsFromApi(
+                val apiGroup = PhilipsHueApi.getAllGroupedLightsFromApi(
                     bridgeIp = bridgeIpAddress,
                     bridgeToken = bridgeToken
                 )
@@ -276,10 +276,10 @@ class PhilipsHueBridgeModel(
             }
 
             // load up the various groupings
-            val rooms = loadRoomsFromApi() ?: emptyList()
-            val scenes = loadScenesFromApi() ?: emptyList()
-            val zones = loadZonesFromApi() ?: emptyList()
-            val lights = loadLightsFromApi() ?: emptyList()
+            val rooms = getRoomsFromApi() ?: emptyList()
+            val scenes = getScenesFromApi() ?: emptyList()
+            val zones = getZonesFromApi() ?: emptyList()
+            val lights = getLightsFromApi() ?: emptyList()
 
             // use the devices to find the bridge human name
             val humanName = PhilipsHueDataConverter.getBridgeUsername(
@@ -397,7 +397,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "---> body = $body")
 
         // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = PhilipsHueApi.createFullAddress(
             ip = bridgeIpAddress,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
@@ -456,7 +456,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "---> body = $body")
 
         // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = PhilipsHueApi.createFullAddress(
             ip = bridgeIpAddress,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
@@ -506,7 +506,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "---> body = $body")
 
         // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = PhilipsHueApi.createFullAddress(
             ip = bridgeIpAddress,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
@@ -554,7 +554,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "---> body = $body")
 
         // construct the url
-        val url = PhilipsHueBridgeApi.createFullAddress(
+        val url = PhilipsHueApi.createFullAddress(
             ip = bridgeIpAddress,
             suffix = "$SUFFIX_GET_GROUPED_LIGHTS/$groupedLightId"
         )
@@ -706,9 +706,9 @@ class PhilipsHueBridgeModel(
      * On error, returns null (probably the bridge is not connected).
      * Empty list means that there simply aren't any rooms.
      */
-    private suspend fun loadRoomsFromApi() : List<PhilipsHueRoomInfo>? {
+    private suspend fun getRoomsFromApi() : List<PhilipsHueRoomInfo>? {
 
-        val bridgeV2ResourceRoomsAll = PhilipsHueBridgeApi.getAllRoomsFromApi(
+        val bridgeV2ResourceRoomsAll = PhilipsHueApi.getAllRoomsFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
@@ -730,9 +730,9 @@ class PhilipsHueBridgeModel(
      * Asks the bridge to get all its lights.  Returns null if the bridge isn't
      * working or some network error occurs.
      */
-    private suspend fun loadLightsFromApi() : List<PhilipsHueLightInfo>?
+    private suspend fun getLightsFromApi() : List<PhilipsHueLightInfo>?
             = withContext(Dispatchers.IO) {
-        val v2Resourcelights = PhilipsHueBridgeApi.getAllLightsFromApi(
+        val v2Resourcelights = PhilipsHueApi.getAllLightsFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
@@ -756,9 +756,9 @@ class PhilipsHueBridgeModel(
      * Asks the bridge to get all its zones.  Will return null if the bridge
      * isn't working.  Note that this could be an empty list.
      */
-    private suspend fun loadZonesFromApi() : List<PhilipsHueZoneInfo>?
+    private suspend fun getZonesFromApi() : List<PhilipsHueZoneInfo>?
             = withContext(Dispatchers.IO) {
-        val v2AllZones = PhilipsHueBridgeApi.getAllZonesFromApi(
+        val v2AllZones = PhilipsHueApi.getAllZonesFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
@@ -778,8 +778,8 @@ class PhilipsHueBridgeModel(
      * Finds all the scenes from the bridge.  Returns null if bridge is not
      * responding.  Could be an empty list.
      */
-    private suspend fun loadScenesFromApi() : List<PHv2Scene>? {
-        val v2AllScenes = PhilipsHueBridgeApi.getAllScenesFromApi(
+    private suspend fun getScenesFromApi() : List<PHv2Scene>? {
+        val v2AllScenes = PhilipsHueApi.getAllScenesFromApi(
             bridgeIp = bridgeIpAddress,
             bridgeToken = bridgeToken
         )
@@ -1082,7 +1082,7 @@ class PhilipsHueBridgeModel(
             when (eventDatum.type) {
                 RTYPE_LIGHT -> {
                     // get all the info that the bridge knows about the light
-                    val newLightV2 = PhilipsHueBridgeApi.getLightInfoFromApi(
+                    val newLightV2 = PhilipsHueApi.getLightInfoFromApi(
                         lightId = eventDatum.owner!!.rid,
                         bridgeIp = bridgeIpAddress,
                         bridgeToken = bridgeToken

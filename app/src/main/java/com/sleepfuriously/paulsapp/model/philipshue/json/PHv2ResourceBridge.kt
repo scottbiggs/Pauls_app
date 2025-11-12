@@ -37,8 +37,17 @@ data class PHv2ResourceBridge(
     private val data: List<PHv2Bridge> = listOf()
 ) {
     /**
+     * Are there any errors?  If so, use [getError] to learn more.
+     * Equivalent to ![hasData].
+     */
+    fun hasErrors() : Boolean {
+        return errors.isNotEmpty()
+    }
+
+    /**
      * Simply tells if any data is in here or not.  If not,
      * then use [getError] to figure out why.
+     * Pretty much the same as ![hasErrors].
      */
     fun hasData() : Boolean {
         return data.isNotEmpty()
