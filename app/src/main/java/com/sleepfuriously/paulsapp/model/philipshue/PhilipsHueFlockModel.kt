@@ -135,36 +135,32 @@ class PhilipsHueFlockModel(
      * any rooms or zones implement the scene.  If they do, turn those
      * on.
      *
-     * Secondary: let the flock know that this is the scene it's displaying.
-     *
-     * todo: do a better job
+     * @return  Returns FALSE on error.
      */
-    fun sendSceneToBridge(scene: PHv2Scene) {
+    suspend fun sendSceneToBridge(scene: PHv2Scene) : Boolean {
         when (scene.group.rtype) {
             RTYPE_ROOM -> {
                 // Is there a room controlled by this scene? todo: i think matching by scene NAME would be better!
                 val sceneRooms = flock.value.roomSet.filter { it.v2Id == scene.group.rid }
                 if (sceneRooms.isEmpty()) {
                     Log.v(TAG, "sendSceneToBridge() - no matching rooms. Nothing to do.")
-                    return
+                    return false
                 }
 
                 // send the scene for each room
-                coroutineScope.launch((Dispatchers.IO)) {
-                    sceneRooms.forEach { room ->
-                        // find the bridge for this room.
-                        val bridge = flock.value.getBridgeForRoom(room.v2Id)
-                        if (bridge == null) {
-                            Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for room ${room.name}. aborting!")
-                            return@launch
-                        }
-
-                        PhilipsHueApi.sendSceneToLightGroup(
-                            bridgeIp = bridge.ipAddress,
-                            bridgeToken = bridge.token,
-                            sceneToDisplay = scene
-                        )
+                sceneRooms.forEach { room ->
+                    // find the bridge for this room.
+                    val bridge = flock.value.getBridgeForRoom(room.v2Id)
+                    if (bridge == null) {
+                        Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for room ${room.name}. aborting!")
+                        return false
                     }
+
+                    PhilipsHueApi.sendSceneToLightGroup(
+                        bridgeIp = bridge.ipAddress,
+                        bridgeToken = bridge.token,
+                        sceneToDisplay = scene
+                    )
                 }
             }
 
@@ -173,31 +169,32 @@ class PhilipsHueFlockModel(
                 val zones = flock.value.zoneSet.filter { it.v2Id == scene.group.rid }
                 if (zones.isEmpty()) {
                     Log.v(TAG, "sendSceneToBridge() - no matching zones. Nothing to do.")
-                    return
+                    return false
                 }
 
-                coroutineScope.launch(Dispatchers.IO) {
-                    zones.forEach { zone ->
-                        // find the bridge for this zone
-                        val bridge = flock.value.getBridgeForZone(zone.v2Id)
-                        if (bridge == null) {
-                            Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for zone ${zone.name}. aborting!")
-                            return@launch
-                        }
-                        PhilipsHueApi.sendSceneToLightGroup(
-                            bridgeIp = bridge.ipAddress,
-                            bridgeToken = bridge.token,
-                            sceneToDisplay = scene
-                        )
+                zones.forEach { zone ->
+                    // find the bridge for this zone
+                    val bridge = flock.value.getBridgeForZone(zone.v2Id)
+                    if (bridge == null) {
+                        Log.e(TAG, "sendSceneToBridge() - weird error! Can't find the bridge for zone ${zone.name}. aborting!")
+                        return false
                     }
+                    PhilipsHueApi.sendSceneToLightGroup(
+                        bridgeIp = bridge.ipAddress,
+                        bridgeToken = bridge.token,
+                        sceneToDisplay = scene
+                    )
                 }
             }
 
             else -> {
                 Log.e(TAG, "sendSceneToBridge() - Scene does apply to room or zone. Nothing to do")
                 Log.e(TAG, "   scene.group.rtype = ${scene.group.rtype}")
+                return false
             }
         }
+
+        return true
     }
 
     /**
@@ -307,6 +304,31 @@ class PhilipsHueFlockModel(
         }
     }
 
+    /**
+     * Whenever a flock has its scene set, call this function.  It will modify
+     * the flock so that it correctly reflects the new scene.  You can also call
+     * it to indicate that NO scene is being displayed (like the user has made
+     * changes, etc.).
+     *
+     * This is done here instead of through an sse because server-sent events
+     * don't really identify anything that was changed--just the lights (as far
+     * as I know, which is probably wrong).
+     *
+     * Similar to [PhilipsHueBridgeModel.updateRoomCurrentScene].
+     *
+     * @param   scene       The details of the scene that is operating on the room.
+     */
+    fun updateFlockCurrentScene(scene: PHv2Scene) {
+        Log.d(TAG, "updateFlockCurrentScene() begin")
+        Log.d(TAG, "    flock.name = ${flock.value.name}")
+        Log.d(TAG, "    flock.currentSceneName = ${flock.value.currentSceneName}")
+        Log.d(TAG, "    scene = ${scene.metadata.name}")
+
+        // update the flock with the new name.
+        _flock.update {
+            it.copy(currentSceneName = scene.metadata.name)
+        }
+    }
 
     //-------------------------------------
     //  private functions

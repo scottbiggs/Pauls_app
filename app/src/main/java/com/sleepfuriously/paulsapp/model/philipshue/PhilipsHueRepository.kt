@@ -876,10 +876,6 @@ class PhilipsHueRepository(
     ) {
         Log.d(TAG, "sendFlockSceneToBridge() - flock = ${flock.name}, ${flock.id}")
 
-        // find the right flock model
-//        val flockModel = flockModelList.value.find {
-//            it.flock.value.id == flock.id
-//        }
         var flockModel: PhilipsHueFlockModel? = null
         Log.d(TAG, "sendFlockSceneToBridge() - flockModel size = ${flockModelList.value.size}")
         for (fm in flockModelList.value) {
@@ -894,7 +890,14 @@ class PhilipsHueRepository(
             Log.e(TAG, "sendFlockSceneToBridge() - unable to find flock model! Aborting!")
             return
         }
-        flockModel.sendSceneToBridge(scene)
+
+        // finally tell the flock to send the scene stuff to the bridge and up
+        coroutineScope.launch(Dispatchers.IO) {
+            val worked = flockModel.sendSceneToBridge(scene)
+            if (worked) {
+                flockModel.updateFlockCurrentScene(scene)
+            }
+        }
     }
 
 
