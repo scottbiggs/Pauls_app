@@ -712,58 +712,6 @@ object PhilipsHueApi {
         return response
     }
 
-    /**
-     * Tell the bridge to change the on/off state of the all the lights
-     * in the given list.
-     *
-     * @param   newOnOff    Whether all the lights should be turned on (true)
-     *                      or off (false).
-     *
-     * @param   Set of the lights to change.
-     *
-     * @return  The response of this PUT request.  Caller needs to decide
-     *          what to do.
-     */
-    suspend fun sendGroupedLightsOnOffToBridge(
-        newOnOff: Boolean,
-        lightGroup: PhilipsHueLightGroup,
-        bridgeIp: String,
-        bridgeToken: String
-    ) : MyResponse = withContext(Dispatchers.IO) {
-
-        TODO()
-
-//        val url = createFullAddress(
-//            ip = bridgeIp,
-//            suffix = "$SUFFIX_PUT_CHANGE_LIGHTS_ON_OFF_STATUS/${sceneToDisplay.id}"
-//        )
-
-    }
-
-    /**
-     * Like [sendGroupedLightsOnOffToBridge] but send brightness info.
-     */
-    suspend fun sendGroupedLightBrightnessToBridge(
-        newBrightness: Int,
-        lightGroup: PhilipsHueLightGroup,
-        bridgeIp: String,
-        bridgeToken: String
-    ) : MyResponse = withContext(Dispatchers.IO) {
-        TODO()
-    }
-
-    /**
-     * Like [sendGroupedLightsOnOffToBridge] but send onOff AND brightness info.
-     */
-    suspend fun sendGroupedLightAllToBridge(
-        newBrightness: Int,
-        lightGroup: PhilipsHueLightGroup,
-        bridgeIp: String,
-        bridgeToken: String
-    ) : MyResponse = withContext(Dispatchers.IO) {
-        TODO()
-    }
-
 
     //-------------------------
     //  delete
