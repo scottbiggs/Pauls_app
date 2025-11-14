@@ -55,8 +55,6 @@ class PhilipsHueFlockModel(
     zoneSet: Set<PhilipsHueZoneInfo>,
     humanName: String,
     currentSceneName: String = "",
-    brightness: Int,
-    onOff: Boolean,
     /** The repository that holds rooms and zones */
     private val repository: PhilipsHueRepository
 ) {
@@ -70,8 +68,8 @@ class PhilipsHueFlockModel(
         PhilipsHueFlockInfo(
             name = humanName,
             currentSceneName = currentSceneName,
-            brightness = brightness,
-            onOffState = onOff,
+            brightness = getBrightness(roomSet, zoneSet),
+            onOffState = getOnOff(roomSet, zoneSet),
             bridgeSet = bridgeSet,
             roomSet = roomSet,
             zoneSet = zoneSet,
@@ -88,6 +86,10 @@ class PhilipsHueFlockModel(
     //-------------------------------------
     //  init
     //-------------------------------------
+
+    init {
+        // create the new flock from the current
+    }
 
     //-------------------------------------
     //  functions
@@ -265,6 +267,52 @@ class PhilipsHueFlockModel(
             refreshBrightness(tmpFlock.copy(roomSet = newRoomSet, zoneSet = newZoneSet))
         }
     }
+
+    /**
+     * Finds the brightness (the average) of all the lights in the given
+     * rooms and zones.
+     *
+     * @return  0 if there are no rooms or zones.
+     */
+    fun getBrightness(
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>
+    ) : Int {
+
+        if (roomSet.isEmpty() && zoneSet.isEmpty()) { return 0 }
+
+        var brightness = 0.0
+        var lightCounter = 0
+        roomSet.forEach { room ->
+            brightness += room.brightness
+            lightCounter++
+        }
+        zoneSet.forEach { zone ->
+            brightness += zone.brightness
+            lightCounter++
+        }
+
+        return (brightness / lightCounter).toInt()
+    }
+
+    /**
+     * Finds the on/off status with the given set of rooms and zones.
+     *
+     * @return  True if *any* light is on.  False if ALL the lights are off.
+     */
+    fun getOnOff(
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>
+    ) : Boolean {
+        roomSet.forEach { room ->
+            if (room.on) { return true }
+        }
+        zoneSet.forEach { zone ->
+            if (zone.on) { return true }
+        }
+        return false
+    }
+
 
     /**
      * Call this whenever a change is noted to any room or zone.

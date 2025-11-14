@@ -1,5 +1,7 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -28,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,19 +48,27 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
+import com.sleepfuriously.paulsapp.compose.SwitchWithLabel
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
+import kotlin.collections.forEach
 
 
 /**
@@ -275,7 +287,7 @@ private fun DotDotDotFlockMenu(
                 text = { Text(stringResource(R.string.add_flock)) },
                 onClick = {
                     isDropDownExpanded = false
-                    viewmodel.addFlock()
+                    viewmodel.showConstructFlock()
                 },
             )
 
@@ -411,5 +423,156 @@ private fun ShowFlockInfoDialog(
         },
         dismissButton = { }
     )
-
 }
+
+/**
+ * Call this when the user wants to build a brand new Flock.
+ *
+ * @param   viewmodel       Access to the viewmodel.  This will provide the
+ *                          lists of room and zones that the flock will be
+ *                          built on.  It also handles the callbacks when
+ *                          the user selects things.
+ *
+ * @param   errorMsg        When not empty display this error message.
+ */
+@Composable
+fun ShowConstructFlockDialog(
+    viewmodel: PhilipsHueViewmodel,
+    errorMsg: String,
+    allRooms: Set<PhilipsHueRoomInfo>,
+    allZones: Set<PhilipsHueZoneInfo>,
+
+    /**
+     * This function will be called any time the user toggles on/off a room or
+     * a zone.
+     *
+     * params
+     *  - whether the selection was turned on or off (true or false)
+     *  - The [PhilipsHueRoomInfo] that was selected, or null if not applicable
+     *  - The [PhilipsHueZoneInfo] that was modified (null if it's a room)
+     */
+    onToggled: (Boolean, PhilipsHueRoomInfo?, PhilipsHueZoneInfo?) -> Unit,
+
+    /**
+     * Function to call when the user has finally constructed a Flock.
+     * The caller should already know what has been selected from calls
+     * to [onToggled].
+     *
+     * Note:
+     *  The function REALLY should do something so that this dialog is
+     *  no longer called (viewmodel, hint hint).
+     *
+     * params
+     *  - name for this Flock
+     *
+     * No return value
+     */
+    onOk: (String) -> Unit
+) {
+    /** the name the user is using for this flock */
+    var name by remember { mutableStateOf(EMPTY_STRING) }
+
+    AlertDialog(
+        onDismissRequest = { },     // don't let the user inadvertantly tap away--they NEED to click cancel or OK
+        title = {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                text = stringResource(R.string.add_flock_title))
+        },
+        text = {
+            SelectionContainer {
+
+                Column(Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // Rooms
+                        item {
+                            Text(
+                                text = stringResource(R.string.rooms),
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                        allRooms.forEach { room ->
+                            item {
+                                var checked by remember { mutableStateOf(false) }
+                                SwitchWithLabel(
+                                    label = room.name,
+                                    state = checked,
+                                    textBefore = false,
+                                    onStateChange = { turnedOn ->
+                                        // call onToggled() with the room (zone is null)
+                                        onToggled(turnedOn, room, null)
+                                        checked = turnedOn
+                                    }
+                                )
+                            }
+                        }
+
+                        // Zones
+                        item {
+                            Text(
+                                stringResource(R.string.zones),
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                        allZones.forEach { zone ->
+                            item {
+                                var checked by remember { mutableStateOf(false) }
+                                SwitchWithLabel(
+                                    label = zone.name,
+                                    state = checked,
+                                    textBefore = false,
+                                    onStateChange = { turnedOn ->
+                                        // call onToggled() with the current zone. room is null
+                                        onToggled(turnedOn, null, zone)
+                                        checked = turnedOn
+                                    }
+                                )
+                            }
+                        }
+                    } // LazyColumn
+
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+
+                    OutlinedTextField(
+                        value = name,
+                        label = { Text(stringResource(R.string.add_flock_name_label)) },
+                        onValueChange = { typedText ->
+                            name = typedText
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            // Define Next as our IME action (doesn't matter what it was, as long
+                            // as it's the same as in the keyboardActions below).
+                            imeAction = ImeAction.None,
+                            keyboardType = KeyboardType.Text,
+
+                            ),
+                    )
+                } // Column
+
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onOk(name) }) {
+                Text(stringResource(R.string.add_flock), color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { viewmodel.cancelConstructFlock() },
+            ) { Text(stringResource(R.string.cancel))}
+        }
+    )
+
+    if (errorMsg.isNotEmpty()) {
+        val ctx = LocalContext.current
+        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+        viewmodel.clearFlockErrorMsg()
+    }
+}
+
+private const val TAG = "PhilipsHueComposeFlock"

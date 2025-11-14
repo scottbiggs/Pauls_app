@@ -89,12 +89,17 @@
     <string name="no_colored_lights_in_scene">no colors</string>
     <string name="scene_name_prefix">Scene</string>
 
+    <string name="add_flock_title">Create a Flock</string>
     <string name="add_flock">create new flock</string>
     <string name="delete_flock">delete flock</string>
     <string name="delete_flock_confirm_title">Delete Flock</string>
     <string name="delete_flock_confirm_body">This action will remove the Flock from this application.  Tap \'confirm\' to continue with deletion.</string>
     <string name="show_flock_info_title">Bridge Info</string>
     <string name="flock_size">flocks</string>
+    <string name="add_flock_name_label">name of the new Flock</string>
+    <string name="add_flock_button_label">make it so</string>
+    <string name="no_name_for_new_flock">Please name this flock</string>
+    <string name="no_rooms_or_zones_for_new_flock">Please add at least one room or zone</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
@@ -122,7 +127,9 @@
     <string name="not_applicable">N/A</string>
     <string name="token">token</string>
     <string name="room">room</string>
+    <string name="rooms">rooms</string>
     <string name="zone">zone</string>
+    <string name="zones">zones</string>
     <string name="flock">flock</string>
     <string name="connected">connected</string>
     <string name="on_title">on</string>

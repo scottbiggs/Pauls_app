@@ -20,6 +20,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
+import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Collections.emptySet
 
 /**
  * Viewmodel for all the Philips Hue devices.
@@ -106,12 +108,27 @@ class PhilipsHueViewmodel : ViewModel() {
     /** Holder of the Flocks observed from the repository  */
     val flocks = _flocks.asStateFlow()
 
+    private val _showAddFlockDialog = MutableStateFlow(false)
+    /** When True, the UI should show the add Flock dialog */
+    val showAddFlockDialog = _showAddFlockDialog.asStateFlow()
+
+    private val _addFlockErrorMsg = MutableStateFlow<String>(EMPTY_STRING)
+    /** When not empty, display as an error message */
+    val addFlockErrorMsg = _addFlockErrorMsg.asStateFlow()
+
     //-------------------------
     //  private data
     //-------------------------
 
     /** access to repository */
     private var phRepository = PhilipsHueRepository(viewModelScope)
+
+    /**
+     * This holds data while a flock is being constructed. Should be reset
+     * before starting a new one.
+     */
+    private var workingFlock = WorkingFlock()
+
 
     //-------------------------
     //  init
@@ -129,9 +146,6 @@ class PhilipsHueViewmodel : ViewModel() {
                 Log.d(TAG, "    - collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
                 Log.d(TAG, "      bridgeList = $tmpBridgeList")
                 philipsHueBridgesCompose = tmpBridgeList
-//
-//                // pass back to flocks
-//                phRepository.sendChangeToFlocks(bridgeModelList)
             }
         }
 
@@ -622,6 +636,20 @@ class PhilipsHueViewmodel : ViewModel() {
     //-------------------------
 
     /**
+     * Finds all the rooms for all the bridges.
+     */
+    fun getAllRooms() : Set<PhilipsHueRoomInfo> {
+        return phRepository.getAllRooms()
+    }
+
+    /**
+     * Finds all the zones used by all the bridges
+     */
+    fun getAllZones() : Set<PhilipsHueZoneInfo> {
+        return phRepository.getAllZones()
+    }
+
+    /**
      * Finds out which scenes are used by a room.
      *
      * @return  A List of scenes that a room can use.  Empty list if none found.
@@ -784,7 +812,114 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
 
-    private var flockCounter = 0
+    /**
+     * Call to cause the UI to start displaying the construct flock dialog.
+     *
+     * side effects
+     *  - [workingFlock] reset to empty.
+     */
+    fun showConstructFlock() {
+        workingFlock = WorkingFlock()
+        _showAddFlockDialog.update { true }
+    }
+
+    /**
+     * Change the UI state so that it'll no longer show the flock
+     * construction stuff.
+     */
+    fun cancelConstructFlock() {
+        _showAddFlockDialog.update { false }
+    }
+
+    /**
+     * UI should call this to tell the viewmodel that the error message has
+     * been displayed and no longer needs to be shown.
+     */
+    fun clearFlockErrorMsg() {
+        _addFlockErrorMsg.update { EMPTY_STRING }
+    }
+
+    /**
+     * Signals that the flock construction is complete.  Time to send that
+     * info to the repository and get that flock constructed.  Oh yeah,
+     * don't forget to turn off that add flock dialog!
+     *
+     * preconditions
+     *  - sldfksj
+     *
+     * @param   newFlockName    The name that the user wants to use for this flock
+     */
+    fun flockListOk(newFlockName: String, ctx: Context) {
+        // test to see if the flock is addable
+        if (newFlockName.isBlank()) {
+            _addFlockErrorMsg.update {
+                ctx.getString(R.string.no_name_for_new_flock)
+            }
+            return
+        }
+        if (workingFlock.roomSet.isEmpty() && workingFlock.zoneSet.isEmpty()) {
+            _addFlockErrorMsg.update {
+                ctx.getString(R.string.no_rooms_or_zones_for_new_flock)
+            }
+            return
+        }
+
+        addFlock(
+            name = newFlockName,
+            roomSet = workingFlock.roomSet,
+            zoneSet = workingFlock.zoneSet
+        )
+        cancelConstructFlock()
+    }
+
+    /**
+     * The UI should call this while constructing a new [PhilipsHueFlockInfo]
+     * each time the user adds or removes a room or a zone.
+     *
+     * @param   added       True means the item was added.
+     *                      False means it was removed.
+     *
+     * @param   room        A room is the item in question.  Will be null if
+     *                      the item is a zone.
+     *
+     * @param   zone        The zone to be added or removed. Null if we're
+     *                      working with a room.
+     */
+    fun toggleFlockList(
+        added: Boolean,
+        room: PhilipsHueRoomInfo?,
+        zone: PhilipsHueZoneInfo?
+    ) {
+        // quick sanity check.  Only one (room or zone) should be non-null
+        if ((room != null) && (zone != null)) {
+            Log.e(TAG, "toggleFlockList() error!  Both room and zone are non-null! Aborting!")
+            return
+        }
+
+        if (room != null) {
+            if (added) {
+                workingFlock = workingFlock.copy(roomSet = workingFlock.roomSet + room)
+            }
+            else {
+                workingFlock = workingFlock.copy(roomSet = workingFlock.roomSet - room)
+            }
+        }
+
+        else if (zone != null) {
+            if (added) {
+                workingFlock = workingFlock.copy(zoneSet = workingFlock.zoneSet + zone)
+            }
+            else {
+                workingFlock = workingFlock.copy(zoneSet = workingFlock.zoneSet - zone)
+            }
+        }
+
+        else {
+            // should never happen: at least one of the room or zone should be valid
+            Log.e(TAG, "toggleFlockList() - error: both room and zone are null!")
+        }
+    }
+
     /**
      * Adds a [PhilipsHueFlockInfo] and all the associated stuff.
      *
@@ -799,101 +934,31 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     fun addFlock(
         name: String = "",
-        roomSet: Set<PhilipsHueRoomInfo>? = null,
-        zoneSet: Set<PhilipsHueZoneInfo>? = null,
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>
     ) {
-        flockCounter++
 
-        var workingName = name
-        var workingRoomSet = roomSet?.toMutableSet()
-        var workingZoneSet = zoneSet?.toMutableSet()
-
-        // check for testing
-        if (name.isEmpty() || (roomSet == null) || (zoneSet == null)) {
-            //
-            // TESTING flock
-            //
-
-            workingName = "test flock $flockCounter"
-
-            // find all the possible rooms and zones
-            workingRoomSet = mutableSetOf()
-            workingZoneSet = mutableSetOf()
-            phRepository.bridgeInfoList.value.forEach { bridgeInfo ->
-                workingRoomSet += bridgeInfo.rooms
-                workingZoneSet += bridgeInfo.zones
-            }
-
-            // now make our selections
-            val selectedRooms = mutableSetOf<PhilipsHueRoomInfo>()
-            val selectedZones = mutableSetOf<PhilipsHueZoneInfo>()
-            (0..2).forEach { _ ->
-                val numGroups = (workingRoomSet.size + workingZoneSet.size)
-                val chosen = (0 until numGroups).random()
-                if (chosen < workingRoomSet.size) {
-                    // we chose a room
-                    workingRoomSet.forEachIndexed { i, room ->
-                        if (i == chosen) {
-                            selectedRooms.add(room)
-                        }
-                    }
-                }
-                else {
-                    // chose a zone
-                    workingZoneSet.forEachIndexed { i, zone ->
-                        if (i + workingRoomSet.size - 1 == chosen) {
-                            selectedZones.add(zone)
-                        }
-                    }
-                }
-            }
-
-            workingRoomSet = selectedRooms
-            workingZoneSet = selectedZones
+        // check params for correct input!
+        if (name.isBlank()) {
+            Log.v(TAG, "addFlock() - user tried a name that's blank - ignoring")
+            return
         }
 
-        else {
-            // normal flock creation
+        if (roomSet.isEmpty() && zoneSet.isEmpty()) {
+            Log.v(TAG, "addFlock() - user entered a flock with no rooms or zones - ignoring")
+            return
         }
 
-        // calculate brightness and on/off
-        // fixme: this duplicates calculations done in the Flock Model.
-        var on = false
-        for(room in workingRoomSet!!) {
-            if (room.on) {
-                on = true
-                break
-            }
-        }
-        for (zone in workingZoneSet!!) {
-            if (zone.on) {
-                on = true
-                break
-            }
-        }
-
-        var brightness = 0
-        var brightnessCounter = 0
-        workingRoomSet.forEach { room ->
-            brightnessCounter++
-            brightness += room.brightness
-        }
-        workingZoneSet.forEach { zone ->
-            brightnessCounter++
-            brightness += zone.brightness
-        }
-        brightness /= brightnessCounter
-
-        Log.d(TAG, "Creating new flock with ${workingRoomSet.size} rooms and ${workingZoneSet.size} zones.")
+        Log.d(TAG, "Creating new flock with ${roomSet.size} rooms and ${zoneSet.size} zones.")
         phRepository.addFlock(
-            name = workingName,
-            brightness = brightness,
-            onOffState = on,
-            roomSet = workingRoomSet,
-            zoneSet = workingZoneSet,
+            name = name,
+            roomSet = roomSet,
+            zoneSet = zoneSet,
         )
-    }
 
+        // turn off add flock dialog
+        _sceneDisplayStuffForFlock.update { null }
+    }
 
 
     fun deleteFlock() {
@@ -980,6 +1045,16 @@ class PhilipsHueViewmodel : ViewModel() {
 //-------------------------
 //  classes & enums
 //-------------------------
+
+/**
+ * Use this while constructing a new [PhilipsHueFlockInfo].
+ */
+data class WorkingFlock(
+    val name: String = EMPTY_STRING,
+    val roomSet: Set<PhilipsHueRoomInfo> = emptySet(),
+    val zoneSet: Set<PhilipsHueZoneInfo> = emptySet()
+)
+
 
 /**
  * Holds data that the UI needs to display all the scenes for a room.

@@ -58,6 +58,7 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowConstructFlockDialog
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForFlock
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
@@ -141,6 +142,8 @@ class MainActivity : ComponentActivity() {
                 val flockSceneData = philipsHueViewmodel.sceneDisplayStuffForFlock.collectAsStateWithLifecycle()
 
                 val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
+                val addFlock = philipsHueViewmodel.showAddFlockDialog.collectAsStateWithLifecycle()
+                val addFlockError = philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
@@ -200,6 +203,8 @@ class MainActivity : ComponentActivity() {
                             zoneSceneData = zoneSceneData.value,
                             flockSceneData = flockSceneData.value,
                             philipsHueFlocks = flocks.value,
+                            showAddFlock = addFlock.value,
+                            addFlockErrorMsg = addFlockError.value
                         )
                     }
 
@@ -220,6 +225,8 @@ class MainActivity : ComponentActivity() {
      * @param   minPercent      Tells the most that a pane can shrink.  For example
      *                          0.1 means that the pane can get to 10% its original
      *                          size.
+     *
+     * @param   addFlockErrorMsg    When not empty, display the error message.
      */
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
@@ -231,6 +238,8 @@ class MainActivity : ComponentActivity() {
         flockSceneData: SceneDataForFlock?,
         philipsHueBridges: List<PhilipsHueBridgeInfo>,
         philipsHueFlocks: List<PhilipsHueFlockInfo>,
+        showAddFlock: Boolean,
+        addFlockErrorMsg: String,
         modifier : Modifier = Modifier,
     ) {
 
@@ -238,6 +247,8 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "roomSceneData = $roomSceneData")
         Log.d(TAG, "zoneSceneData = $zoneSceneData")
         Log.d(TAG, "flockSceneData = $flockSceneData")
+
+        val ctx = LocalContext.current
 
         //-------------
         // these are the offsets from the center of the drawing area
@@ -259,8 +270,6 @@ class MainActivity : ComponentActivity() {
             modifier = modifier
                 .fillMaxSize()
                 .background(color = almostBlack)
-//                .safeGesturesPadding()     // takes the insets into account (nav bars, etc)
-//                .safeContentPadding()      // takes the insets into account (nav bars, etc)
                 .safeDrawingPadding()
         ) {
             // Get the pix and dp sizes of the screen.
@@ -315,16 +324,7 @@ class MainActivity : ComponentActivity() {
                         //---------------------
                         //  Philips Hue
                         //
-                        if ((roomSceneData == null) && (zoneSceneData == null) && (flockSceneData == null)) {
-                            // show regular PH stuff
-                            ShowMainScreenPhilipsHue(
-                                modifier = modifier,
-                                philipsHueViewmodel = philipsHueViewmodel,
-                                bridges = philipsHueBridges,
-                                flocks = philipsHueFlocks
-                            )
-                        }
-                        else if (roomSceneData != null) {
+                        if (roomSceneData != null) {
                             // show room/scene specific info
                             ShowScenesForRoom(
                                 bridge = roomSceneData.bridge,
@@ -354,7 +354,33 @@ class MainActivity : ComponentActivity() {
                                 onDismiss = { philipsHueViewmodel.dontShowScenes() }
                             )
                         }
+
+                        else if (showAddFlock) {
+                            ShowConstructFlockDialog(
+                                errorMsg = addFlockErrorMsg,
+                                viewmodel = philipsHueViewmodel,
+                                allRooms = philipsHueViewmodel.getAllRooms(),
+                                allZones = philipsHueViewmodel.getAllZones(),
+                                onToggled = { turnedOn, room, zone ->
+                                    philipsHueViewmodel.toggleFlockList(turnedOn, room, zone)
+                                },
+                                onOk = { flockName ->
+                                    philipsHueViewmodel.flockListOk(flockName, ctx)
+                                }
+                            )
+                        }
+
+                        else {
+                            // show regular PH stuff
+                            ShowMainScreenPhilipsHue(
+                                modifier = modifier,
+                                philipsHueViewmodel = philipsHueViewmodel,
+                                bridges = philipsHueBridges,
+                                flocks = philipsHueFlocks
+                            )
+                        }
                     }
+
                     Box(modifier = niceBorderModifier
                         .weight(rightWeight)
                     ) {

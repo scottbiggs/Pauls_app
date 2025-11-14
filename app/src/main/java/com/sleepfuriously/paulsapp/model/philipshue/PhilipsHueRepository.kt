@@ -129,8 +129,8 @@ class PhilipsHueRepository(
                 // tell the flocks about this change
                 Log.d(TAG, "   while converting, sending info to flocks")
                 updateFlocks(
-                    roomSet = getAllRooms(bridgeModels),
-                    zoneSet = getAllZones(bridgeModels)
+                    roomSet = getAllRoomsForBridgeModels(bridgeModels),
+                    zoneSet = getAllZonesForBridgeModels(bridgeModels)
                 )
 
                 // convert
@@ -203,8 +203,8 @@ class PhilipsHueRepository(
                     }
 
                     updateFlocks(
-                        roomSet = getAllRooms(bridgeModelList.value),
-                        zoneSet = getAllZones(bridgeModelList.value)
+                        roomSet = getAllRoomsForBridgeModels(bridgeModelList.value),
+                        zoneSet = getAllZonesForBridgeModels(bridgeModelList.value)
                     )
                 }
             }
@@ -451,17 +451,17 @@ class PhilipsHueRepository(
     /**
      * Adds a flock to our list.
      *
+     * @param   roomSet     Set of all the rooms to be controlled by the flock
+     *
+     * @param   zoneSet     all the zones controlled by this flock
+     *
      * side effect
      *  A brand-new [PhilipsHueFlockModel] will be created to deal with the new
      *  flock.
      */
     fun addFlock(
         name: String,
-        brightness: Int,
-        onOffState: Boolean,
-        /** Set of all the rooms to be controlled by the flock */
         roomSet: Set<PhilipsHueRoomInfo>,
-        /** all the zones controlled by this flock */
         zoneSet: Set<PhilipsHueZoneInfo>
     ) {
         Log.d(TAG,"addFlock() begin")
@@ -474,8 +474,6 @@ class PhilipsHueRepository(
         // create a new Flock Model and add it to our list
         val newFlockModel = PhilipsHueFlockModel(
             humanName = name,
-            brightness = brightness,
-            onOff = onOffState,
             roomSet = roomSet,
             zoneSet = zoneSet,
             bridgeSet = bridgeSet,
@@ -571,9 +569,16 @@ class PhilipsHueRepository(
     }
 
     /**
+     * Finds all the rooms for all the bridges.
+     */
+    fun getAllRooms() : Set<PhilipsHueRoomInfo> {
+        return getAllRoomsForBridgeModels(bridgeModelList.value)
+    }
+
+    /**
      * Helper. Finds all the rooms used by all the given [PhilipsHueBridgeModel].
      */
-    private fun getAllRooms(
+    private fun getAllRoomsForBridgeModels(
         bridgeModels: List<PhilipsHueBridgeModel>
     ) : Set<PhilipsHueRoomInfo> {
 
@@ -585,9 +590,16 @@ class PhilipsHueRepository(
     }
 
     /**
+     * Like [getAllRooms] this returns all the zones for all the bridges.
+     */
+    fun getAllZones() : Set<PhilipsHueZoneInfo> {
+        return getAllZonesForBridgeModels(bridgeModelList.value)
+    }
+
+    /**
      * Helper. Finds all the rooms used by all the given [PhilipsHueBridgeModel].
      */
-    private fun getAllZones(
+    private fun getAllZonesForBridgeModels(
         bridgeModels: List<PhilipsHueBridgeModel>
     ) : Set<PhilipsHueZoneInfo> {
 

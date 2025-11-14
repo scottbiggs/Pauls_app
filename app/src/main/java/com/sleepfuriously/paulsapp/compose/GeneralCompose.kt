@@ -3,16 +3,23 @@ package com.sleepfuriously.paulsapp.compose
 import android.annotation.SuppressLint
 import androidx.annotation.FloatRange
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -26,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,10 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
@@ -125,7 +136,7 @@ fun SimpleFullScreenBoxMessage(
  *
  * @param   onClick         Function to call when the button is clicked.  This function
  *                          takes the current value of the TextField's string as input.
- *                          Note that you need to prefix your function with double
+ *                          Note that you may need to prefix your function with double
  *                          colons (eg:  ::myFun) to make it recognizable to this param.
  */
 @Composable
@@ -349,6 +360,69 @@ fun DrawInfoDialogLine(
     }
 }
 
+/**
+ * Draws a switch with a label attached.
+ *
+ * @param   label       The text to go with the switch
+ *
+ * @param   state       The current (start) state of this switch.
+ *
+ * @param   textBefore  True - the text should be before the switch.
+ *                      False - text appears after the switch.
+ *
+ * @param   onStateChange   Function to run whenever the user changes
+ *                          the switch.
+ *
+ * from:  https://stackoverflow.com/a/73076422/624814
+ */
+@Composable
+fun SwitchWithLabel(
+    label: String,
+    state: Boolean,
+    textBefore: Boolean = true,
+    onStateChange: (Boolean) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .clickable(
+                interactionSource = interactionSource,
+                // This is for removing ripple when Row is clicked
+                indication = null,
+                role = Role.Switch,
+                onClick = {
+                    onStateChange(!state)
+                }
+            )
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+
+    ) {
+
+        if (textBefore) {
+            // draw the text to the left of the switch
+            Text(text = label)
+            Spacer(modifier = Modifier.padding(start = 8.dp))
+            Switch(
+                checked = state,
+                onCheckedChange = {
+                    onStateChange(it)
+                }
+            )
+        }
+        else {
+            // draw text after (to the right) of the switch
+            Switch(
+                checked = state,
+                onCheckedChange = {
+                    onStateChange(it)
+                }
+            )
+            Spacer(modifier = Modifier.padding(start = 8.dp))
+            Text(text = label)
+        }
+    }
+}
 
 /**
  * Converts the Int version of brightness (ranging from 0 to [MAX_BRIGHTNESS])

@@ -296,7 +296,6 @@ private fun DrawPhilipsHueContents(
 
         }
     }
-
 }
 
 /**
@@ -458,7 +457,6 @@ private fun ShowBridgeInfoDialog(
     bridge: PhilipsHueBridgeInfo,
     onClick: () -> Unit
 ) {
-
     val ctx = LocalContext.current
 
     AlertDialog(
@@ -616,7 +614,6 @@ private fun ShowBridgeInfoDialog(
         },
         dismissButton = { }
     )
-
 }
 
 
