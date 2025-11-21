@@ -18,17 +18,19 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueRepository
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.WorkingFlock
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeAcceptToken
 import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
+import com.sleepfuriously.paulsapp.model.philipshue.generateV2Id
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Collections.emptySet
 
 /**
  * Viewmodel for all the Philips Hue devices.
@@ -127,7 +129,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * This holds data while a flock is being constructed. Should be reset
      * before starting a new one.
      */
-    private var workingFlock = WorkingFlock()
+    private var workingFlock = WorkingFlock(id = generateV2Id())
 
 
     //-------------------------
@@ -146,6 +148,7 @@ class PhilipsHueViewmodel : ViewModel() {
                 Log.d(TAG, "    - collecting bridge list from phRepository: bridgeList size = ${tmpBridgeList.size}")
                 Log.d(TAG, "      bridgeList = $tmpBridgeList")
                 philipsHueBridgesCompose = tmpBridgeList
+                Log.d(TAG, "   - and now philipsHueBridgesCompose size = ${philipsHueBridgesCompose.size}")
             }
         }
 
@@ -819,7 +822,7 @@ class PhilipsHueViewmodel : ViewModel() {
      *  - [workingFlock] reset to empty.
      */
     fun showConstructFlock() {
-        workingFlock = WorkingFlock()
+        workingFlock = WorkingFlock(id = generateV2Id())
         _showAddFlockDialog.update { true }
     }
 
@@ -857,17 +860,28 @@ class PhilipsHueViewmodel : ViewModel() {
             }
             return
         }
-        if (workingFlock.roomSet.isEmpty() && workingFlock.zoneSet.isEmpty()) {
+        if (workingFlock.roomIdSet.isEmpty() && workingFlock.zoneIdSet.isEmpty()) {
             _addFlockErrorMsg.update {
                 ctx.getString(R.string.no_rooms_or_zones_for_new_flock)
             }
             return
         }
 
+        // Find the rooms (from ALL of 'em) that match the ids in the working flock
+        val roomSet = getAllRooms().filter {
+            workingFlock.roomIdSet.contains(it.v2Id)
+        }.toSet()
+
+        // same for zones
+        val zoneSet = getAllZones().filter {
+            workingFlock.zoneIdSet.contains(it.v2Id)
+        }.toSet()
+
+
         addFlock(
             name = newFlockName,
-            roomSet = workingFlock.roomSet,
-            zoneSet = workingFlock.zoneSet
+            roomSet = roomSet,
+            zoneSet = zoneSet
         )
         cancelConstructFlock()
     }
@@ -898,19 +912,19 @@ class PhilipsHueViewmodel : ViewModel() {
 
         if (room != null) {
             if (added) {
-                workingFlock = workingFlock.copy(roomSet = workingFlock.roomSet + room)
+                workingFlock = workingFlock.copy(roomIdSet = workingFlock.roomIdSet + room.v2Id)
             }
             else {
-                workingFlock = workingFlock.copy(roomSet = workingFlock.roomSet - room)
+                workingFlock = workingFlock.copy(roomIdSet = workingFlock.roomIdSet - room.v2Id)
             }
         }
 
         else if (zone != null) {
             if (added) {
-                workingFlock = workingFlock.copy(zoneSet = workingFlock.zoneSet + zone)
+                workingFlock = workingFlock.copy(zoneIdSet = workingFlock.zoneIdSet + zone.v2Id)
             }
             else {
-                workingFlock = workingFlock.copy(zoneSet = workingFlock.zoneSet - zone)
+                workingFlock = workingFlock.copy(zoneIdSet = workingFlock.zoneIdSet - zone.v2Id)
             }
         }
 
@@ -949,11 +963,13 @@ class PhilipsHueViewmodel : ViewModel() {
             return
         }
 
+        // create the flock for the repository
         Log.d(TAG, "Creating new flock with ${roomSet.size} rooms and ${zoneSet.size} zones.")
         phRepository.addFlock(
             name = name,
             roomSet = roomSet,
             zoneSet = zoneSet,
+            longTermStorage = true
         )
 
         // turn off add flock dialog
@@ -961,9 +977,10 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
 
-    fun deleteFlock() {
-        Log.e(TAG, "deleteFlock() not implemented!")
-        TODO()
+    fun deleteFlock(flock: PhilipsHueFlockInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            phRepository.deleteFlock(flock)
+        }
     }
 
 
@@ -1045,16 +1062,6 @@ class PhilipsHueViewmodel : ViewModel() {
 //-------------------------
 //  classes & enums
 //-------------------------
-
-/**
- * Use this while constructing a new [PhilipsHueFlockInfo].
- */
-data class WorkingFlock(
-    val name: String = EMPTY_STRING,
-    val roomSet: Set<PhilipsHueRoomInfo> = emptySet(),
-    val zoneSet: Set<PhilipsHueZoneInfo> = emptySet()
-)
-
 
 /**
  * Holds data that the UI needs to display all the scenes for a room.

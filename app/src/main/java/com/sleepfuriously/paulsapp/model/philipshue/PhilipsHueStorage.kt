@@ -2,22 +2,30 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.content.Context
 import android.util.Log
+import com.sleepfuriously.paulsapp.model.PREFS_BRIDGE_PASS_TOKEN_FILENAME
 import com.sleepfuriously.paulsapp.model.deletePref
 import com.sleepfuriously.paulsapp.model.getPrefsSet
 import com.sleepfuriously.paulsapp.model.getPrefsString
+import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.WorkingFlock
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
+import com.sleepfuriously.paulsapp.model.savePrefsStringsAndSets
 
 /**
- * Controls storing and retrieving data about the bridges that
- * persists when the app isn't running.  Essentially all that
- * info is stored in sharedprefs.
+ * Controls storing and retrieving data about the Philips Hue system
+ * that persists when the app isn't running.  Essentially all info is
+ * stored in sharedprefs.
  */
-object PhilipsHueBridgeStorage {
+object PhilipsHueStorage {
 
     //---------------------------
     //  read
     //---------------------------
+
+    //--------------------
+    //  Bridges
+    //
 
     /**
      * Loads all the known bridge ids from the prefs.
@@ -52,7 +60,7 @@ object PhilipsHueBridgeStorage {
     fun loadBridgeToken(bridgeId: String, ctx: Context) : String {
 
         val key = assembleTokenKey(bridgeId)
-        val token = getPrefsString(ctx, key)
+        val token = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         Log.d(TAG, "loadBridgeTokenFromPrefs($bridgeId) => $token")
         return token ?: ""
@@ -70,15 +78,117 @@ object PhilipsHueBridgeStorage {
     fun loadBridgeIp(bridgeId: String, ctx: Context) : String {
 
         val key = assembleIpKey(bridgeId)
-        val ip = getPrefsString(ctx, key)
+        val ip = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         Log.d(TAG, "loadBridgeIpFromPrefs($bridgeId) => $ip")
         return ip ?: ""
     }
 
+    //--------------------
+    //  Flocks
+    //
+
+    /**
+     * Loads the various [WorkingFlock] from long-term storage.
+     *
+     * Here's how zones are stored:
+     *
+     *  Flocks have their own file, [PHILIPS_HUE_FLOCK_PREFS_FILENAME].
+     */
+    fun loadFlocks(ctx: Context) : Set<WorkingFlock> {
+        TODO("If necessary")
+    }
+
+    /**
+     * Returns all the ids for all the flocks.  These keys are used to find
+     * all the other data.
+     *
+     * @return      A Set of all the Flock ids.  Returns empty set if none are
+     *              found.
+     */
+    private fun loadFlockIds(ctx: Context) : Set<String> {
+        val idSet = getPrefsSet(
+            ctx = ctx,
+            key = PHILIPS_HUE_FLOCK_IDS_KEY,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+
+        if (idSet == null) {
+            Log.e(TAG, "loadFlockIds() - unable to get flock ids!  Probably none to get yet.")
+            return emptySet()
+        }
+
+        return idSet
+    }
+
+    /**
+     * Loads the name of the given flock.
+     *
+     * The key for the name is comes from [assembleFlockNameKey].
+     *
+     * @param   flockId     The unique id for this flock.  It's used to create
+     *                      the key for its name.
+     */
+    private fun loadFlockName(ctx: Context, flockId: String) : String? {
+
+        // unique key for this name
+        val key = assembleFlockNameKey(flockId)
+        val name = getPrefsString(
+            ctx = ctx,
+            key = key,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+        if (name == null) {
+            Log.e(TAG, "loadFlockName() - unable to find the name of flock $flockId")
+        }
+        return name
+    }
+
+    /**
+     * Loads all the room ids for the given flock.
+     *
+     * @return  A Set of the ids for the rooms.  The Set will be empty if none
+     *          are found.
+     */
+    private fun loadFlockRoomIds(ctx: Context, flockId: String) : Set<String> {
+        val key = assembleFlockRoomsKey(flockId)
+        val roomIds = getPrefsSet(
+            ctx = ctx,
+            key = key,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+
+        if (roomIds == null) {
+            Log.e(TAG, "loadFlockRoomIds() - unable to find any rooms (not even no rooms)")
+            return emptySet()
+        }
+        return roomIds
+    }
+
+    /**
+     * Similar to [loadFlockRoomIds] but for zones.
+     */
+    private fun loadFlockZoneIds(ctx: Context, flockId: String) : Set<String> {
+        val key = assembleFlockZonesKey(flockId)
+        val zoneIds = getPrefsSet(
+            ctx = ctx,
+            key = key,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+        if (zoneIds == null) {
+            Log.e(TAG, "loadFlockRoomIds() - unable to find any zones (not even no zones)")
+            return emptySet()
+        }
+        return zoneIds
+    }
+
     //---------------------------
     //  write
     //---------------------------
+
+    //--------------------
+    //  Bridges
+    //
 
     /**
      * Saves the id of the bridge in the list of bridge ids.  The id is needed
@@ -103,7 +213,6 @@ object PhilipsHueBridgeStorage {
         synchronize: Boolean = false,
         ctx: Context,
     ) : Boolean {
-
 
         // get the current id set
         val idSet = (loadAllBridgeIds(ctx) ?: setOf())
@@ -160,7 +269,7 @@ object PhilipsHueBridgeStorage {
     ) : Boolean {
 
         val ipKey = assembleIpKey(bridgeId)
-        savePrefsString(ctx, ipKey, newIp, synchronize)      // long-term
+        savePrefsString(ctx, ipKey, newIp, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         return true
     }
@@ -196,7 +305,7 @@ object PhilipsHueBridgeStorage {
     ) : Boolean {
 
         val tokenKey = assembleTokenKey(bridgeId)
-        savePrefsString(ctx, tokenKey, newToken, synchronize)      // long-term
+        savePrefsString(ctx, tokenKey, newToken, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         return true
     }
@@ -245,9 +354,65 @@ object PhilipsHueBridgeStorage {
         return true
     }
 
+    //--------------------
+    //  Flocks
+    //
+
+    /**
+     * Does all the work of saving this flocks' info to long-term storage.
+     *
+     * @return      True if everything works.  False on any kind of error.
+     */
+    fun saveFlock(ctx: Context, flock: PhilipsHueFlockInfo) {
+
+        // Prep for calling savePrefsStringsAndSets()
+        val stringPairs = mutableMapOf<String, String>()
+        val setPairs = mutableMapOf<String, Set<String>>()
+
+        // figure out the flock's name
+        val flockNameKey = assembleFlockNameKey(flock.id)
+        stringPairs[flockNameKey] = flock.name
+
+        // add the rooms
+        val roomsKey = assembleFlockRoomsKey(flock.id)
+        val roomsValueSet = flock.roomSet.map { it.v2Id }.toSet()
+        setPairs[roomsKey] = roomsValueSet
+
+        // add the zones
+        val zonesKey = assembleFlockZonesKey(flock.id)
+        val zonesValueSet = flock.zoneSet.map { it.v2Id }.toSet()
+        setPairs[zonesKey] = zonesValueSet
+
+        // Finally the actual id of the flock itself.  This is tricky
+        // as we need to modify the existing flock set to include this
+        // new id
+
+        // get the current flock id set
+        val flockIdSet = loadFlockIds(ctx)
+
+        // create new id set
+        val newFlockIdSet = flockIdSet + flock.id
+
+        // add it
+        setPairs[PHILIPS_HUE_FLOCK_IDS_KEY] = newFlockIdSet
+
+        // And NOW we are ready to actually save to prefs
+        savePrefsStringsAndSets(
+            ctx = ctx,
+            daStringPairs = stringPairs,
+            daSets = setPairs,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            synchronize = false
+        )
+    }
+
     //---------------------------
     //  delete
     //---------------------------
+
+    //--------------------
+    //  Bridges
+    //
 
     /**
      * Removes the bridge id from long-term storage (prefs).  If it's not
@@ -319,7 +484,7 @@ object PhilipsHueBridgeStorage {
     ) : Boolean {
 
         val tokenKey = assembleTokenKey(bridgeId)
-        deletePref(ctx, tokenKey, synchronize)
+        deletePref(ctx, tokenKey, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
         return true
     }
 
@@ -341,10 +506,97 @@ object PhilipsHueBridgeStorage {
     ) {
 
         val ipKey = assembleIpKey(bridgeId)
-        deletePref(ctx, ipKey, synchronize)
+        deletePref(ctx, ipKey, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
     }
 
 
+    //--------------------
+    //  Flocks
+    //
+
+    /**
+     * Call this to delete the given flock from long-term storage.
+     *
+     * Deleting a Flock entails:
+     *  - deleting the flock's name
+     *  - deleting the flock's room IDs
+     *  - deleting the flock's zone IDs
+     *  - finally deleting the Flock IDs
+     */
+    suspend fun removeFlock(ctx: Context, flock: PhilipsHueFlockInfo) {
+        removeFlockName(ctx, flock)
+        removeFlockRoomIDs(ctx, flock)
+        removeFlockZoneIDs(ctx, flock)
+        removeFlockId(ctx, flock)
+    }
+
+    /**
+     * Removes the ID for the given flock from long-term storage.  The
+     * other data referenced by this ID will no longer be accessible, so
+     * remember to delete those too!
+     */
+    private suspend fun removeFlockId(ctx: Context, flock: PhilipsHueFlockInfo) {
+        //
+        // Removing just one element from a Set is tricky.
+        //  1. copy the Set of IDs
+        //  2. remove the ID we want to delete
+        //  3. delete the original Set of IDs
+        //  4. save the new set.
+        //
+        val flockIdSet = loadFlockIds(ctx)
+        val newFlockIdSet = flockIdSet - flock.id
+        deletePref(
+            ctx = ctx,
+            key = PHILIPS_HUE_FLOCK_IDS_KEY,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            synchronize = true
+        )
+        savePrefsSet(
+            ctx = ctx,
+            key = PHILIPS_HUE_FLOCK_IDS_KEY,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            newFlockIdSet,
+            synchronize = true
+        )
+    }
+
+    /**
+     * Removes the given flock name from long-term storage.  Helper function
+     * for [removeFlock].
+     */
+    private suspend fun removeFlockName(ctx: Context, flock: PhilipsHueFlockInfo) {
+        val deleteNameKey = assembleFlockNameKey(flock.id)
+        deletePref(
+            ctx = ctx,
+            key = deleteNameKey,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+    }
+
+    /**
+     * Removes all the room IDs associated with the given flock from
+     * long-term storage.
+     */
+    private suspend fun removeFlockRoomIDs(ctx: Context, flock: PhilipsHueFlockInfo) {
+        val deleteRoomsKey = assembleFlockRoomsKey(flock.id)
+        deletePref(
+            ctx = ctx,
+            key = deleteRoomsKey,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+    }
+
+    /**
+     * Removes all the zone IDs for the given flock from long-term storage.
+     */
+    private suspend fun removeFlockZoneIDs(ctx: Context, flock: PhilipsHueFlockInfo) {
+        val deleteZonesKey = assembleFlockZonesKey(flock.id)
+        deletePref(
+            ctx = ctx,
+            key = deleteZonesKey,
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+        )
+    }
 
     //---------------------------
     //  helpers
@@ -364,8 +616,21 @@ object PhilipsHueBridgeStorage {
         return PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX + bridgeId
     }
 
+    /**
+     * Creates the key needed to access a flock's name in the prefs.
+     * You still need to use the correct filename later.
+     */
+    fun assembleFlockNameKey(flockId: String) : String {
+        return PHILIPS_HUE_FLOCK_NAME_KEY_PREFIX + flockId
+    }
 
+    fun assembleFlockRoomsKey(flockId: String) : String {
+        return PHILIPS_HUE_FLOCK_ROOM_ID_KEY_PREFIX + flockId
+    }
 
+    fun assembleFlockZonesKey(flockId: String) : String {
+        return PHILIPS_HUE_FLOCK_ZONE_ID_KEY_PREFIX + flockId
+    }
 }
 
 //-------------------------------------
@@ -392,3 +657,21 @@ private const val PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX = "ph_bridge_token_key"
 
 /** prefix of key to get ip from prefs (see [PHILIPS_HUE_BRIDGE_TOKEN_KEY_PREFIX]) */
 private const val PHILIPS_HUE_BRIDGE_IP_KEY_PREFIX = "ph_bridge_ip_key"
+
+//---
+//  flocks
+
+/** filename to access the Philips Hue prefs that hold Flock info */
+const val PHILIPS_HUE_FLOCK_PREFS_FILENAME = "ph_flock_prefs"
+
+/** key to access all the ids for all the flocks */
+const val PHILIPS_HUE_FLOCK_IDS_KEY = "flock_ids_key"
+
+/** Merged with the flock id to make the key to access that flock's name */
+private const val PHILIPS_HUE_FLOCK_NAME_KEY_PREFIX = "flock_name_prefix-"
+
+/** Merged with the flock id to make the full key to access a Set of room ids */
+private const val PHILIPS_HUE_FLOCK_ROOM_ID_KEY_PREFIX = "flock_room_prefix-"
+
+/** The zone id key is made by concatenating the flock id with this */
+private const val PHILIPS_HUE_FLOCK_ZONE_ID_KEY_PREFIX = "flock_zone_prefix-"

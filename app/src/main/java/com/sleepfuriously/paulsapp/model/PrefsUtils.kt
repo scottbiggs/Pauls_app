@@ -32,8 +32,7 @@ import kotlinx.coroutines.withContext
  *
  * @param   key     The key for this string.
  *
- * @param   filename    The name of the prefs file.  Defaults to
- *                      PREFS_FILENAME.
+ * @param   filename    The name of the prefs file.
  *
  * @return      The corresponding string.  Null if does not exist.
  *
@@ -44,7 +43,7 @@ import kotlinx.coroutines.withContext
 fun getPrefsString(
     ctx: Context,
     key: String,
-    filename: String = PREFS_FILENAME
+    filename: String,
 ) : String? {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     return prefs.getString(key, null)
@@ -69,7 +68,7 @@ fun savePrefsString(
     key: String,
     value: String,
     synchronize : Boolean = false,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
@@ -95,7 +94,7 @@ fun deletePref(
     ctx: Context,
     key: String,
     synchronize : Boolean = false,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
@@ -123,7 +122,7 @@ fun deletePref(
 suspend fun getLotsOfPrefsStrings(
     ctx: Context,
     keys: Set<String>,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) : Set<Pair<String, String?>> = withContext(Dispatchers.IO) {
 
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
@@ -158,13 +157,56 @@ suspend fun getLotsOfPrefsStrings(
 suspend fun saveLotsOfPrefsStrings(
     ctx: Context,
     setOfPairs: Set<Pair<String, String>>,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) = withContext(Dispatchers.IO) {
 
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(true) {
         setOfPairs.forEach { pair ->
             putString(pair.first, pair.second)
+        }
+    }
+}
+
+/**
+ * Use this if you have a bunch of things (Strings and Sets<String>) that
+ * you want to save.  Sharedprefs don't like being called lots of times
+ * (especially writes!), so this should handle that case without causing
+ * data loss.
+ *
+ * @param   daStringPairs   This is a Map of multips KEYs and VALUEs.
+ *                          Each key will map to its value.  Each will be
+ *                          added to the sharedprefs.
+ *                          Empty Set should be sent if not applicable.
+ *
+ * @param   daSets      This is even more complicated.  Each item in [daSets]
+ *                      is a Map where the first item is a KEY.  The VALUE
+ *                      is itself a SET of Strings.
+ *                      Send an empty Set if nothing is relevant.
+ *
+ * @param   filename    The name of the prefs file.
+ *
+ * @param   synchronize When TRUE, this function will wait and do things the
+ *                      slow way.
+ */
+fun savePrefsStringsAndSets(
+    ctx: Context,
+    daStringPairs: Map<String, String>,
+    daSets: Map<String, Set<String>>,
+    filename: String,
+    synchronize: Boolean
+) {
+    val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
+    prefs.edit(commit = synchronize) {
+
+        // enter daStringPairs
+        daStringPairs.forEach { stringPair ->
+            putString(stringPair.key, stringPair.value)
+        }
+
+        // and then do the sets
+        daSets.forEach { aSet ->
+            putStringSet(aSet.key, aSet.value)
         }
     }
 }
@@ -179,7 +221,7 @@ fun getPrefsInt(
     ctx: Context,
     key: String,
     defaultValue: Int,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) : Int {
     val num: Int
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
@@ -212,7 +254,7 @@ fun savePrefsInt(
     key: String,
     num: Int,
     synchronize : Boolean = false,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
@@ -229,7 +271,7 @@ fun getPrefsLong(
     ctx: Context,
     key: String,
     defaultValue: Long,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) : Long {
     val num: Long
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
@@ -253,7 +295,7 @@ fun savePrefsLong(
     key: String,
     num: Long,
     synchronize : Boolean = false,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
@@ -272,7 +314,7 @@ fun getPrefsBool(
     ctx: Context,
     key: String,
     defaultBool: Boolean,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) : Boolean {
     val bool: Boolean
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
@@ -306,7 +348,7 @@ fun savePrefsBoolean(
     key: String,
     bool: Boolean,
     synchronize : Boolean = false,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
@@ -324,7 +366,7 @@ fun savePrefsBoolean(
 fun getPrefsSet(
     ctx: Context,
     key: String,
-    filename: String = PREFS_FILENAME
+    filename: String
 ) : Set<String>? {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     try {
@@ -349,7 +391,7 @@ fun getPrefsSet(
 fun savePrefsSet(
     ctx: Context,
     key: String,
-    filename: String = PREFS_FILENAME,
+    filename: String,
     daSet: Set<String>,
     synchronize : Boolean = false
 ) {
@@ -365,7 +407,7 @@ fun savePrefsSet(
  * Gets all the keys from a preferences file in the form of a Set.
  */
 @Suppress("unused")
-fun getAllKeys(ctx: Context, filename : String = PREFS_FILENAME) : MutableSet<String> {
+fun getAllKeys(ctx: Context, filename : String) : MutableSet<String> {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     return prefs.all.keys
 }
@@ -382,5 +424,5 @@ fun getAllKeys(ctx: Context, filename : String = PREFS_FILENAME) : MutableSet<St
 private const val TAG = "PrefsUtil"
 
 /** name of the preference file */
-private const val PREFS_FILENAME = "paulsapp_prefs"
+const val PREFS_BRIDGE_PASS_TOKEN_FILENAME = "paulsapp_prefs"
 

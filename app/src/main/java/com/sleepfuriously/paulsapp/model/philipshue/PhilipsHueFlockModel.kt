@@ -41,10 +41,6 @@ import kotlinx.coroutines.launch
  * @param   currentSceneName    The scene that is currently displayed. Defaults to
  *                              empty string (none).
  *
- * @param   brightness          The brightness 0..100 for this flock currently.
- *
- * @param   onOff               Tells if this flock is on or off.
- *
  * @param   repository          A [PhilipsHueRepository] that controls the
  *                              rooms and zones this flock uses.
  */
@@ -54,6 +50,7 @@ class PhilipsHueFlockModel(
     roomSet: Set<PhilipsHueRoomInfo>,
     zoneSet: Set<PhilipsHueZoneInfo>,
     humanName: String,
+    id: String = generateV2Id(),
     currentSceneName: String = "",
     /** The repository that holds rooms and zones */
     private val repository: PhilipsHueRepository
@@ -64,7 +61,7 @@ class PhilipsHueFlockModel(
     //-------------------------------------
 
     // make a new flock from supplied data
-    private val _flock = MutableStateFlow<PhilipsHueFlockInfo>(
+    private val _flock = MutableStateFlow(
         PhilipsHueFlockInfo(
             name = humanName,
             currentSceneName = currentSceneName,
@@ -73,7 +70,7 @@ class PhilipsHueFlockModel(
             bridgeSet = bridgeSet,
             roomSet = roomSet,
             zoneSet = zoneSet,
-            id = generateV2Id()
+            id = id
         )
     )
     /** Flow of the Flock. Observers will be notified of changes */
@@ -389,22 +386,7 @@ class PhilipsHueFlockModel(
      * @return  A copy of the given flock with brightness refreshed.
      */
     fun refreshBrightness(flock: PhilipsHueFlockInfo) : PhilipsHueFlockInfo {
-        var brightnessSum = 0
-        var groupCount = 0
-
-        // for now, it's just the average of all the rooms and zones
-        flock.roomSet.forEach { roomInfo ->
-            groupCount++
-            brightnessSum += roomInfo.brightness
-        }
-
-        flock.zoneSet.forEach { zoneInfo ->
-            groupCount++
-            brightnessSum += zoneInfo.brightness
-        }
-
-        val newBrightness = brightnessSum / groupCount
-        return flock.copy(brightness = newBrightness)
+        return flock.copy(brightness = flock.calculateBrightness())
     }
 
     /**
@@ -414,19 +396,7 @@ class PhilipsHueFlockModel(
      * @return  A flock just like the input but with the on/off state correct.
      */
     fun refreshOnOff(flock: PhilipsHueFlockInfo) : PhilipsHueFlockInfo {
-
-        flock.roomSet.forEach { room ->
-            if (room.on) {
-                return flock.copy(onOffState = true)
-            }
-        }
-
-        flock.zoneSet.forEach { zone ->
-            if (zone.on) {
-                return flock.copy(onOffState = true)
-            }
-        }
-        return flock.copy(onOffState = false)
+        return flock.copy(onOffState = flock.calculateOnOff())
     }
 
     /**

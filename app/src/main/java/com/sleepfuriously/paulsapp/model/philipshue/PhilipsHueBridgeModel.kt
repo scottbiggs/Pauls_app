@@ -92,6 +92,10 @@ class PhilipsHueBridgeModel(
     /** Flow for this bridge. Collectors will be notified of changes to this bridge. */
     val bridge = _bridge.asStateFlow()
 
+    /** Useful for figuring out when this Bridge Model is ready to use */
+    var initializing = true
+        private set
+
     //
     //  todo: The following could (should) be put in the bridge data!!!
     //
@@ -99,10 +103,6 @@ class PhilipsHueBridgeModel(
     private val _devices = MutableStateFlow<List<PHv2Device>>(emptyList())
     /** master list of all devices on this bridge */
     val devices = _devices.asStateFlow()
-
-    private val _groupedLights = MutableStateFlow<List<PHv2GroupedLight>>(emptyList())
-    /** master list of all the light groups for this bridge */
-    val groupedLights = _groupedLights.asStateFlow()
 
 
     //-------------------------------------
@@ -119,7 +119,7 @@ class PhilipsHueBridgeModel(
     /**
      * Called every time this class is instantiated.  Does NOT do the
      * work of retrieving info from the long-term storage (that stuff
-     * is done in [PhilipsHueBridgeStorage]) and it's assumed that it is
+     * is done in [PhilipsHueStorage]) and it's assumed that it is
      * completed before instantiating; the params from that are required
      * to start this up anyway.
      */
@@ -127,6 +127,7 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "init() begin: id = $bridgeV2Id")
         coroutineScope.launch(Dispatchers.IO) {
 
+            // This will take care of most of the initializations
             refresh()
 
             // exit if the bridge is not active as there's nothing more to do
@@ -167,6 +168,9 @@ class PhilipsHueBridgeModel(
                     }
                 }
             }
+
+            // done with initializations
+            initializing = false
         }
     }
 
@@ -239,40 +243,6 @@ class PhilipsHueBridgeModel(
                     bridgeIp = bridgeIpAddress,
                     bridgeToken = bridgeToken
                 )
-            }
-
-            // smb - this seens to work, or does it?  Does this change really propogate upstream?
-//            _lights.update {
-//                val v2LightsList = PhilipsHueBridgeApi.getAllLightsFromApi(
-//                    bridgeIp = bridgeIpAddress,
-//                    bridgeToken = bridgeToken
-//                )
-//
-//                val newLightList = mutableListOf<PhilipsHueLightInfo>()
-//                v2LightsList.data.forEach { v2Light ->
-//                    newLightList.add(convertV2LightToPhilipsHueLightInfo(v2Light, bridgeIpAddress))
-//                }
-//                newLightList
-//            }
-
-            _groupedLights.update {
-                val apiGroup = PhilipsHueApi.getAllGroupedLightsFromApi(
-                    bridgeIp = bridgeIpAddress,
-                    bridgeToken = bridgeToken
-                )
-
-                if (apiGroup == null) {
-                    Log.w(TAG, "refresh(): network error trying to find grouped lights!")
-                    emptyList()
-                }
-
-                else if (apiGroup.errors.isNotEmpty()) {
-                    Log.w(TAG, "refresh(): api error trying to find grouped lights!")
-                    emptyList()
-                }
-                else {
-                    convertV2GroupedLightsAllToV2GroupedLights(apiGroup)
-                }
             }
 
             // load up the various groupings

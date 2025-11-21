@@ -1,8 +1,11 @@
 package com.sleepfuriously.paulsapp.model.philipshue.data
 
+import android.util.Log
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.generateV2Id
+import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
+import kotlin.math.roundToInt
 
 /**
  * Basic data class for Flocks, a data class of my own invention.
@@ -65,7 +68,77 @@ data class PhilipsHueFlockInfo(
     }
 
 
+    /**
+     * This calculates the brightness from the current rooms and zones.
+     * The [brightness] property is NOT used.  Thus you can use this
+     * to actually calculate the [brightness] property.
+     */
+    fun calculateBrightness() : Int {
+        var brightnessSum = 0.0
+        var groupCount = 0
+
+        // for now, it's just the average of all the rooms and zones
+        roomSet.forEach { roomInfo ->
+            groupCount++
+            brightnessSum += roomInfo.brightness
+        }
+
+        zoneSet.forEach { zoneInfo ->
+            groupCount++
+            brightnessSum += zoneInfo.brightness
+        }
+
+        if (groupCount == 0) {
+            Log.e(TAG, "calculateBrightness() - weird error! groupCount is 0! We're going to crash now.")
+
+            // fixme:  this is a HACK--it should be an error that never happens.
+            return 0
+        }
+
+        return (brightnessSum / groupCount).roundToInt()
+    }
+
+    /**
+     * Calculates the on/off state by checking the values of all the rooms
+     * and zones.  Does NOT use the [onOffState] property.  So this is a
+     * great way to figure out that property!
+     */
+    fun calculateOnOff() : Boolean {
+        roomSet.forEach { room ->
+            if (room.on) {
+                return true
+            }
+        }
+
+        zoneSet.forEach { zone ->
+            if (zone.on) {
+                return true
+            }
+        }
+        return false
+    }
 }
+
+
+/**
+ * Use this while constructing a new [PhilipsHueFlockInfo].
+ *
+ * @param   id      If doing a brand-new ID, call [generateV2Id].
+ *
+ * @param   name    The human-readable name for this flock.
+ *
+ * @param   roomIdSet   A Set of room IDs.  They'll be used later
+ *                      to find actual rooms.
+ *
+ * @param   zoneIdSet   Same for [PhilipsHueZoneInfo]s.
+ */
+data class WorkingFlock(
+    val id: String,
+    val name: String = EMPTY_STRING,
+    val roomIdSet: Set<String> = emptySet(),
+    val zoneIdSet: Set<String> = emptySet()
+)
+
 
 //-------------------------------------------------------------
 

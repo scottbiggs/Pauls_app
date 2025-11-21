@@ -1,14 +1,20 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
+import android.content.Context
 import android.util.Log
 import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockNameKey
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockRoomsKey
+import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockZonesKey
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
+import com.sleepfuriously.paulsapp.model.philipshue.data.WorkingFlock
+import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
@@ -17,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +32,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.collections.plus
 
 /**
@@ -64,7 +72,7 @@ import kotlin.collections.plus
  * Philips Hue lights.  It contains all the information about the light system
  * and is the primary point of contact for this app.
  *
- * I use [PhilipsHueBridgeStorage] to store and retrieve basic info about
+ * I use [PhilipsHueStorage] to store and retrieve basic info about
  * bridges that have been found in the past.  There the ip and token are
  * generally stored in shared prefs (todo: use encrypted prefs),
  * but once the info is found, it is stored here for quick retrieval.
@@ -185,21 +193,12 @@ class PhilipsHueRepository(
     //
 
     init {
-
         coroutineScope.launch {
             while (true) {
                 bridgeInfoList.collect {
                     Log.d(TAG, "bridgeInfoList collected: size = ${it.size}")
                     it.forEach { bridgeInfo ->
                         Log.d(TAG, "   bridgeInfo: ${bridgeInfo.humanName}, lights size = ${bridgeInfo.lights.size}")
-                    }
-
-                    // create new light set
-                    val newLightSet = mutableSetOf<PhilipsHueLightInfo>()
-                    it.forEach { bridgeInfo ->
-                        bridgeInfo.lights.forEach { lightInfo ->
-                            newLightSet.add(lightInfo)
-                        }
                     }
 
                     updateFlocks(
@@ -220,7 +219,7 @@ class PhilipsHueRepository(
             // 1. Load bridge ids from prefs
             //
             val ctx = MyApplication.appContext
-            val bridgeIdsFromPrefs = PhilipsHueBridgeStorage.loadAllBridgeIds(ctx)
+            val bridgeIdsFromPrefs = PhilipsHueStorage.loadAllBridgeIds(ctx)
             if (bridgeIdsFromPrefs.isNullOrEmpty()) {
                 return@launch
             }
@@ -232,10 +231,10 @@ class PhilipsHueRepository(
             bridgeIdsFromPrefs.forEach { id ->
 
                 // get the IP for this bridge
-                val ip = PhilipsHueBridgeStorage.loadBridgeIp(id, ctx)
+                val ip = PhilipsHueStorage.loadBridgeIp(id, ctx)
 
                 // get the token for this bridge
-                val token = PhilipsHueBridgeStorage.loadBridgeToken(id, ctx)
+                val token = PhilipsHueStorage.loadBridgeToken(id, ctx)
 
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
@@ -273,12 +272,17 @@ class PhilipsHueRepository(
             //
             val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
             workingBridgeSet.forEach { workingBridge ->
-                tmpBridgeModels.add(PhilipsHueBridgeModel(
+                val newBridgeModel = PhilipsHueBridgeModel(
                     bridgeV2Id = workingBridge.v2Id,
                     bridgeIpAddress = workingBridge.ipAddress,
                     bridgeToken = workingBridge.token,
                     coroutineScope = coroutineScope
-                ))
+                )
+                // wait for the Bridge Model to finish
+                while (newBridgeModel.initializing) {
+                    delay(50)
+                }
+                tmpBridgeModels.add(newBridgeModel)
             }
 
             // 3. update the flow (well, the variable that is reflected in the flow)
@@ -291,53 +295,18 @@ class PhilipsHueRepository(
                 }
                 tmpBridgeModels
             }
+
+            // 4. Now that the flow is updated, load the Flocks
+            //
+            loadAllFlocks(ctx)
         }
 
     }
 
 
-    //-------------------------------
-    //  starters & stoppers
-    //-------------------------------
-
-    /**
-     * Connects the given bridge to this app, enabling this app to
-     * receive updates on changes to the Philips Hue world (sse).
-     */
-    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
-
-        if (bridge.connected) {
-            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.v2Id}")
-            return
-        }
-
-        // find the bridge model and tell it to connect for sse
-        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
-            bridgeModel.bridge.value.v2Id == bridge.v2Id
-        }
-        foundBridgeModel?.connectSSE()
-    }
-
-    /**
-     * Stop receiving updates about the Philps Hue IoT for this bridge (sse).
-     * If the bridge is not found, nothing is done.
-     *
-     * Should be no need to do any changes: the bridge itself should call onClosed()
-     * which will be processed.
-     */
-    fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
-        Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
-
-        // find the bridge model and disconnect sse
-        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
-            bridgeModel.bridge.value.v2Id == bridge.v2Id
-        }
-        foundBridgeModel?.disconnectSSE()
-    }
-
-    //-------------------------------
-    //  create
-    //-------------------------------
+    //-----------------------------------------------------------
+    //  bridge functions
+    //-----------------------------------------------------------
 
     /**
      * This asks the bridge for a token (name).  This is part of the
@@ -437,7 +406,7 @@ class PhilipsHueRepository(
         }
 
         // update long-term data
-        PhilipsHueBridgeStorage.saveBridge(
+        PhilipsHueStorage.saveBridge(
             bridgeId = id,
             bridgeipAddress = newBridge.ip,
             newToken = newBridge.token,
@@ -447,48 +416,6 @@ class PhilipsHueRepository(
 
         return true
     }
-
-    /**
-     * Adds a flock to our list.
-     *
-     * @param   roomSet     Set of all the rooms to be controlled by the flock
-     *
-     * @param   zoneSet     all the zones controlled by this flock
-     *
-     * side effect
-     *  A brand-new [PhilipsHueFlockModel] will be created to deal with the new
-     *  flock.
-     */
-    fun addFlock(
-        name: String,
-        roomSet: Set<PhilipsHueRoomInfo>,
-        zoneSet: Set<PhilipsHueZoneInfo>
-    ) {
-        Log.d(TAG,"addFlock() begin")
-
-        // figure out the bridges we're using for this flock
-        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
-        bridgeSet += getBridgesFromRoomSet(roomSet)
-        bridgeSet += getBridgesFromZoneSet(zoneSet)
-
-        // create a new Flock Model and add it to our list
-        val newFlockModel = PhilipsHueFlockModel(
-            humanName = name,
-            roomSet = roomSet,
-            zoneSet = zoneSet,
-            bridgeSet = bridgeSet,
-            repository = this,
-            coroutineScope = coroutineScope
-        )
-
-        flockModelList.update {
-            it + newFlockModel
-        }
-    }
-
-    //-------------------------------
-    //  read
-    //-------------------------------
 
     /**
      * Checks to see if this bridge already exists in our list of bridges
@@ -620,7 +547,7 @@ class PhilipsHueRepository(
         bridgeInfoList.value.forEach { bridge ->
             // try to find that light
             val foundLight = bridge.lights.find {
-                light -> light.lightId == lightV2Id
+                    light -> light.lightId == lightV2Id
             }
             if (foundLight != null) {
                 // Yes, found it!  Return this bridge
@@ -664,7 +591,6 @@ class PhilipsHueRepository(
         }
         return foundBridges
     }
-
 
     //-------------------------------
     //  senders (tell the bridge what to do)
@@ -878,6 +804,422 @@ class PhilipsHueRepository(
         }
     }
 
+
+    /**
+     * Tell the model to remove this bridge.  Permanently.
+     * Results will be propogated through a flow.
+     */
+    fun deletePhilipsHueBridge(bridgeId: String) {
+
+        // make sure that the bridge exists
+        var found = false
+        for (bridgeModel in bridgeModelList.value) {
+            if (bridgeModel.bridgeV2Id == bridgeId) {
+                found = true
+                break
+            }
+        }
+        if (found == false) {
+            Log.e(TAG, "unable to delete bridge id = $bridgeId")
+            return
+        }
+
+        // 1) Tell the bridge to remove this app's username (token)
+        //      UNABLE TO COMPLY:  Philps Hue removed this ability, so it cannot be implemented!
+        //      The user has to do a RESET on the bridge to get this data removed.  What a pain!
+
+        // 2) Remove bridge data from our permanent storage
+        val ctx = MyApplication.appContext
+        if (PhilipsHueStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {
+            Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
+            return
+        }
+
+        PhilipsHueStorage.removeBridgeIP(bridgeId, true, ctx)
+
+        if (PhilipsHueStorage.removeBridgeId(bridgeId, true, ctx) == false) {
+            Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
+            return
+        }
+
+        // 3) Remove bridge data from our temp storage.
+        //  As this is a complicated data structure, we need to use a
+        //  (kind of) complicated remove.
+        bridgeModelList.update {
+            // find the index of the bridge to remove
+            var index = -1
+            for (i in 0 until bridgeModelList.value.size) {
+                if (bridgeModelList.value[i].bridge.value.v2Id == bridgeId) {
+                    index = i
+                    break
+                }
+            }
+            if (index == -1) {
+                Log.e(TAG, "Unable to find bridge id = $bridgeId in deleteBridge(). Aborting!")
+                bridgeModelList.value
+            }
+            else {
+                // todo: crashes here!!!  "lateinit property phSse has not been initialized"
+                Log.d(TAG, "updating _bridgeModelFlowList by removing ${bridgeModelList.value[index]}")
+                bridgeModelList.value - bridgeModelList.value[index]
+            }
+        }
+    }
+
+
+    /**
+     * Finds the [PhilipsHueRoomInfo] with a given id.  Also finds the
+     * [PhilipsHueBridgeModel] that holds that room.
+     *
+     * @return      A [BridgeModelAndRoom] class holding both data.
+     *              Null on error or not found.
+     */
+    fun findBridgeModelAndRoom(
+        room: PhilipsHueRoomInfo
+    ) : BridgeModelAndRoom? {
+
+        // go through the bridgeModels until we find one with the right room.
+        for (bridgeModel in bridgeModelList.value) {
+
+            // loop through all the rooms for this bridge
+            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
+                if (bridgeRoom.v2Id == room.v2Id) {
+                    // found it!
+                    return BridgeModelAndRoom(
+                        room = bridgeRoom,
+                        bridgeModel = bridgeModel,
+                    )
+                }
+            }
+        }
+
+        // didn't find it
+        Log.d(TAG, "Unable to find room ${room.name} in findBridgeModelAndRoom()")
+        return null
+    }
+
+    /**
+     * Finds the [PhilipsHueZoneInfo] with a given id and the
+     * [PhilipsHueBridgeModel] that holds that room.
+     *
+     * @return      A [BridgeModelAndRoom] class holding both data.
+     *              Null on error or not found.
+     */
+    fun findBridgeModelAndZone(
+        zone: PhilipsHueZoneInfo
+    ) : BridgeModelAndZone? {
+        // loop through the BridgeModels until we find the right one
+        for (bridgeModel in bridgeModelList.value) {
+            // and try the zones
+            for (bridgeZone in bridgeModel.bridge.value.zones) {
+                if (bridgeZone.v2Id == zone.v2Id) {
+                    // yippee, it's here!
+                    return BridgeModelAndZone(
+                        zone = bridgeZone,
+                        bridgeModel = bridgeModel
+                    )
+                }
+            }
+        }
+
+        Log.d(TAG, "findBridgeModelAndZone() - could not find zone ${zone.name} in any of the bridges")
+        return null
+    }
+
+
+    //-----------------------------------------------------------
+    //  flock functions
+    //-----------------------------------------------------------
+
+    /**
+     * Does the work of loading all the flocks from long-term storage.
+     * This involves creating the Flocks and the [PhilipsHueFlockModel]s.
+     *
+     * NOTE
+     *  This needs to be called AFTER all the bridges and their stuff has
+     *  already been set up.  This will actually make a slight delay before
+     *  beginning so that it gives the sharedprefs time to recover from any
+     *  other work that has been done.
+     *
+     *  @return     True if all went well.  False on error.
+     */
+    suspend fun loadAllFlocks(ctx: Context) = withContext(Dispatchers.IO) {
+
+        // wait just a bit for the shared prefs to settle
+        delay(150)
+
+        Log.d(TAG, "loadAllFlocks() - bridges = ${bridgeInfoList.value.size}")
+
+        // Get all the working flocks from long-term storage.
+        // Start by getting the ids.
+        val prefs = ctx.getSharedPreferences(PHILIPS_HUE_FLOCK_PREFS_FILENAME, Context.MODE_PRIVATE)
+        val idSet = prefs.getStringSet(PHILIPS_HUE_FLOCK_IDS_KEY, emptySet())
+        if (idSet.isNullOrEmpty()) {
+            Log.w(TAG, "loadAllFlocks() - no ids to gather--nothing to do.")
+            return@withContext
+        }
+
+        // go through the ids and load the data
+        for (flockId in idSet) {
+            // get the name for this flock
+            val nameKey = assembleFlockNameKey(flockId)
+            val name = prefs.getString(nameKey, EMPTY_STRING)
+            if (name.isNullOrEmpty()) {
+                Log.e(TAG, "loadAllFlocks() - unable to find name for flock id = $flockId! skipping")
+                break
+            }
+            // get room ids
+            val roomKey = assembleFlockRoomsKey(flockId)
+            val roomIds = prefs.getStringSet(roomKey, emptySet())
+            if (roomIds == null) {
+                Log.e(TAG, "loadAllFlocks() - big problem getting room ids! skipping!")
+                break
+            }
+
+            // get zone ids
+            val zoneKey = assembleFlockZonesKey(flockId)
+            val zoneIds = prefs.getStringSet(zoneKey, emptySet())
+            if (zoneIds == null) {
+                Log.e(TAG, "loadAllFlocks() - big problem getting zone ids! skipping!")
+                break
+            }
+
+            // convert to working flock and add id
+            val workingFlock = WorkingFlock(
+                id = flockId,
+                name = name,
+                roomIdSet = roomIds,
+                zoneIdSet = zoneIds
+            )
+
+            // convert to regular flock
+            val flockInfo = makeFlockInfoFromWorkingFlock(workingFlock)
+            if (flockInfo == null) {
+                Log.e(TAG, "loadAllFlocks() could not complete making a flock info! Skipping!")
+                break
+            }
+
+            // find the bridges used by this flock
+            var bridges = getBridgesFromRoomSet(flockInfo.roomSet)
+            bridges = bridges + getBridgesFromZoneSet(flockInfo.zoneSet)
+
+            // finally create a Flock Model and get it going
+            flockModelList.update {
+                it + PhilipsHueFlockModel(
+                    coroutineScope = coroutineScope,
+                    bridgeSet = flockInfo.bridgeSet,
+                    roomSet = flockInfo.roomSet,
+                    zoneSet = flockInfo.zoneSet,
+                    humanName = flockInfo.name,
+                    id = flockId,
+                    repository = this@PhilipsHueRepository
+                )
+            }
+        } // for each flockId
+    }
+
+
+    /**
+     * Adds a flock to our list.
+     *
+     * @param   roomSet     Set of all the rooms to be controlled by the flock
+     *
+     * @param   zoneSet     all the zones controlled by this flock
+     *
+     * @param   longTermStorage     When TRUE, save this info to long-term
+     *                              storage--used only when creating a brand-new
+     *                              Flock, not when loading a known flock.
+     *
+     * NOTE
+     *      This does NOT save anything to long-term.  The caller is responsible
+     *      for figuring out it that's necessary or not.
+     *
+     * side effect
+     *  A brand-new [PhilipsHueFlockModel] will be created to deal with the new
+     *  flock.
+     */
+    fun addFlock(
+        name: String,
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>,
+        longTermStorage: Boolean
+    ) {
+        // figure out the bridges we're using for this flock
+        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        bridgeSet += getBridgesFromRoomSet(roomSet)
+        bridgeSet += getBridgesFromZoneSet(zoneSet)
+
+        // create a new Flock Model and add it to our list
+        val newFlockModel = PhilipsHueFlockModel(
+            humanName = name,
+            roomSet = roomSet,
+            zoneSet = zoneSet,
+            bridgeSet = bridgeSet,
+            repository = this,
+            coroutineScope = coroutineScope
+        )
+
+        flockModelList.update {
+            it + newFlockModel
+        }
+
+        if (longTermStorage) {
+            Log.d(TAG, "addFlock() saving to long-term storage ${newFlockModel.flock.value.name}")
+            PhilipsHueStorage.saveFlock(
+                ctx = MyApplication.appContext,
+                flock = newFlockModel.flock.value
+            )
+        }
+    }
+
+
+    /**
+     * Removes the given flock from the current data and permanently as well.
+     * Doesn't ask questions.  If the given flock doesn't exist, then of course
+     * nothing is done.
+     */
+    suspend fun deleteFlock(flock: PhilipsHueFlockInfo) {
+
+        // find the flock model that holds this flock
+        val flockModel = flockModelList.value.find { flockModel -> flockModel.flock.value.id == flock.id }
+        if (flockModel == null) {
+            Log.d(TAG, "deleteFlock() - unable to find flock!  Nothing to do.")
+            return
+        }
+
+        // long-term deletion
+        PhilipsHueStorage.removeFlock(MyApplication.appContext, flock)
+
+        // remove the flock model from the list
+        flockModelList.update {
+            it - flockModel
+        }
+    }
+
+    /**
+     * Use this function to add a flock that was loaded from long-term storage.
+     * This uses a [WorkingFlock], which has just some of an entire [PhilipsHueFlockInfo]
+     * data.  This is needed as when loading not all the data has been figured out yet.
+     *
+     * side effects
+     *  - a new [PhilipsHueFlockModel] is created with the given flock.
+     */
+    fun loadFlockFromLongTerm(workingFlock: WorkingFlock) {
+
+        // get the room set by checking all the rooms in all the bridges
+        // to find the matching ids
+        val roomSet = mutableSetOf<PhilipsHueRoomInfo>()
+        for (roomId in workingFlock.roomIdSet) {
+            for (bridge in bridgeInfoList.value) {
+                val room = bridge.getRoomById(roomId)
+                if (room != null) {
+                    // found it!
+                    Log.d(TAG, "loadFlockFromLongTerm() - found a room: ${room.name}")
+                    roomSet.add(room)
+                    break       // no more reason to check in this bridge
+                }
+            }
+        }
+
+        // similar for zones
+        val zoneSet = mutableSetOf<PhilipsHueZoneInfo>()
+        for (zoneId in workingFlock.zoneIdSet) {
+            for (bridge in bridgeInfoList.value) {
+                val zone = bridge.getZoneById(zoneId)
+                if (zone != null) {
+                    zoneSet.add(zone)
+                    break
+                }
+            }
+        }
+
+        // Figure out the bridges
+        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        bridgeSet += getBridgesFromRoomSet(roomSet)
+        bridgeSet += getBridgesFromZoneSet(zoneSet)
+
+
+        // create a new Flock Model and add it to our list
+        val newFlockModel = PhilipsHueFlockModel(
+            humanName = workingFlock.name,
+            roomSet = roomSet,
+            zoneSet = zoneSet,
+            bridgeSet = bridgeSet,
+            repository = this,
+            coroutineScope = coroutineScope
+        )
+
+        flockModelList.update {
+            it + newFlockModel
+        }
+    }
+
+    /**
+     * Helper function that figures out how to turn a working flock into a
+     * full-fledged [PhilipsHueFlockInfo].
+     *
+     * @param       workingFlock    Flock data in working format.
+     *                              NOTE that if the ID is blank a new one
+     *                              will be generated.
+     *
+     * preconditions
+     *  - bridges already loaded
+     *
+     *  @return     A ready-to-go flock info.  Null on some sort of error.
+     */
+    suspend fun makeFlockInfoFromWorkingFlock(
+        workingFlock: WorkingFlock
+    ) : PhilipsHueFlockInfo {
+
+        // get the room set by checking all the rooms in all the bridges
+        // to find the matching ids
+        val roomSet = mutableSetOf<PhilipsHueRoomInfo>()
+        for (roomId in workingFlock.roomIdSet) {
+            for (bridge in bridgeInfoList.value) {
+                val room = bridge.getRoomById(roomId)
+                if (room != null) {
+                    // found it!
+                    Log.d(TAG, "loadFlockFromLongTerm() - found a room: ${room.name}")
+                    roomSet.add(room)
+                    break       // no more reason to check in this bridge
+                }
+            }
+        }
+
+        // similar for zones
+        val zoneSet = mutableSetOf<PhilipsHueZoneInfo>()
+        for (zoneId in workingFlock.zoneIdSet) {
+            for (bridge in bridgeInfoList.value) {
+                val zone = bridge.getZoneById(zoneId)
+                if (zone != null) {
+                    zoneSet.add(zone)
+                    break
+                }
+            }
+        }
+
+        // Figure out the bridges
+        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        bridgeSet += getBridgesFromRoomSet(roomSet)
+        bridgeSet += getBridgesFromZoneSet(zoneSet)
+
+        // Use a temp flock to calculate the brightness and the on/off state
+        val tmpFlock = PhilipsHueFlockInfo(
+            id = workingFlock.id,
+            name = workingFlock.name,
+            brightness = 0,         // not set yet
+            onOffState = false,     // not set yet
+            bridgeSet = bridgeSet,
+            roomSet = roomSet,
+            zoneSet = zoneSet
+        )
+
+        return tmpFlock.copy(
+            brightness = tmpFlock.calculateBrightness(),
+            onOffState = tmpFlock.calculateOnOff()
+        )
+    }
+
     /**
      * Similar to [sendRoomSceneToBridge], except that this has the extra
      * complication of Flocks.  So that's where most of the work happens.
@@ -956,7 +1298,7 @@ class PhilipsHueRepository(
 
     /**
      * Tells the flocks to update their lights.  Should be called after
-     * an sse from one or more bridges.
+     * an sse from one or more bridges.  Or possibly during initialization?
      *
      * todo: this is called from two places--make sure that both are really needed.
      */
@@ -971,143 +1313,55 @@ class PhilipsHueRepository(
     }
 
 
-    //-------------------------------
-    //  delete
-    //-------------------------------
+    //-----------------------------------------------------------
+    //  server-sent events
+    //-----------------------------------------------------------
 
     /**
-     * Tell the model to remove this bridge.  Permanently.
-     * Results will be propogated through a flow.
+     * Connects the given bridge to this app, enabling this app to
+     * receive updates on changes to the Philips Hue world (sse).
      */
-    fun deletePhilipsHueBridge(bridgeId: String) {
+    fun startSseConnection(bridge: PhilipsHueBridgeInfo) {
 
-        // make sure that the bridge exists
-        var found = false
-        for (bridgeModel in bridgeModelList.value) {
-            if (bridgeModel.bridgeV2Id == bridgeId) {
-                found = true
-                break
-            }
-        }
-        if (found == false) {
-            Log.e(TAG, "unable to delete bridge id = $bridgeId")
+        if (bridge.connected) {
+            Log.e(TAG, "Trying to connect to a bridge that's already connected! bridge.id = ${bridge.v2Id}")
             return
         }
 
-        // 1) Tell the bridge to remove this app's username (token)
-        //      UNABLE TO COMPLY:  Philps Hue removed this ability, so it cannot be implemented!
-        //      The user has to do a RESET on the bridge to get this data removed.  What a pain!
-
-        // 2) Remove bridge data from our permanent storage
-        val ctx = MyApplication.appContext
-        if (PhilipsHueBridgeStorage.removeBridgeTokenPrefs(bridgeId, true, ctx) == false) {
-            Log.e(TAG, "Problem removing token for bridgeId = $bridgeId")
-            return
+        // find the bridge model and tell it to connect for sse
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
+            bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
-
-        PhilipsHueBridgeStorage.removeBridgeIP(bridgeId, true, ctx)
-
-        if (PhilipsHueBridgeStorage.removeBridgeId(bridgeId, true, ctx) == false) {
-            Log.e(TAG, "Problem removing id from bridgeId = $bridgeId")
-            return
-        }
-
-        // 3) Remove bridge data from our temp storage.
-        //  As this is a complicated data structure, we need to use a
-        //  (kind of) complicated remove.
-        bridgeModelList.update {
-            // find the index of the bridge to remove
-            var index = -1
-            for (i in 0 until bridgeModelList.value.size) {
-                if (bridgeModelList.value[i].bridge.value.v2Id == bridgeId) {
-                    index = i
-                    break
-                }
-            }
-            if (index == -1) {
-                Log.e(TAG, "Unable to find bridge id = $bridgeId in deleteBridge(). Aborting!")
-                bridgeModelList.value
-            }
-            else {
-                // todo: crashes here!!!  "lateinit property phSse has not been initialized"
-                Log.d(TAG, "updating _bridgeModelFlowList by removing ${bridgeModelList.value[index]}")
-                bridgeModelList.value - bridgeModelList.value[index]
-            }
-        }
+        foundBridgeModel?.connectSSE()
     }
 
-    //-------------------------------
-    //  private functions
-    //-------------------------------
-
     /**
-     * Finds the [PhilipsHueRoomInfo] with a given id.  Also finds the
-     * [PhilipsHueBridgeModel] that holds that room.
+     * Stop receiving updates about the Philps Hue IoT for this bridge (sse).
+     * If the bridge is not found, nothing is done.
      *
-     * @return      A [BridgeModelAndRoom] class holding both data.
-     *              Null on error or not found.
+     * Should be no need to do any changes: the bridge itself should call onClosed()
+     * which will be processed.
      */
-    private fun findBridgeModelAndRoom(
-        room: PhilipsHueRoomInfo
-    ) : BridgeModelAndRoom? {
+    fun stopSseConnection(bridge: PhilipsHueBridgeInfo) {
+        Log.d(TAG, "disconnect() called on bridge ${bridge.v2Id} at ${bridge.ipAddress}")
 
-        // go through the bridgeModels until we find one with the right room.
-        for (bridgeModel in bridgeModelList.value) {
-
-            // loop through all the rooms for this bridge
-            for (bridgeRoom in bridgeModel.bridge.value.rooms) {
-                if (bridgeRoom.v2Id == room.v2Id) {
-                    // found it!
-                    return BridgeModelAndRoom(
-                        room = bridgeRoom,
-                        bridgeModel = bridgeModel,
-                    )
-                }
-            }
+        // find the bridge model and disconnect sse
+        val foundBridgeModel = bridgeModelList.value.find { bridgeModel ->
+            bridgeModel.bridge.value.v2Id == bridge.v2Id
         }
-
-        // didn't find it
-        Log.d(TAG, "Unable to find room ${room.name} in findBridgeModelAndRoom()")
-        return null
+        foundBridgeModel?.disconnectSSE()
     }
 
-    /**
-     * Finds the [PhilipsHueZoneInfo] with a given id and the
-     * [PhilipsHueBridgeModel] that holds that room.
-     *
-     * @return      A [BridgeModelAndRoom] class holding both data.
-     *              Null on error or not found.
-     */
-    private fun findBridgeModelAndZone(
-        zone: PhilipsHueZoneInfo
-    ) : BridgeModelAndZone? {
-        // loop through the BridgeModels until we find the right one
-        for (bridgeModel in bridgeModelList.value) {
-            // and try the zones
-            for (bridgeZone in bridgeModel.bridge.value.zones) {
-                if (bridgeZone.v2Id == zone.v2Id) {
-                    // yippee, it's here!
-                    return BridgeModelAndZone(
-                        zone = bridgeZone,
-                        bridgeModel = bridgeModel
-                    )
-                }
-            }
-        }
-
-        Log.d(TAG, "findBridgeModelAndZone() - could not find zone ${zone.name} in any of the bridges")
-        return null
-    }
 
     //-------------------------------
-    //  private data classes
+    //  data classes & enums
     //-------------------------------
 
     /**
      * Quick and dirty little class that holds a reference to a
      * [PhilipsHueBridgeModel] and a Room.  Used for return values that need both.
      */
-    private data class BridgeModelAndRoom(
+    data class BridgeModelAndRoom(
         val bridgeModel: PhilipsHueBridgeModel,
         val room: PhilipsHueRoomInfo
     )
@@ -1116,7 +1370,7 @@ class PhilipsHueRepository(
      * Similar to [BridgeModelAndRoom] this data class holds both the
      * [PhilipsHueBridgeModel] and a [PhilipsHueZoneInfo].
      */
-    private data class BridgeModelAndZone(
+    data class BridgeModelAndZone(
         val bridgeModel: PhilipsHueBridgeModel,
         val zone: PhilipsHueZoneInfo
     )

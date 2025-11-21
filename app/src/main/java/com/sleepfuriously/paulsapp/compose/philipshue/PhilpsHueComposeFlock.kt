@@ -243,6 +243,7 @@ private fun DotDotDotFlockMenu(
     var isDropDownExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var flockToDelete by remember { mutableStateOf<PhilipsHueFlockInfo?>(null) }
 
     // A second identical box is needed to make the drop-down
     // menu appear on the top right.  This also includes the
@@ -291,25 +292,30 @@ private fun DotDotDotFlockMenu(
                 },
             )
 
-            // delete a flock
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.delete_flock)) },
-                onClick = {
-                    isDropDownExpanded = false
-                    showDeleteDialog = true
-                }
-            )
-        }
+            // delete a flock, but which?  A list for deleting each one...
+            flocks.forEach { flock ->
+                DropdownMenuItem(
+                    text = { Text("${stringResource(R.string.delete_flock)}: ${flock.name}") },
+                    onClick = {
+                        isDropDownExpanded = false
+                        flockToDelete = flock
+                        showDeleteDialog = true
+                    }
+                )
+            }
+        } // DropdownMenu
 
         // delete confirmation dialog
         if (showDeleteDialog) {
             MyYesNoDialog(
                 onDismiss = {
                     showDeleteDialog = false
+                    flockToDelete = null
                 },
                 onConfirm = {
                     showDeleteDialog = false
-                    viewmodel.deleteFlock()    // this spurns a new coroutine and returns immediately
+                    viewmodel.deleteFlock(flockToDelete!!)
+                    flockToDelete = null
                 },
                 titleText = stringResource(R.string.delete_flock_confirm_title),
                 bodyText = stringResource(R.string.delete_flock_confirm_body),
