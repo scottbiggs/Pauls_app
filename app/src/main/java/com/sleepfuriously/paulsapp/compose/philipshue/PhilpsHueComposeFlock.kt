@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -478,6 +479,9 @@ fun ShowConstructFlockDialog(
     /** the name the user is using for this flock */
     var name by remember { mutableStateOf(EMPTY_STRING) }
 
+    val selectedRooms by rememberSaveable() { mutableStateOf(mutableSetOf<PhilipsHueRoomInfo>()) }
+    val selectedZones by rememberSaveable() { mutableStateOf(mutableSetOf<PhilipsHueZoneInfo>()) }
+
     AlertDialog(
         onDismissRequest = { },     // don't let the user inadvertantly tap away--they NEED to click cancel or OK
         title = {
@@ -503,7 +507,7 @@ fun ShowConstructFlockDialog(
                         }
                         allRooms.forEach { room ->
                             item {
-                                var checked by remember { mutableStateOf(false) }
+                                var checked by remember { mutableStateOf(selectedRooms.contains(room)) }
                                 SwitchWithLabel(
                                     label = room.name,
                                     state = checked,
@@ -512,6 +516,8 @@ fun ShowConstructFlockDialog(
                                         // call onToggled() with the room (zone is null)
                                         onToggled(turnedOn, room, null)
                                         checked = turnedOn
+                                        if (turnedOn) { selectedRooms.add(room) }
+                                        else { selectedRooms.remove(room) }
                                     }
                                 )
                             }
@@ -526,7 +532,7 @@ fun ShowConstructFlockDialog(
                         }
                         allZones.forEach { zone ->
                             item {
-                                var checked by remember { mutableStateOf(false) }
+                                var checked by remember { mutableStateOf(selectedZones.contains(zone)) }
                                 SwitchWithLabel(
                                     label = zone.name,
                                     state = checked,
@@ -535,6 +541,8 @@ fun ShowConstructFlockDialog(
                                         // call onToggled() with the current zone. room is null
                                         onToggled(turnedOn, null, zone)
                                         checked = turnedOn
+                                        if (turnedOn) { selectedZones.add(zone) }
+                                        else { selectedZones.remove(zone) }
                                     }
                                 )
                             }
