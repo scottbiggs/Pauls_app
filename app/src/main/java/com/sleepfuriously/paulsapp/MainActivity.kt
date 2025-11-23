@@ -194,9 +194,19 @@ class MainActivity : ComponentActivity() {
                             initBridgeState = addNewBridgeState)
                     }
                     else {
-                        Log.d(TAG, "about to show FourPanes()! iotTesting = $iotTestingState, addNewBridgeState = $addNewBridgeState")
-                        FourPanes(
-                            0.3f,
+//                        Log.d(TAG, "about to show FourPanes()! iotTesting = $iotTestingState, addNewBridgeState = $addNewBridgeState")
+//                        FourPanes(
+//                            0.3f,
+//                            philipsHueViewmodel = philipsHueViewmodel,
+//                            philipsHueBridges = philipsHueBridges,
+//                            roomSceneData = roomSceneData.value,
+//                            zoneSceneData = zoneSceneData.value,
+//                            flockSceneData = flockSceneData.value,
+//                            philipsHueFlocks = flocks.value,
+//                            showAddFlock = addFlock.value,
+//                            addFlockErrorMsg = addFlockError.value
+//                        )
+                        JustShowPhilipsHue(
                             philipsHueViewmodel = philipsHueViewmodel,
                             philipsHueBridges = philipsHueBridges,
                             roomSceneData = roomSceneData.value,
@@ -219,6 +229,78 @@ class MainActivity : ComponentActivity() {
     //  composables
     //----------------------------
 
+    @Composable
+    fun JustShowPhilipsHue(
+        philipsHueViewmodel: PhilipsHueViewmodel,
+        roomSceneData: SceneDataForRoom?,
+        zoneSceneData: SceneDataForZone?,
+        flockSceneData: SceneDataForFlock?,
+        philipsHueBridges: List<PhilipsHueBridgeInfo>,
+        philipsHueFlocks: List<PhilipsHueFlockInfo>,
+        showAddFlock: Boolean,
+        addFlockErrorMsg: String,
+        modifier : Modifier = Modifier,
+    ) {
+        val ctx = LocalContext.current
+
+        if (roomSceneData != null) {
+            // show room/scene specific info
+            ShowScenesForRoom(
+                bridge = roomSceneData.bridge,
+                room = roomSceneData.room,
+                scenes = roomSceneData.scenes,
+                viewmodel = philipsHueViewmodel,
+                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+            )
+        }
+
+        else if (zoneSceneData != null) {
+            // show zone/scene info
+            ShowScenesForZone(
+                bridge = zoneSceneData.bridge,
+                zone = zoneSceneData.zone,
+                scenes = zoneSceneData.scenes,
+                viewmodel = philipsHueViewmodel,
+                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+            )
+        }
+
+        else if (flockSceneData != null) {
+            // show flock scene info
+            ShowScenesForFlock(
+                flockSceneData = flockSceneData,
+                viewmodel = philipsHueViewmodel,
+                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+            )
+        }
+
+        else if (showAddFlock) {
+            ShowConstructFlockDialog(
+                errorMsg = addFlockErrorMsg,
+                viewmodel = philipsHueViewmodel,
+                allRooms = philipsHueViewmodel.getAllRooms(),
+                allZones = philipsHueViewmodel.getAllZones(),
+                onToggled = { turnedOn, room, zone ->
+                    philipsHueViewmodel.toggleFlockList(turnedOn, room, zone)
+                },
+                onOk = { flockName ->
+                    philipsHueViewmodel.flockListOk(flockName, ctx)
+                }
+            )
+        }
+
+        else {
+            // show regular PH stuff
+            ShowMainScreenPhilipsHue(
+                modifier = modifier,
+                philipsHueViewmodel = philipsHueViewmodel,
+                bridges = philipsHueBridges,
+                flocks = philipsHueFlocks
+            )
+        }
+    }
+
+
     /**
      * The primary display.  Breaks the screen into four arrange-able panes.
      *
@@ -230,6 +312,7 @@ class MainActivity : ComponentActivity() {
      */
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
+    @Deprecated("Paul doesn't like this--do tabs instead")
     private fun FourPanes(
         minPercent : Float,
         philipsHueViewmodel: PhilipsHueViewmodel,

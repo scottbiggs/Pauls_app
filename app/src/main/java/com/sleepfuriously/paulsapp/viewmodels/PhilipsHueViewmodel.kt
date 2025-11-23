@@ -2,6 +2,8 @@ package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -117,6 +119,15 @@ class PhilipsHueViewmodel : ViewModel() {
     private val _addFlockErrorMsg = MutableStateFlow<String>(EMPTY_STRING)
     /** When not empty, display as an error message */
     val addFlockErrorMsg = _addFlockErrorMsg.asStateFlow()
+
+    //-------------------------
+    //  public data
+    //-------------------------
+
+    // Source - https://stackoverflow.com/a/77033204
+    /** Holds the state of a lazyList (column). Allows UI to return to proper scroll position. */
+    var lazyColumnState: LazyGridState by mutableStateOf(LazyGridState(0,0))
+
 
     //-------------------------
     //  private data

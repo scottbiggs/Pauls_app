@@ -131,6 +131,7 @@ private fun DrawPhilipsHueContents(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 4.dp),
+        state = viewmodel.lazyColumnState,
         columns = GridCells.Adaptive(MIN_PH_ROOM_WIDTH.dp),
         verticalArrangement = Arrangement.Top,
         horizontalArrangement = Arrangement.Start
