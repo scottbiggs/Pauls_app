@@ -103,9 +103,7 @@ class PhilipsHueViewmodel : ViewModel() {
     val sceneDisplayStuffForZone = _sceneDisplayStuffForZone.asStateFlow()
 
     private val _sceneDisplayStuffForFlock = MutableStateFlow<SceneDataForFlock?>(null)
-    /**
-     * If not null -> a Flock's scene info should be displayed.
-     */
+    /** If not null -> a Flock's scene info should be displayed. */
     val sceneDisplayStuffForFlock = _sceneDisplayStuffForFlock.asStateFlow()
 
     private val _flocks = MutableStateFlow<List<PhilipsHueFlockInfo>>(emptyList())
@@ -687,38 +685,40 @@ class PhilipsHueViewmodel : ViewModel() {
         return PhilipsHueModelScenes.getAllScenesForZone(zone = zone, bridge = bridge)
     }
 
-    /**
-     * Right now just returns all the scenes for all the rooms and zones
-     * controlled by the given flock.
-     *
-     * @return      List of appropriate scenes (could be empty).
-     *              Null on error.
-     *
-     * todo: a MUCH richer way to handle scenes needs to be implemented
-     */
-    fun getSceneListForFlock(flock: PhilipsHueFlockInfo) : List<PHv2Scene>? {
-        // the master list of all scenes
-        val sceneList = mutableListOf<PHv2Scene>()
 
+    /**
+     * Get all the scenes for all the rooms.  This is done by mapping each room
+     * to a list of its scenes.
+     */
+    fun getRoomSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueRoomInfo, List<PHv2Scene>> {
+        val daMap = mutableMapOf<PhilipsHueRoomInfo, List<PHv2Scene>>()
         flock.roomSet.forEach { room ->
             val bridge = flock.getBridgeForRoom(room.v2Id)
             if (bridge == null) {
-                Log.e(TAG, "getSceneListForFlock() - can't find bridge for room ${room.name}! Aborting!")
-                return null
+                Log.e(TAG, "getRoomSceneListForFlock() - can't find bridge for room ${room.name}! Aborting!")
+                return emptyMap()
             }
-            sceneList += PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+            val sceneList = PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+            daMap[room] = sceneList
         }
+        return daMap
+    }
 
+    /** Same as [getRoomSceneListForFlock] but for zones */
+    fun getZoneSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueZoneInfo, List<PHv2Scene>> {
+        val daMap = mutableMapOf<PhilipsHueZoneInfo, List<PHv2Scene>>()
         flock.zoneSet.forEach { zone ->
             val bridge = flock.getBridgeForZone(zone.v2Id)
             if (bridge == null) {
-                Log.e(TAG, "getSceneListForFlock() - can't find bridge for zone ${zone.name}! Aborting!")
-                return null
+                Log.e(TAG, "getZoneSceneListForFlock() - can't find bridge for zone ${zone.name}! Aborting!")
+                return emptyMap()
             }
-            sceneList += PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+            val sceneList = PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+            daMap[zone] = sceneList
         }
-        return sceneList
+        return daMap
     }
+
 
     /**
      * UI calls this to indicate that user wants to show the scenes for a
@@ -761,12 +761,14 @@ class PhilipsHueViewmodel : ViewModel() {
     fun showScenesForFlock(flock: PhilipsHueFlockInfo) {
         _sceneDisplayStuffForFlock.update {
             Log.d(TAG, "showScenesForFlock() flock = ${flock.name}")
-            val sceneList = getSceneListForFlock(flock)
-            if (sceneList == null) {
-                Log.e(TAG, "showScenesForFlock() - error getting scene list, aborting!")
-                return
+
+            val roomScenes = getRoomSceneListForFlock(flock)
+            val zoneScenes = getZoneSceneListForFlock(flock)
+
+            if (roomScenes.isEmpty() && zoneScenes.isEmpty()) {
+                Log.w(TAG, "showScenesForFlock() - no scenes for this flock")
             }
-            SceneDataForFlock(flock, sceneList)
+            SceneDataForFlock(flock, roomScenes, zoneScenes)
         }
     }
 
@@ -1092,10 +1094,16 @@ data class SceneDataForZone(
 //    val lights: List<PhilipsHueLightInfo>  todo
 )
 
-/** todo: this is a temporary solution--should do more */
+/**
+ * Scene info for the UI flocks.
+ *
+ * The scenes are maps: each room or zone will be mapped to a list of scenes
+ * it operates with.
+ */
 data class SceneDataForFlock(
     val flock: PhilipsHueFlockInfo,
-    val scenes: List<PHv2Scene>
+    val roomScenes: Map<PhilipsHueRoomInfo, List<PHv2Scene>>,
+    val zoneScenes: Map<PhilipsHueZoneInfo, List<PHv2Scene>>
 )
 
 enum class TestStatus {

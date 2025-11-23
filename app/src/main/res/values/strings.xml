@@ -100,6 +100,7 @@
     <string name="add_flock_button_label">make it so</string>
     <string name="no_name_for_new_flock">Please name this flock</string>
     <string name="no_rooms_or_zones_for_new_flock">Please add at least one room or zone</string>
+    <string name="no_scenes_for_flock">no scenes for this light group</string>
 
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>

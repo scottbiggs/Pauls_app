@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForFlock
 import com.sleepfuriously.paulsapp.xyToRgbWithBrightness
+import kotlin.text.toDouble
 
 /*
  * UI for displaying Scenes.
@@ -286,9 +288,7 @@ fun ShowScenesForFlock(
                 RoundedCornerShape(22.dp)
             ),
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.scenes_title, flockSceneData.flock.name))
-        },
+        title = { Text(stringResource(R.string.scenes_title, flockSceneData.flock.name)) },
         text = {
             SelectionContainer {
                 // This is the meat of the function.  All the data goes here.
@@ -302,66 +302,56 @@ fun ShowScenesForFlock(
                     verticalArrangement = Arrangement.Top,
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    Log.d(TAG, "ShowScenesForFlock() - num scenes = ${flockSceneData.scenes.size}")
-                    flockSceneData.scenes.forEach { scene ->
-                        item {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black)
-                                    .padding(horizontal = 4.dp, vertical = 6.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(
-                                        BorderStroke(
-                                            2.dp,
-                                            brush = SolidColor(MaterialTheme.colorScheme.secondaryContainer)
-                                        ),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    .clickable {
-                                        viewmodel.sceneSelectedForFlock(scene = scene, flock = flockSceneData.flock)
-                                    }
-                            ) {
-                                Text(scene.metadata.name)
-                                OverlappingRow(overlapFactor = 0.6f) {
-                                    // Find all the colors in this scene (don't count repeats, use a Set!)
-                                    val sceneColorSet = mutableSetOf<MyColorXYBrightness>()
-                                    scene.actions.forEach { action ->
-                                        if (action.action.color != null) {
-                                            var yY = 1.0
-                                            if (action.action.dimming != null) {
-                                                yY = action.action.dimming.brightness.toDouble()
-                                            }
-                                            sceneColorSet.add(MyColorXYBrightness(
-                                                x = action.action.color.xy.x.toDouble(),
-                                                y = action.action.color.xy.y.toDouble(),
-                                                yY = yY
-                                            ))
-                                        }
-                                    }
+                    //
+                    // show the rooms
+                    //
+                    Log.d(TAG, "ShowScenesForFlock() - rooms: ${flockSceneData.roomScenes.keys.size}")
+                    flockSceneData.roomScenes.forEach { (room, sceneList) ->
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            Text(
+                                modifier = Modifier.padding(start = 12.dp, top = 8.dp),
+                                text = "${stringResource(R.string.room)}: ${room.name}",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        sceneList.forEach { scene ->
+                            item {
+                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock)
+                            }
+                        }
+                        if (sceneList.isEmpty()) {
+                            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                                Text(
+                                    modifier = Modifier.padding(start = 32.dp),
+                                    text = stringResource(R.string.no_scenes_for_flock)
+                                )
+                            }
+                        }
+                    }
 
-                                    // Draw a circle for each color in the set
-                                    sceneColorSet.forEach { colorXY ->
-                                        Log.d(TAG, "scene ${scene.metadata.name}, colorXY = $colorXY")
-                                        val rgbTriple = xyToRgbWithBrightness(
-                                            x = colorXY.x.toFloat(),
-                                            y = colorXY.y.toFloat(),
-                                            brightness = colorXY.yY.toInt()
-                                        )
-                                        val rgb = Color(rgbTriple.first, rgbTriple.second, rgbTriple.third)
-                                        Log.d(TAG, "Drawing ColorCircle: rgb = [${rgb.red}, ${rgb.green}, ${rgb.blue}]")
-                                        ColorCircle(color = rgb)
-                                    }
-                                    if (sceneColorSet.isEmpty()) {
-                                        Text(
-                                            stringResource(R.string.no_colored_lights_in_scene),
-                                            modifier = Modifier
-                                                .height(DEFAULT_SIZE_FOR_COLOR_CIRCLE.dp)
-                                                .wrapContentSize()  // centers text vertically
-                                        )
-                                    }
-                                }
+                    //
+                    //  and the zones
+                    //
+                    Log.d(TAG, "ShowScenesForFlock() - zones: ${flockSceneData.zoneScenes.keys.size}")
+                    flockSceneData.zoneScenes.forEach { (zone, sceneList) ->
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            Text(
+                                modifier = Modifier.padding(start = 12.dp, top = 8.dp),
+                                text = "${stringResource(R.string.zone)}: ${zone.name}",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        sceneList.forEach { scene ->
+                            item {
+                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock)
+                            }
+                        }
+                        if (sceneList.isEmpty()) {
+                            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                                Text(
+                                    modifier = Modifier.padding(start = 32.dp),
+                                    text = stringResource(R.string.no_scenes_for_flock)
+                                )
                             }
                         }
                     }
@@ -376,6 +366,73 @@ fun ShowScenesForFlock(
         dismissButton = { }
     )
 }
+
+@Composable
+private fun DisplayFlockScene(
+    scene: PHv2Scene,
+    viewmodel: PhilipsHueViewmodel,
+    flock: PhilipsHueFlockInfo
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                BorderStroke(
+                    2.dp,
+                    brush = SolidColor(MaterialTheme.colorScheme.secondaryContainer)
+                ),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .clickable {
+                viewmodel.sceneSelectedForFlock(scene = scene, flock = flock)
+            }
+    ) {
+        Text(scene.metadata.name)
+        OverlappingRow(overlapFactor = 0.6f) {
+            // Find all the colors in this scene (don't count repeats, use a Set!)
+            val sceneColorSet = mutableSetOf<MyColorXYBrightness>()
+            scene.actions.forEach { action ->
+                if (action.action.color != null) {
+                    var yY = 1.0
+                    if (action.action.dimming != null) {
+                        yY = action.action.dimming.brightness.toDouble()
+                    }
+                    sceneColorSet.add(MyColorXYBrightness(
+                        x = action.action.color.xy.x.toDouble(),
+                        y = action.action.color.xy.y.toDouble(),
+                        yY = yY
+                    ))
+                }
+            }
+
+            // Draw a circle for each color in the set
+            sceneColorSet.forEach { colorXY ->
+                Log.d(TAG, "scene ${scene.metadata.name}, colorXY = $colorXY")
+                val rgbTriple = xyToRgbWithBrightness(
+                    x = colorXY.x.toFloat(),
+                    y = colorXY.y.toFloat(),
+                    brightness = colorXY.yY.toInt()
+                )
+                val rgb = Color(rgbTriple.first, rgbTriple.second, rgbTriple.third)
+                Log.d(TAG, "Drawing ColorCircle: rgb = [${rgb.red}, ${rgb.green}, ${rgb.blue}]")
+                ColorCircle(color = rgb)
+            }
+            if (sceneColorSet.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_colored_lights_in_scene),
+                    modifier = Modifier
+                        .height(DEFAULT_SIZE_FOR_COLOR_CIRCLE.dp)
+                        .wrapContentSize()  // centers text vertically
+                )
+            }
+        }
+    }
+}
+
 
 /**
  * Draws a circle of the given color and size.  If the color is very dark,
