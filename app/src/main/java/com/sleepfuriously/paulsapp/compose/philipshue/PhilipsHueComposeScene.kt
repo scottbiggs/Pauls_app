@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.OverlappingRow
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
@@ -311,7 +312,7 @@ fun ShowScenesForFlock(
                             Text(
                                 modifier = Modifier.padding(start = 12.dp, top = 8.dp),
                                 text = "${stringResource(R.string.room)}: ${room.name}",
-                                style = MaterialTheme.typography.labelLarge
+                                fontSize = 20.sp
                             )
                         }
                         sceneList.forEach { scene ->
@@ -338,7 +339,7 @@ fun ShowScenesForFlock(
                             Text(
                                 modifier = Modifier.padding(start = 12.dp, top = 8.dp),
                                 text = "${stringResource(R.string.zone)}: ${zone.name}",
-                                style = MaterialTheme.typography.labelLarge
+                                fontSize = 20.sp
                             )
                         }
                         sceneList.forEach { scene ->
