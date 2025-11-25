@@ -29,7 +29,7 @@ object PhilipsHueModelScenes {
      * Returns all the scenes that this bridge knows about.  On error, empty
      * list is returned.
      */
-    suspend fun getAllScenesFromApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Scene> {
+    suspend fun getAllScenesFromBridgeApi(bridge: PhilipsHueBridgeInfo) : List<PHv2Scene> {
         val newScenesList = mutableListOf<PHv2Scene>()
         val v2ScenesAll = PhilipsHueApi.getAllScenesFromApi(
             bridgeIp = bridge.ipAddress,
@@ -78,7 +78,7 @@ object PhilipsHueModelScenes {
      *
      * preconditions
      *  - The bridge MUST have its scenes already loaded.  This does NOT poll the
-     *  bridge to find the scenes directly.  Thus you need to call [getAllScenesFromApi]
+     *  bridge to find the scenes directly.  Thus you need to call [getAllScenesFromBridgeApi]
      *  first, store that info into the bridge, then call this function.
      */
     fun getAllScenesForRoom(

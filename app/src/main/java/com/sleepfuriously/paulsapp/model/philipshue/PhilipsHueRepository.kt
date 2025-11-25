@@ -966,7 +966,7 @@ class PhilipsHueRepository(
             val name = prefs.getString(nameKey, EMPTY_STRING)
             if (name.isNullOrEmpty()) {
                 Log.e(TAG, "loadAllFlocks() - unable to find name for flock id = $flockId! skipping")
-                break
+                continue
             }
             // get room ids
             val roomKey = assembleFlockRoomsKey(flockId)
@@ -1155,6 +1155,18 @@ class PhilipsHueRepository(
     }
 
     /**
+     * Since there are special functions that exist only in a [PhilipsHueFlockModel],
+     * it might be nice to find that when all you have is a [PhilipsHueFlockInfo].
+     *
+     * @return      The Flock Model that controls the give flock.  Null if not found.
+     */
+    fun findFlockModelFromFlock(flock: PhilipsHueFlockInfo) : PhilipsHueFlockModel? {
+        return flockModelList.value.find {
+            it.flock.value.id == flock.id
+        }
+    }
+
+    /**
      * Helper function that figures out how to turn a working flock into a
      * full-fledged [PhilipsHueFlockInfo].
      *
@@ -1230,16 +1242,14 @@ class PhilipsHueRepository(
     ) {
         Log.d(TAG, "sendFlockSceneToBridge() - flock = ${flock.name}, ${flock.id}")
 
+        // find the flock model
         var flockModel: PhilipsHueFlockModel? = null
-        Log.d(TAG, "sendFlockSceneToBridge() - flockModel size = ${flockModelList.value.size}")
         for (fm in flockModelList.value) {
-            Log.d(TAG, "   fm.flock.value.id = ${fm.flock.value.id}, flock.id = ${flock.id}")
             if (fm.flock.value.id == flock.id) {
                 flockModel = fm
                 break
             }
         }
-
         if (flockModel == null) {
             Log.e(TAG, "sendFlockSceneToBridge() - unable to find flock model! Aborting!")
             return
@@ -1247,7 +1257,7 @@ class PhilipsHueRepository(
 
         // finally tell the flock to send the scene stuff to the bridge and up
         coroutineScope.launch(Dispatchers.IO) {
-            val worked = flockModel.sendSceneToBridge(scene)
+            val worked = flockModel.sendSceneNameToBridges(scene.metadata.name)
             if (worked) {
                 flockModel.updateFlockCurrentScene(scene)
             }

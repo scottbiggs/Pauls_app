@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -281,7 +283,11 @@ fun ShowScenesForFlock(
     viewmodel: PhilipsHueViewmodel,
     onDismiss: () -> Unit
 ) {
-    Log.d(TAG, "ShowScenesForFlock() begin")
+    Log.d(TAG, "ShowScenesForFlock() begin. scenes = ${flockSceneData.roomScenes.size + flockSceneData.zoneScenes.size}")
+
+    // get the names of all the duped scenes for this flock
+    val dupedSceneNames = remember { mutableStateOf(flockSceneData.getMatchingSceneNames()) }
+
     AlertDialog(
         modifier = Modifier
             .border(
@@ -317,7 +323,7 @@ fun ShowScenesForFlock(
                         }
                         sceneList.forEach { scene ->
                             item {
-                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock)
+                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock, dupedSceneNames.value)
                             }
                         }
                         if (sceneList.isEmpty()) {
@@ -344,7 +350,7 @@ fun ShowScenesForFlock(
                         }
                         sceneList.forEach { scene ->
                             item {
-                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock)
+                                DisplayFlockScene(scene, viewmodel, flockSceneData.flock, dupedSceneNames.value)
                             }
                         }
                         if (sceneList.isEmpty()) {
@@ -372,8 +378,18 @@ fun ShowScenesForFlock(
 private fun DisplayFlockScene(
     scene: PHv2Scene,
     viewmodel: PhilipsHueViewmodel,
-    flock: PhilipsHueFlockInfo
+    flock: PhilipsHueFlockInfo,
+    dupedNames: Set<String>
 ) {
+    // figure out if this scene is duplicated.  It'll be drawn differently.
+    val dupe = dupedNames.contains(scene.metadata.name)
+    val brush = if (dupe) {
+        SolidColor(MaterialTheme.colorScheme.primary)
+    }
+    else {
+        SolidColor(MaterialTheme.colorScheme.secondaryContainer)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -383,7 +399,7 @@ private fun DisplayFlockScene(
             .border(
                 BorderStroke(
                     2.dp,
-                    brush = SolidColor(MaterialTheme.colorScheme.secondaryContainer)
+                    brush = brush
                 ),
                 RoundedCornerShape(12.dp)
             )

@@ -687,40 +687,6 @@ class PhilipsHueViewmodel : ViewModel() {
 
 
     /**
-     * Get all the scenes for all the rooms.  This is done by mapping each room
-     * to a list of its scenes.
-     */
-    fun getRoomSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueRoomInfo, List<PHv2Scene>> {
-        val daMap = mutableMapOf<PhilipsHueRoomInfo, List<PHv2Scene>>()
-        flock.roomSet.forEach { room ->
-            val bridge = flock.getBridgeForRoom(room.v2Id)
-            if (bridge == null) {
-                Log.e(TAG, "getRoomSceneListForFlock() - can't find bridge for room ${room.name}! Aborting!")
-                return emptyMap()
-            }
-            val sceneList = PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
-            daMap[room] = sceneList
-        }
-        return daMap
-    }
-
-    /** Same as [getRoomSceneListForFlock] but for zones */
-    fun getZoneSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueZoneInfo, List<PHv2Scene>> {
-        val daMap = mutableMapOf<PhilipsHueZoneInfo, List<PHv2Scene>>()
-        flock.zoneSet.forEach { zone ->
-            val bridge = flock.getBridgeForZone(zone.v2Id)
-            if (bridge == null) {
-                Log.e(TAG, "getZoneSceneListForFlock() - can't find bridge for zone ${zone.name}! Aborting!")
-                return emptyMap()
-            }
-            val sceneList = PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
-            daMap[zone] = sceneList
-        }
-        return daMap
-    }
-
-
-    /**
      * UI calls this to indicate that user wants to show the scenes for a
      * given room.
      *
@@ -759,11 +725,18 @@ class PhilipsHueViewmodel : ViewModel() {
      *  grouped lights in this flock
      */
     fun showScenesForFlock(flock: PhilipsHueFlockInfo) {
+        // figure out which flockmodel we're using for this flock
+        val flockModel = phRepository.findFlockModelFromFlock(flock)
+        if (flockModel == null) {
+            Log.e(TAG, "showScenesForFlock() unable to find flock model! Aborting!")
+            return
+        }
+
         _sceneDisplayStuffForFlock.update {
             Log.d(TAG, "showScenesForFlock() flock = ${flock.name}")
 
-            val roomScenes = getRoomSceneListForFlock(flock)
-            val zoneScenes = getZoneSceneListForFlock(flock)
+            val roomScenes = flockModel.getRoomSceneListForFlock(flock)
+            val zoneScenes = flockModel.getZoneSceneListForFlock(flock)
 
             if (roomScenes.isEmpty() && zoneScenes.isEmpty()) {
                 Log.w(TAG, "showScenesForFlock() - no scenes for this flock")
@@ -1104,7 +1077,38 @@ data class SceneDataForFlock(
     val flock: PhilipsHueFlockInfo,
     val roomScenes: Map<PhilipsHueRoomInfo, List<PHv2Scene>>,
     val zoneScenes: Map<PhilipsHueZoneInfo, List<PHv2Scene>>
-)
+) {
+    /**
+     * Finds all the scenes that match (through their name).
+     * Slow: O(n^n) but there shouldn't be that many scenes
+     */
+    fun getMatchingSceneNames() : Set<String> {
+        // first start by creating a list of ALL the scenes
+        val allScenes = mutableListOf<PHv2Scene>()
+        for(roomSceneList in roomScenes) {
+            allScenes.addAll(roomSceneList.value)
+        }
+        for(zoneSceneList in zoneScenes) {
+            allScenes.addAll(zoneSceneList.value)
+        }
+
+        // now find only the items that appear more than once
+        val dupes = mutableSetOf<PHv2Scene>()
+        allScenes.forEachIndexed { i, scene ->
+            // get all the elements after i + 1
+            val scenesAfter = allScenes.drop(i + 1)
+            // is scene in the scenesAfter list (by name only)?
+            scenesAfter.forEach { afterScene ->
+                if (afterScene.metadata.name == scene.metadata.name) {
+                    // Yep, here's a dupe!  Add it
+                    dupes.add(scene)
+                }
+            }
+        }
+        return dupes.map { it.metadata.name }.toSet()
+    }
+
+} // data class SceneDataForFlock
 
 enum class TestStatus {
     /** test hos not taken place yet, nor has it been started */

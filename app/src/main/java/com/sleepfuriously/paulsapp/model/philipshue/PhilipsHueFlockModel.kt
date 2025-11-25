@@ -10,11 +10,9 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ROOM
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * This class handles communication between a Flock and the rest of the app.
@@ -127,6 +125,138 @@ class PhilipsHueFlockModel(
             repository.sendZoneBrightnessToBridge(zoneInfo, newBrightness)
         }
     }
+
+    /**
+     * Similar to [sendSceneToBridge], but this is more general.  It sends
+     * the scene to all the rooms and zones in this flock that implement it,
+     * including all the different (potentially) bridges.  Tricky.
+     *
+     * @return      True if everything went as planned.  False on error.
+     */
+    suspend fun sendSceneNameToBridges(sceneName: String) : Boolean {
+
+        Log.d(TAG, "sendSceneNameToBridges( $sceneName )")
+
+        //----------------
+        // 1. Find the scenes in this flock with the given name.
+        //   a. This involves getting the scenes for each room and zone.
+        //   b. And then testing to see if those scenes match sceneName.
+        // 2. Find the bridges for those scenes.
+        // 3. Tell those bridges to turn those scenes on.
+
+
+        // find all rooms and zones controlled by this flock
+        val roomScenes = getRoomSceneListForFlock(flock.value)
+        val zoneScenes = getZoneSceneListForFlock(flock.value)
+        if (roomScenes.isEmpty() && zoneScenes.isEmpty()) {
+            Log.w(TAG, "sendSceneNameToBridges() - this flock has no rooms or zones, nothing to do!")
+            return false
+        }
+
+
+        // filter these so that the we only have rooms and zones that
+        // have scenes that match sceneName
+        val filteredRoomScenes = mutableSetOf<PHv2Scene>()
+        roomScenes.forEach { roomSceneMap ->
+            val sceneList = roomSceneMap.value
+            for (scene in sceneList) {
+                if (scene.metadata.name == sceneName) {
+                    filteredRoomScenes.add(scene)
+                }
+            }
+        }
+        val filteredZoneScenes = mutableSetOf<PHv2Scene>()
+        zoneScenes.forEach { zoneSceneMap ->
+            val sceneList = zoneSceneMap.value
+            for (scene in sceneList) {
+                if (scene.metadata.name == sceneName) {
+                    filteredZoneScenes.add(scene)
+                }
+            }
+        }
+
+        if (filteredRoomScenes.isEmpty() && filteredZoneScenes.isEmpty()) {
+            Log.w(TAG, "sendSceneNameToBridges() - nothing to send, sigh.")
+            return false
+        }
+
+        //
+        // Now we have all the scenes with the given name that appear
+        // in this flock (yay!).  One by one, figure out the appropriate
+        // bridge and tell it to turn the scene on.
+        //
+
+        // rooms
+        for (scene in filteredRoomScenes) {
+            val bridge = flock.value.bridgeSet.find { bridgeInfo ->
+                bridgeInfo.scenes.contains(scene)
+            }
+            if (bridge == null) {
+                Log.e(TAG, "sendSceneNameToBridges() cannot find bridge for scene ${scene.metadata.name}! Skipping")
+                continue
+            }
+
+            // finally we can tell that bridge to turn this scene on, whew!
+            PhilipsHueApi.sendSceneToLightGroup(
+                bridgeIp = bridge.ipAddress,
+                bridgeToken = bridge.token,
+                sceneToDisplay = scene
+            )
+        }
+
+        // and for zones
+        for (scene in filteredZoneScenes) {
+            val bridge = flock.value.bridgeSet.find { bridgeInfo ->
+                bridgeInfo.scenes.contains(scene)
+            }
+            if (bridge == null) {
+                Log.e(TAG, "sendSceneNameToBridges() cannot find bridge for scene ${scene.metadata.name}! Skipping")
+                continue
+            }
+            PhilipsHueApi.sendSceneToLightGroup(
+                bridgeIp = bridge.ipAddress,
+                bridgeToken = bridge.token,
+                sceneToDisplay = scene
+            )
+        }
+
+        return true
+    }
+
+
+    /**
+     * Get all the scenes for all the rooms.  This is done by mapping each room
+     * to a list of its scenes.
+     */
+    fun getRoomSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueRoomInfo, List<PHv2Scene>> {
+        val daMap = mutableMapOf<PhilipsHueRoomInfo, List<PHv2Scene>>()
+        flock.roomSet.forEach { room ->
+            val bridge = flock.getBridgeForRoom(room.v2Id)
+            if (bridge == null) {
+                Log.e(TAG, "getRoomSceneListForFlock() - can't find bridge for room ${room.name}! Aborting!")
+                return emptyMap()
+            }
+            val sceneList = PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
+            daMap[room] = sceneList
+        }
+        return daMap
+    }
+
+    /** Same as [getRoomSceneListForFlock] but for zones */
+    fun getZoneSceneListForFlock(flock: PhilipsHueFlockInfo) : Map<PhilipsHueZoneInfo, List<PHv2Scene>> {
+        val daMap = mutableMapOf<PhilipsHueZoneInfo, List<PHv2Scene>>()
+        flock.zoneSet.forEach { zone ->
+            val bridge = flock.getBridgeForZone(zone.v2Id)
+            if (bridge == null) {
+                Log.e(TAG, "getZoneSceneListForFlock() - can't find bridge for zone ${zone.name}! Aborting!")
+                return emptyMap()
+            }
+            val sceneList = PhilipsHueModelScenes.getAllScenesForZone(zone, bridge)
+            daMap[zone] = sceneList
+        }
+        return daMap
+    }
+
 
     /**
      * Tell the flock to do its best to display the given scene.
