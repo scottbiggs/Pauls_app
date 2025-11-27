@@ -548,7 +548,7 @@ private fun ManualBridgeSetupStep2(
 
             Button(
                 onClick = {
-                    viewmodel.bridgeButtonPushed()
+                    viewmodel.addBridgeButtonPushed()
                 },
                 modifier = Modifier
                     .padding(bottom = 24.dp, top = 8.dp)

@@ -44,7 +44,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForFlock
 import com.sleepfuriously.paulsapp.xyToRgbWithBrightness
-import kotlin.text.toDouble
 
 /*
  * UI for displaying Scenes.
@@ -108,7 +107,7 @@ fun ShowScenesForRoom(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.sceneSelectedForRoom(bridge, room, scene)
+                                        viewmodel.setSceneSelectedForRoom(bridge, room, scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)
@@ -217,7 +216,7 @@ fun ShowScenesForZone(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.sceneSelectedForZone(bridge = bridge, zone = zone, scene = scene)
+                                        viewmodel.setSceneSelectedForZone(bridge = bridge, zone = zone, scene = scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)
@@ -405,7 +404,7 @@ private fun DisplayFlockScene(
             )
             .padding(horizontal = 10.dp, vertical = 4.dp)
             .clickable {
-                viewmodel.sceneSelectedForFlock(scene = scene, flock = flock)
+                viewmodel.setSceneSelectedForFlock(scene = scene, flock = flock)
             }
     ) {
         Text(scene.metadata.name)

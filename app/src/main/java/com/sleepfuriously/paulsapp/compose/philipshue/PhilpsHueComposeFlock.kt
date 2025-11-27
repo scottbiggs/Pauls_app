@@ -1,6 +1,5 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -286,12 +285,23 @@ private fun DotDotDotFlockMenu(
 
             // add a flock
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.add_flock)) },
+                text = { Text(stringResource(R.string.add_flock_confirm_button)) },
                 onClick = {
                     isDropDownExpanded = false
-                    viewmodel.showConstructFlock()
+                    viewmodel.beginAddFlockDialog()
                 },
             )
+
+            // edit a flock. choose which wisely
+            flocks.forEach { flock ->
+                DropdownMenuItem(
+                    text = { Text("${stringResource(R.string.edit_flock)}: ${flock.name}") },
+                    onClick = {
+                        isDropDownExpanded = false
+                        viewmodel.beginEditFlockDialog(flock)
+                    }
+                )
+            }
 
             // delete a flock, but which?  A list for deleting each one...
             flocks.forEach { flock ->
@@ -433,7 +443,9 @@ private fun ShowFlockInfoDialog(
 }
 
 /**
- * Call this when the user wants to build a brand new Flock.
+ * Call this when the user wants to build a brand new Flock or modify an
+ * existing flock.  The viewmodel will know if this is a NEW flock or an
+ * edit.
  *
  * @param   viewmodel       Access to the viewmodel.  This will provide the
  *                          lists of room and zones that the flock will be
@@ -441,9 +453,13 @@ private fun ShowFlockInfoDialog(
  *                          the user selects things.
  *
  * @param   errorMsg        When not empty display this error message.
+ *
+ * preconditions
+ *  - the viewmodel's originalFlock variable will tell us if this is an
+ *    add or an edit (null --> add)
  */
 @Composable
-fun ShowConstructFlockDialog(
+fun ShowAddOrEditFlockDialog(
     viewmodel: PhilipsHueViewmodel,
     errorMsg: String,
     allRooms: Set<PhilipsHueRoomInfo>,
@@ -477,19 +493,57 @@ fun ShowConstructFlockDialog(
     onOk: (String) -> Unit
 ) {
     /** the name the user is using for this flock */
-    var name by remember { mutableStateOf(EMPTY_STRING) }
+    var name by remember {
+        if (viewmodel.isCurrentlyEditingFlock()) {
+            mutableStateOf(viewmodel.originalFlock!!.name)
+        }
+        else {
+            mutableStateOf(EMPTY_STRING)
+        }
+    }
 
-    val selectedRooms by rememberSaveable() { mutableStateOf(mutableSetOf<PhilipsHueRoomInfo>()) }
-    val selectedZones by rememberSaveable() { mutableStateOf(mutableSetOf<PhilipsHueZoneInfo>()) }
+    val selectedRooms by rememberSaveable() {
+        if (viewmodel.isCurrentlyEditingFlock()) {
+            // this is to recall the original selected rooms
+            mutableStateOf(viewmodel.originalFlock!!.roomSet.toMutableSet())
+        }
+        else {
+            mutableStateOf(mutableSetOf())
+        }
+    }
+
+    val selectedZones by rememberSaveable() {
+        if (viewmodel.isCurrentlyEditingFlock()) {
+            // recall the original selected zones
+            mutableStateOf(viewmodel.originalFlock!!.zoneSet.toMutableSet())
+        }
+        else {
+            mutableStateOf(mutableSetOf())
+        }
+    }
 
     AlertDialog(
         onDismissRequest = { },     // don't let the user inadvertantly tap away--they NEED to click cancel or OK
         title = {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = stringResource(R.string.add_flock_title))
+            // title for add a flock
+            if (viewmodel.isCurrentlyAddingFlock()) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    text = stringResource(R.string.add_flock_title)
+                )
+            }
+            // title for edit a flock. includes the original flock
+            else {
+                Column {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start,
+                        text = stringResource(R.string.add_flock_title)
+                        )
+                    Text("${stringResource(R.string.edit_flock_orig_name)}: ${viewmodel.originalFlock!!.name}")
+                }
+            }
         },
         text = {
             SelectionContainer {
@@ -572,12 +626,19 @@ fun ShowConstructFlockDialog(
         },
         confirmButton = {
             TextButton(onClick = { onOk(name) }) {
-                Text(stringResource(R.string.add_flock), color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text =
+                        if (viewmodel.isCurrentlyEditingFlock()) {
+                            stringResource(R.string.edit_flock_confirm_button)
+                        }
+                        else { stringResource(R.string.add_flock_confirm_button) },
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         },
         dismissButton = {
             TextButton(
-                onClick = { viewmodel.cancelConstructFlock() },
+                onClick = { viewmodel.cancelAddOrEditFlock() },
             ) { Text(stringResource(R.string.cancel))}
         }
     )

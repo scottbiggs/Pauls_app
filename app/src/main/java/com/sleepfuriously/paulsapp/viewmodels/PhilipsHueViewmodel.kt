@@ -2,7 +2,6 @@ package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +26,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.generateV2Id
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -36,6 +34,52 @@ import kotlinx.coroutines.launch
 
 /**
  * Viewmodel for all the Philips Hue devices.
+ *
+ * Organization of this file:
+ *
+ *      Flows
+ *      -----
+ *
+ *      Data
+ *      ----
+ *
+ *      Init
+ *      ----
+ *
+ *      Bridge functions
+ *      ------
+ *          These are ways of returning and sending data to a bridge
+ *
+ *          Update
+ *          ------
+ *
+ *          Add
+ *          ---
+ *
+ *      Room & Zone functions
+ *      ----------
+ *
+ *      Flock functions
+ *      -----
+ *          All about Flocks!
+ *          READ
+ *          ----
+ *
+ *          SEND
+ *          ----
+ *
+ *      Scenes functions
+ *      ------
+ *          Various scene manipulations and data gathering
+ *          READ
+ *          ----
+ *
+ *          SEND
+ *          ----
+ *
+ *      Miscellaneous functions
+ *      -------------
+ *          For everything else, especially helper and private functions
  */
 class PhilipsHueViewmodel : ViewModel() {
 
@@ -110,9 +154,12 @@ class PhilipsHueViewmodel : ViewModel() {
     /** Holder of the Flocks observed from the repository  */
     val flocks = _flocks.asStateFlow()
 
-    private val _showAddFlockDialog = MutableStateFlow(false)
-    /** When True, the UI should show the add Flock dialog */
-    val showAddFlockDialog = _showAddFlockDialog.asStateFlow()
+    private val _showAddOrEditFlockDialog = MutableStateFlow(false)
+    /**
+     * When True, the UI should show the add Flock dialog.  It'll be an EDIT if
+     * [originalFlock] is not null.
+     */
+    val showAddOrEditFlockDialog = _showAddOrEditFlockDialog.asStateFlow()
 
     private val _addFlockErrorMsg = MutableStateFlow<String>(EMPTY_STRING)
     /** When not empty, display as an error message */
@@ -140,6 +187,9 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     private var workingFlock = WorkingFlock(id = generateV2Id())
 
+    /** Holder for the original flock while the user edits it. Null means not applicable. */
+    var originalFlock: PhilipsHueFlockInfo? = null
+        private set
 
     //-------------------------
     //  init
@@ -171,9 +221,71 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
+    /**
+     * todo: move to MainViewmodel
+     *
+     * Runs all the initalization tests of the IoT devices.
+     *
+     * preconditions
+     *  [philipsHueBridgesCompose] is active and working
+     *
+     * side effects
+     *   [_iotTestingState]      set to true when this is done
+     */
+    fun checkIoT(ctx: Context) {
+
+        Log.d(TAG, "checkIoT() start. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
+
+        _iotTestingState.value = TestStatus.TESTING
+
+        Log.d(TAG, "checkIoT() part 1. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
+
+        var allTestsSuccessful = true       // start optimistically
+
+
+        // launch off the main thread, just in case things take a while
+        viewModelScope.launch(Dispatchers.IO) {
+
+            //------------
+            // 1.  check wifi
+            //
+            _wifiWorking.value = isConnectivityWifiWorking(ctx)
+            if (_wifiWorking.value == false) {
+                // abort testing--no point doing more tests without wifi
+                // Caution: this will skip the succeeding tests to never happen,
+                // causing them to never indicate that they completed.
+                allTestsSuccessful = false
+                _iotTestingState.value = TestStatus.TEST_BAD
+                _iotTestingErrorMsg.value = ctx.getString(R.string.wifi_not_working)
+                Log.d(TAG, "checkIoT() cannot find wifi connectivity: aborting!")
+                return@launch
+            }
+
+            //------------
+            // 2.  check philips hue system
+            //
+            checkPhilipsHue()
+            allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
+
+        }.invokeOnCompletion {
+            // Note: this code will be called when the above coroutine exits,
+            // even if by a return statement.
+
+            // signal tests complete
+            Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
+            _iotTestingState.value = TestStatus.TEST_GOOD
+            _iotTestingErrorMsg.value = ""
+        }
+    }
+
+
     //-------------------------
-    //  public functions
+    //  Bridge functions
     //-------------------------
+
+    //---------
+    //  Update
+    //
 
     /**
      * User has changed the brightness of a room, either by turning a light on/off
@@ -270,77 +382,6 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * This is for testing the UI for adding a bridge.  Here we simply add a dummy
-     * bridge with some random data.
-     */
-    fun addBridgeTest() {
-        workingNewBridge = PhilipsHueNewBridge(
-            ip = "hey, I'm supposed to be an ip!!",
-            labelName = "testBridge",
-            token = "goblllelsldlsy gook",
-            humanName = "test bridge"
-        )
-        bridgeAddAllGoodAndDone()
-    }
-
-    /**
-     * todo: move to MainViewmodel
-     *
-     * Runs all the initalization tests of the IoT devices.
-     *
-     * preconditions
-     *  [philipsHueBridgesCompose] is active and working
-     *
-     * side effects
-     *   [_iotTestingState]      set to true when this is done
-     */
-    fun checkIoT(ctx: Context) {
-
-        Log.d(TAG, "checkIoT() start. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
-
-        _iotTestingState.value = TestStatus.TESTING
-
-        Log.d(TAG, "checkIoT() part 1. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
-
-        var allTestsSuccessful = true       // start optimistically
-
-
-        // launch off the main thread, just in case things take a while
-        viewModelScope.launch(Dispatchers.IO) {
-
-            //------------
-            // 1.  check wifi
-            //
-            _wifiWorking.value = isConnectivityWifiWorking(ctx)
-            if (_wifiWorking.value == false) {
-                // abort testing--no point doing more tests without wifi
-                // Caution: this will skip the succeeding tests to never happen,
-                // causing them to never indicate that they completed.
-                allTestsSuccessful = false
-                _iotTestingState.value = TestStatus.TEST_BAD
-                _iotTestingErrorMsg.value = ctx.getString(R.string.wifi_not_working)
-                Log.d(TAG, "checkIoT() cannot find wifi connectivity: aborting!")
-                return@launch
-            }
-
-            //------------
-            // 2.  check philips hue system
-            //
-            checkPhilipsHue()
-            allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
-
-        }.invokeOnCompletion {
-            // Note: this code will be called when the above coroutine exits,
-            // even if by a return statement.
-
-            // signal tests complete
-            Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
-            _iotTestingState.value = TestStatus.TEST_GOOD
-            _iotTestingErrorMsg.value = ""
-        }
-    }
-
-    /**
      * Removes the specified bridge from our list.  Also tries to remove
      * the token (username) from the bridge's list of approved devices.
      * All this happens in the background.
@@ -367,10 +408,9 @@ class PhilipsHueViewmodel : ViewModel() {
         phRepository.stopSseConnection(bridge)
     }
 
-
-    //-------------------------
-    //  add bridge functions
-    //-------------------------
+    //---------
+    //  Add
+    //
 
     /**
      * Called when the back button is hit during bridge registration.
@@ -554,7 +594,7 @@ class PhilipsHueViewmodel : ViewModel() {
      *      addNewBridgeState - If successful, this is changed to STAGE_3_ALL_GOOD_AND_DONE.
      *                          Otherwise it's changed to STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE.
      */
-    fun bridgeButtonPushed() {
+    fun addBridgeButtonPushed() {
 
         // sanity checks: make sure that the bridge exists and is operating
         if (workingNewBridge == null) {
@@ -642,10 +682,9 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
-
-    //-------------------------
-    //  rooms, zones, flocks
-    //-------------------------
+    //---------
+    //  Rooms & Zones
+    //
 
     /**
      * Finds all the rooms for all the bridges.
@@ -660,6 +699,14 @@ class PhilipsHueViewmodel : ViewModel() {
     fun getAllZones() : Set<PhilipsHueZoneInfo> {
         return phRepository.getAllZones()
     }
+
+    //---------
+    //  Scenes
+    //
+
+        //
+        // Read Scenes
+        //
 
     /**
      * Finds out which scenes are used by a room.
@@ -685,6 +732,9 @@ class PhilipsHueViewmodel : ViewModel() {
         return PhilipsHueModelScenes.getAllScenesForZone(zone = zone, bridge = bridge)
     }
 
+        //
+        // Send Scenes
+        //
 
     /**
      * UI calls this to indicate that user wants to show the scenes for a
@@ -751,7 +801,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * side effects
      *  - [sceneDisplayStuffForRoom] - set to null
      */
-    fun dontShowScenes() {
+    fun stopShowingScenes() {
         Log.d(TAG, "dontShowScenes()")
         _sceneDisplayStuffForRoom.update { null }
         _sceneDisplayStuffForZone.update { null }
@@ -770,7 +820,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * Note
      *  This does NOT cause the scenes info to go away.
      */
-    fun sceneSelectedForRoom(
+    fun setSceneSelectedForRoom(
         bridge: PhilipsHueBridgeInfo,
         room: PhilipsHueRoomInfo,
         scene: PHv2Scene
@@ -780,9 +830,9 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * Similar to [sceneSelectedForRoom].
+     * Similar to [setSceneSelectedForRoom].
      */
-    fun sceneSelectedForZone(
+    fun setSceneSelectedForZone(
         bridge: PhilipsHueBridgeInfo,
         zone: PhilipsHueZoneInfo,
         scene: PHv2Scene
@@ -791,9 +841,9 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * Similar to [sceneSelectedForRoom].
+     * Similar to [setSceneSelectedForRoom].
      */
-    fun sceneSelectedForFlock(
+    fun setSceneSelectedForFlock(
         flock: PhilipsHueFlockInfo,
         scene: PHv2Scene
     ) {
@@ -801,23 +851,50 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
 
+    //---------
+    //  Flocks
+    //
+
     /**
      * Call to cause the UI to start displaying the construct flock dialog.
      *
      * side effects
      *  - [workingFlock] reset to empty.
      */
-    fun showConstructFlock() {
+    fun beginAddFlockDialog() {
         workingFlock = WorkingFlock(id = generateV2Id())
-        _showAddFlockDialog.update { true }
+        _showAddOrEditFlockDialog.update { true }
+    }
+
+    /**
+     * UI calls this function to initiate editing a flock.
+     *
+     * @param   flock       The flock to make changes to
+     */
+    fun beginEditFlockDialog(flock: PhilipsHueFlockInfo) {
+        originalFlock = flock.copy()
+        workingFlock = WorkingFlock(
+            id = flock.id,
+            name = flock.name,
+            roomIdSet = flock.roomSet.map { it.v2Id }.toSet(),
+            zoneIdSet = flock.zoneSet.map { it.v2Id }.toSet()
+        )
+        _showAddOrEditFlockDialog.update { true }
     }
 
     /**
      * Change the UI state so that it'll no longer show the flock
      * construction stuff.
+     *
+     * side effects
+     *  - [originalFlock]       Set to null
+     *  - [showAddOrEditFlockDialog]  Set to false
+     *  - [addFlockErrorMsg]    Set to empty
      */
-    fun cancelConstructFlock() {
-        _showAddFlockDialog.update { false }
+    fun cancelAddOrEditFlock() {
+        originalFlock = null
+        clearFlockErrorMsg()
+        _showAddOrEditFlockDialog.update { false }
     }
 
     /**
@@ -829,17 +906,22 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
-     * Signals that the flock construction is complete.  Time to send that
-     * info to the repository and get that flock constructed.  Oh yeah,
-     * don't forget to turn off that add flock dialog!
+     * Signals that the flock construction or modification is complete.
+     * Figure out if it's a modification or a brand-new Flock.  Oh yeah,
+     * don't forget to turn off that dialog!
      *
      * preconditions
-     *  - sldfksj
+     *  - [workingFlock] is complete
+     *  - [originalFlock] contains the original (if we're modifying)
      *
-     * @param   newFlockName    The name that the user wants to use for this flock
+     * side effects
+     *  - [addFlockErrorMsg]    Could be changed with a valid error message
+     *
+     * @param   newFlockName    The name that the user wants to use for this flock.
      */
-    fun flockListOk(newFlockName: String, ctx: Context) {
-        // test to see if the flock is addable
+    fun addOrEditFlockComplete(newFlockName: String, ctx: Context) {
+
+        // test to see if the flock info is usable
         if (newFlockName.isBlank()) {
             _addFlockErrorMsg.update {
                 ctx.getString(R.string.no_name_for_new_flock)
@@ -854,7 +936,7 @@ class PhilipsHueViewmodel : ViewModel() {
         }
 
         // Find the rooms (from ALL of 'em) that match the ids in the working flock
-        val roomSet = getAllRooms().filter {
+        val roomSet = getAllRooms().filter {        // fixme: returns 0
             workingFlock.roomIdSet.contains(it.v2Id)
         }.toSet()
 
@@ -864,17 +946,34 @@ class PhilipsHueViewmodel : ViewModel() {
         }.toSet()
 
 
+        // So are we editing an existing flock or are we adding
+        // a new flock?
+        if (originalFlock != null) {
+            // We're editing a flock.
+            editFlock(
+                origFlockId = originalFlock!!.id,
+                newName = newFlockName,
+                newRoomSet = roomSet,
+                newZoneSet = zoneSet
+                )
+
+            // finally signal that we're no longer editing
+            cancelAddOrEditFlock()
+            return
+        }
+
         addFlock(
             name = newFlockName,
             roomSet = roomSet,
             zoneSet = zoneSet
         )
-        cancelConstructFlock()
+        cancelAddOrEditFlock()
     }
 
     /**
      * The UI should call this while constructing a new [PhilipsHueFlockInfo]
-     * each time the user adds or removes a room or a zone.
+     * or editing an existing flock.  It should call  each time the user
+     * adds or removes a room or a zone.
      *
      * @param   added       True means the item was added.
      *                      False means it was removed.
@@ -921,6 +1020,29 @@ class PhilipsHueViewmodel : ViewModel() {
     }
 
     /**
+     * Use this to see if the viewmodel is currently in a state of adding
+     * or editing a flock.
+     *
+     * @return      True iff we are EDITING (not adding, not doing neither) a flock.
+     */
+    fun isCurrentlyEditingFlock() : Boolean {
+        return originalFlock != null
+    }
+
+    /**
+     * Call this to tell if the view model is currently Adding a flock.
+     *
+     * @return      True iff ADDING a brand-new flock.  Editing or neither
+     *              yields False.
+     */
+    fun isCurrentlyAddingFlock() : Boolean {
+        if (isCurrentlyEditingFlock()) {
+            return false        // editing, not ADDing
+        }
+        return showAddOrEditFlockDialog.value     // yet we're still showing a dialog--thus adding!
+    }
+
+    /**
      * Adds a [PhilipsHueFlockInfo] and all the associated stuff.
      *
      * @param   name        Human name for this flock.  Use blank (default)
@@ -932,7 +1054,7 @@ class PhilipsHueViewmodel : ViewModel() {
      * @param   zoneSet     The zones that are used by this flock.
      *                      Defaults to null (testing).
      */
-    fun addFlock(
+    private fun addFlock(
         name: String = "",
         roomSet: Set<PhilipsHueRoomInfo>,
         zoneSet: Set<PhilipsHueZoneInfo>
@@ -957,11 +1079,44 @@ class PhilipsHueViewmodel : ViewModel() {
             zoneSet = zoneSet,
             longTermStorage = true
         )
-
-        // turn off add flock dialog
-        _sceneDisplayStuffForFlock.update { null }
     }
 
+    /**
+     * Use this to modify an existing flock.
+     *
+     * @param   origFlockId     The id of the original flock.
+     *
+     * @param   newName         The name for this flock.  If it has not
+     *                          changed, then this will be empty.
+     *
+     * @param   newRoomSet      The set of Rooms that this flock is now using.
+     *
+     * @param   newZoneSet      The zones this flock is now using.
+     */
+    fun editFlock(
+        origFlockId: String,
+        newName: String,
+        newRoomSet: Set<PhilipsHueRoomInfo>,
+        newZoneSet: Set<PhilipsHueZoneInfo>
+    ) {
+        // use the new name or the original name is newName is empty
+        val name = newName.ifEmpty { originalFlock!!.name }
+
+        // check for error conditions
+        if (newRoomSet.isEmpty() && newZoneSet.isEmpty()) {
+            Log.v(TAG, "editFlock() - user entered a flock with no rooms or zones - aborting!")
+            return
+        }
+
+        // create the flock for the repository
+        phRepository.editFlock(
+            origFlockId = origFlockId,
+            name = name,
+            roomSet = newRoomSet,
+            zoneSet = newZoneSet
+        )
+
+    } // editFlock()
 
     fun deleteFlock(flock: PhilipsHueFlockInfo) {
         viewModelScope.launch(Dispatchers.IO) {

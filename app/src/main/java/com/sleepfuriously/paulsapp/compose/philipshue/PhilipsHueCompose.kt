@@ -412,16 +412,6 @@ private fun DotDotDotBridgeMenu(
                     showDeleteDialog = true
                 }
             )
-
-            // add test bridge
-            DropdownMenuItem(
-                text = { Text("add test bridge") },
-                onClick = {
-                    isDropDownExpanded = false
-                    viewmodel.addBridgeTest()
-                    Toast.makeText(ctx, "Just added a fake bridge!", Toast.LENGTH_LONG).show()
-                }
-            )
         }
 
         // delete confirmation dialog

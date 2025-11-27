@@ -58,7 +58,7 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
-import com.sleepfuriously.paulsapp.compose.philipshue.ShowConstructFlockDialog
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowAddOrEditFlockDialog
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForFlock
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
@@ -142,7 +142,7 @@ class MainActivity : ComponentActivity() {
                 val flockSceneData = philipsHueViewmodel.sceneDisplayStuffForFlock.collectAsStateWithLifecycle()
 
                 val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
-                val addFlock = philipsHueViewmodel.showAddFlockDialog.collectAsStateWithLifecycle()
+                val addFlock = philipsHueViewmodel.showAddOrEditFlockDialog.collectAsStateWithLifecycle()
                 val addFlockError = philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
 
                 // Before anything, do we need to exit?
@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
                 room = roomSceneData.room,
                 scenes = roomSceneData.scenes,
                 viewmodel = philipsHueViewmodel,
-                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
             )
         }
 
@@ -261,7 +261,7 @@ class MainActivity : ComponentActivity() {
                 zone = zoneSceneData.zone,
                 scenes = zoneSceneData.scenes,
                 viewmodel = philipsHueViewmodel,
-                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
             )
         }
 
@@ -270,12 +270,12 @@ class MainActivity : ComponentActivity() {
             ShowScenesForFlock(
                 flockSceneData = flockSceneData,
                 viewmodel = philipsHueViewmodel,
-                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
             )
         }
 
         else if (showAddFlock) {
-            ShowConstructFlockDialog(
+            ShowAddOrEditFlockDialog(
                 errorMsg = addFlockErrorMsg,
                 viewmodel = philipsHueViewmodel,
                 allRooms = philipsHueViewmodel.getAllRooms(),
@@ -284,7 +284,7 @@ class MainActivity : ComponentActivity() {
                     philipsHueViewmodel.toggleFlockList(turnedOn, room, zone)
                 },
                 onOk = { flockName ->
-                    philipsHueViewmodel.flockListOk(flockName, ctx)
+                    philipsHueViewmodel.addOrEditFlockComplete(flockName, ctx)
                 }
             )
         }
@@ -414,7 +414,7 @@ class MainActivity : ComponentActivity() {
                                 room = roomSceneData.room,
                                 scenes = roomSceneData.scenes,
                                 viewmodel = philipsHueViewmodel,
-                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
                             )
                         }
 
@@ -425,7 +425,7 @@ class MainActivity : ComponentActivity() {
                                 zone = zoneSceneData.zone,
                                 scenes = zoneSceneData.scenes,
                                 viewmodel = philipsHueViewmodel,
-                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
                             )
                         }
 
@@ -434,12 +434,12 @@ class MainActivity : ComponentActivity() {
                             ShowScenesForFlock(
                                 flockSceneData = flockSceneData,
                                 viewmodel = philipsHueViewmodel,
-                                onDismiss = { philipsHueViewmodel.dontShowScenes() }
+                                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
                             )
                         }
 
                         else if (showAddFlock) {
-                            ShowConstructFlockDialog(
+                            ShowAddOrEditFlockDialog(
                                 errorMsg = addFlockErrorMsg,
                                 viewmodel = philipsHueViewmodel,
                                 allRooms = philipsHueViewmodel.getAllRooms(),
@@ -448,7 +448,7 @@ class MainActivity : ComponentActivity() {
                                     philipsHueViewmodel.toggleFlockList(turnedOn, room, zone)
                                 },
                                 onOk = { flockName ->
-                                    philipsHueViewmodel.flockListOk(flockName, ctx)
+                                    philipsHueViewmodel.addOrEditFlockComplete(flockName, ctx)
                                 }
                             )
                         }

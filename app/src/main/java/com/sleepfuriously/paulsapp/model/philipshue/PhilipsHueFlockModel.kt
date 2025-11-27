@@ -480,6 +480,24 @@ class PhilipsHueFlockModel(
     }
 
     /**
+     * Call this to change everything about the current flock except its
+     * ID.
+     */
+    fun updateFlock(updatedFlock: PhilipsHueFlockInfo) {
+        _flock.update {
+            it.copy(
+                name = updatedFlock.name,
+                currentSceneName = updatedFlock.currentSceneName,
+                brightness = updatedFlock.brightness,
+                onOffState = updatedFlock.onOffState,
+                roomSet = updatedFlock.roomSet,
+                zoneSet = updatedFlock.zoneSet,
+                bridgeSet = updatedFlock.bridgeSet
+            )
+        }
+    }
+
+    /**
      * Whenever a flock has its scene set, call this function.  It will modify
      * the flock so that it correctly reflects the new scene.  You can also call
      * it to indicate that NO scene is being displayed (like the user has made

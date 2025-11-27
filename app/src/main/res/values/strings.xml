@@ -90,7 +90,11 @@
     <string name="scene_name_prefix">Scene</string>
 
     <string name="add_flock_title">Create a Flock</string>
-    <string name="add_flock">create new flock</string>
+    <string name="add_flock_confirm_button">create new flock</string>
+    <string name="edit_flock_title">Edit Flock</string>
+    <string name="edit_flock_orig_name">originally:</string>
+    <string name="edit_flock">Edit</string>
+    <string name="edit_flock_confirm_button">confirm edit</string>
     <string name="delete_flock">delete flock</string>
     <string name="delete_flock_confirm_title">Delete Flock</string>
     <string name="delete_flock_confirm_body">This action will remove the Flock from this application.  Tap \'confirm\' to continue with deletion.</string>

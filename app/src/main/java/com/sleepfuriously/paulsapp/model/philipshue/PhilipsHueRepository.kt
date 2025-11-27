@@ -1167,6 +1167,60 @@ class PhilipsHueRepository(
     }
 
     /**
+     * All you have is the ID of a flock?  Well this'll return
+     * the [PhilipsHueFlockModel] for that flock.  Then you can
+     * have some fun.
+     *
+     * @return      Returns NULL if not found.
+     */
+    fun findFlockModelFromFlockId(flockId: String) : PhilipsHueFlockModel? {
+        return flockModelList.value.find {
+            it.flock.value.id == flockId
+        }
+    }
+
+    /**
+     * Call this function to indicate that a flock has changed.
+     *
+     * @param   origFlockId     The ID of the flock that has changed.
+     *
+     */
+    fun editFlock(
+        origFlockId: String,
+        name: String,
+        roomSet: Set<PhilipsHueRoomInfo>,
+        zoneSet: Set<PhilipsHueZoneInfo>
+    ) {
+        val model = findFlockModelFromFlockId(origFlockId)
+        if (model == null) {
+            Log.d(TAG, "editFlock() - unable to find flock model for given ID. Aborting!")
+            return
+        }
+
+        // figure out the bridges we're using for this flock
+        val bridgeSet = mutableSetOf<PhilipsHueBridgeInfo>()
+        bridgeSet += getBridgesFromRoomSet(roomSet)
+        bridgeSet += getBridgesFromZoneSet(zoneSet)
+
+        val changedFlock = model.flock.value.copy(
+            name = name,
+            roomSet = roomSet,
+            zoneSet = zoneSet,
+            bridgeSet = bridgeSet
+        )
+
+        // tell the Model to update its flock
+        model.updateFlock(changedFlock)
+
+        // and finally save this new info
+        PhilipsHueStorage.saveFlock(
+            ctx = MyApplication.appContext,
+            flock = changedFlock
+        )
+
+    }
+
+    /**
      * Helper function that figures out how to turn a working flock into a
      * full-fledged [PhilipsHueFlockInfo].
      *
