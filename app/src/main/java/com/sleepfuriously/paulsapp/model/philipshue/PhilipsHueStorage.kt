@@ -238,6 +238,7 @@ object PhilipsHueStorage {
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
             synchronize = synchronize,
+            clear = true,
             daSet = newIdSet
         )
         return true
@@ -465,6 +466,7 @@ object PhilipsHueStorage {
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
             synchronize = synchronize,
+            clear = true,
             daSet = idSet
         )
         return true
@@ -573,6 +575,7 @@ object PhilipsHueStorage {
             key = PHILIPS_HUE_FLOCK_IDS_KEY,
             filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
             newFlockIdSet,
+            clear = false,
             synchronize = true
         )
     }

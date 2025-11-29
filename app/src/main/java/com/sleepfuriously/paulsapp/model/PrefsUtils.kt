@@ -387,17 +387,24 @@ fun getPrefsSet(
 /**
  * Saves the given set to the prefs with the given key.  Same caveats
  * as the other set() functions here.
+ *
+ * @param   clear       Set to TRUE if you want to clear ***-EVERYTHING-***
+ *                      before calling this.  Yes, that's everything in the
+ *                      entire prefs file!!!
  */
 fun savePrefsSet(
     ctx: Context,
     key: String,
     filename: String,
     daSet: Set<String>,
+    clear: Boolean,
     synchronize : Boolean = false
 ) {
     val prefs = ctx.getSharedPreferences(filename, Context.MODE_PRIVATE)
     prefs.edit(synchronize) {
-        clear()     // necessary (for reasons that are unclear to everyone!)
+        if (clear) {
+            clear()     // necessary (for reasons that are unclear to everyone!)
+        }
         putStringSet(key, daSet)
     }
 }
