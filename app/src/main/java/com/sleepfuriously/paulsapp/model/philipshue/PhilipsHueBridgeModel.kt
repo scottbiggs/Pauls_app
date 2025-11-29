@@ -1021,7 +1021,7 @@ class PhilipsHueBridgeModel(
                 }
 
                 RTYPE_SCENE -> {
-                    Log.e(TAG, "todo: implement handling updating a scene!")
+                    Log.e(TAG, "todo: interpretUpdateEvent() - implement handling sse updating a scene!")
                 }
 
                 else -> {

@@ -1088,7 +1088,7 @@ class PhilipsHueRepository(
         }
 
         // long-term deletion
-        PhilipsHueStorage.removeFlock(MyApplication.appContext, flock)
+        PhilipsHueStorage.removeFlock(MyApplication.appContext, flock, coroutineScope)
 
         // remove the flock model from the list
         flockModelList.update {

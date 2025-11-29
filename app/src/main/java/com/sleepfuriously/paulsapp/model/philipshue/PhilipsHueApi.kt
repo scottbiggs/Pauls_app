@@ -745,9 +745,7 @@ object PhilipsHueApi {
 //        prefix: String = PHILIPS_HUE_BRIDGE_URL_OPEN_PREFIX,
         suffix: String
     ) : String {
-
         val fullAddress = "${prefix}$ip${suffix}"
-        Log.i(TAG,"createFullddress() -> $fullAddress")
         return fullAddress
     }
 
@@ -793,7 +791,7 @@ data class CreateChild(
 //  constants
 //------------------------------------
 
-private const val TAG = "PhilipsHueBridgeApi"
+private const val TAG = "PhilipsHueApi"
 
 //----------------
 //  prefixes

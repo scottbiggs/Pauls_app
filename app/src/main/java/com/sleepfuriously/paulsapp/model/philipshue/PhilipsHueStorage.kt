@@ -11,6 +11,10 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.WorkingFlock
 import com.sleepfuriously.paulsapp.model.savePrefsSet
 import com.sleepfuriously.paulsapp.model.savePrefsString
 import com.sleepfuriously.paulsapp.model.savePrefsStringsAndSets
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Controls storing and retrieving data about the Philips Hue system
@@ -376,12 +380,18 @@ object PhilipsHueStorage {
         // add the rooms
         val roomsKey = assembleFlockRoomsKey(flock.id)
         val roomsValueSet = flock.roomSet.map { it.v2Id }.toSet()
-        setPairs[roomsKey] = roomsValueSet
+        if (roomsValueSet.isNotEmpty()) {
+            // only add if there's something to add!
+            setPairs[roomsKey] = roomsValueSet
+        }
 
         // add the zones
         val zonesKey = assembleFlockZonesKey(flock.id)
         val zonesValueSet = flock.zoneSet.map { it.v2Id }.toSet()
-        setPairs[zonesKey] = zonesValueSet
+        if (zonesValueSet.isNotEmpty()) {
+            // again, only add this if there are zones
+            setPairs[zonesKey] = zonesValueSet
+        }
 
         // Finally the actual id of the flock itself.  This is tricky
         // as we need to modify the existing flock set to include this
@@ -402,7 +412,7 @@ object PhilipsHueStorage {
             daStringPairs = stringPairs,
             daSets = setPairs,
             filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
-            synchronize = false
+            synchronize = true
         )
     }
 
@@ -523,11 +533,17 @@ object PhilipsHueStorage {
      *  - deleting the flock's zone IDs
      *  - finally deleting the Flock IDs
      */
-    suspend fun removeFlock(ctx: Context, flock: PhilipsHueFlockInfo) {
-        removeFlockName(ctx, flock)
-        removeFlockRoomIDs(ctx, flock)
-        removeFlockZoneIDs(ctx, flock)
-        removeFlockId(ctx, flock)
+    fun removeFlock(
+        ctx: Context,
+        flock: PhilipsHueFlockInfo,
+        coroutineScope: CoroutineScope
+    ) {
+        coroutineScope.launch(Dispatchers.IO) {
+            removeFlockName(ctx, flock)
+            removeFlockRoomIDs(ctx, flock)
+            removeFlockZoneIDs(ctx, flock)
+            removeFlockId(ctx, flock)
+        }
     }
 
     /**
@@ -535,6 +551,7 @@ object PhilipsHueStorage {
      * other data referenced by this ID will no longer be accessible, so
      * remember to delete those too!
      */
+    @Suppress("RedundantSuspendModifier")
     private suspend fun removeFlockId(ctx: Context, flock: PhilipsHueFlockInfo) {
         //
         // Removing just one element from a Set is tricky.

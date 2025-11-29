@@ -92,10 +92,8 @@ object PhilipsHueModelScenes {
         // matches the room id, we add it to the list.
         val sceneList = mutableListOf<PHv2Scene>()
         bridge.scenes.forEach { scene ->
-            Log.d(TAG, "   scene = ${scene.metadata.name}")
             if ((scene.group.rtype == ROOM) && (scene.group.rid == room.v2Id)) {
                 sceneList.add(scene)
-                Log.d(TAG, "      added!")
             }
         }
         return sceneList

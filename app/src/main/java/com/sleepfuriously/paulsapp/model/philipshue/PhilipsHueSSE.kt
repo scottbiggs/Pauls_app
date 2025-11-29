@@ -76,7 +76,7 @@ class PhilipsHueSSE(
         override fun onOpen(eventSource: EventSource, response: Response) {
             super.onOpen(eventSource, response)
             Log.d(TAG, "EventSourceListener: Connection Opened")
-            Log.i(TAG, "   time = ${getTime()}")
+            Log.d(TAG, "   time = ${getTime()}")
 
             if (response.isSuccessful) {
                 val eventJsonString = response.body?.string()
@@ -111,7 +111,7 @@ class PhilipsHueSSE(
         override fun onClosed(eventSource: EventSource) {
             super.onClosed(eventSource)
             Log.d(TAG, "sse - onClosed() for eventSource $eventSource")
-            Log.i(TAG, "   time = ${getTime()}")
+            Log.d(TAG, "   time = ${getTime()}")
 
             val bridgeId = getBridgeIdFromEventSource(eventSource)
             if (bridgeId == null) {
@@ -140,7 +140,7 @@ class PhilipsHueSSE(
             Log.d(TAG, "      id = $id")
             Log.d(TAG, "      type = $type")
             Log.d(TAG, "      data = $data")
-            Log.i(TAG, "      time = ${getTime()}")
+            Log.d(TAG, "      time = ${getTime()}")
 
             val bridgeId = getBridgeIdFromEventSource(eventSource)
             if (bridgeId == null) {
