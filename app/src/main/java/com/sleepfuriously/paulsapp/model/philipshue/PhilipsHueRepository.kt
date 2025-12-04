@@ -3,13 +3,12 @@ package com.sleepfuriously.paulsapp.model.philipshue
 import android.content.Context
 import android.util.Log
 import com.sleepfuriously.paulsapp.MyApplication
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousPost
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockNameKey
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockRoomsKey
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueStorage.assembleFlockZonesKey
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueNewBridge
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
@@ -234,7 +233,20 @@ class PhilipsHueRepository(
                 val ip = PhilipsHueStorage.loadBridgeIp(id, ctx)
 
                 // get the token for this bridge
-                val token = PhilipsHueStorage.loadBridgeToken(id, ctx)
+                var token = PhilipsHueStorage.loadBridgeToken(
+                    bridgeId = id,
+                    ctx = ctx,
+                )
+
+                // test to see if the bridge accespts this token.  If not, then
+                // we need to update the token to the new secure system.
+                if (doesBridgeAcceptToken(bridgeIp = ip, token = token) == false) {
+                    // Yep, this is probably an old unencrypted token.  Update it.
+                    PhilipsHueStorage.updateToken(id, ctx)
+
+                    // and now retrieve the token (correctly interpreted)
+                    token = PhilipsHueStorage.loadBridgeToken(id, ctx)
+                }
 
                 val isActive = isBridgeActive(ip, token)
                 var name = ""
@@ -428,71 +440,6 @@ class PhilipsHueRepository(
             }
         }
         return false
-    }
-
-    /**
-     * Tests to see if a bridge is at the given ip.
-     *
-     * This just tests to see if the basic debug screen appears.
-     * The url is  http://<ip>/debug/clip.html
-     *
-     * @param   ip          The ip that may point to a philips hue bridge
-     *
-     * WARNING:
-     *  This must be called off the main thread as it access
-     *  the network.
-     */
-    suspend fun doesPhilipsHueBridgeRespondToIp(ip: String) : Boolean {
-        return doesBridgeRespondToIp(ip)
-    }
-
-    /**
-     * Finds out if a bridge currently is active and responds to its token.
-     *
-     * @param       bridgeIp    Ip of the bridge in question.  Does not check to see
-     *                          if everything is right.
-     *
-     * @param       token       The token (username) to test.
-     *
-     * @return      True if the bridge is working and responds positively.
-     *              False otherwise.
-     */
-    suspend fun doesPhilipsHueBridgeAcceptToken(bridgeIp: String, token: String) : Boolean {
-        return doesBridgeAcceptToken(bridgeIp, token)
-    }
-
-    /**
-     * Finds all the scenes that can be displayed for this room.
-     */
-    fun getScenesForRoom(
-        room: PhilipsHueRoomInfo,
-        bridge: PhilipsHueBridgeInfo
-    ) : List<PHv2Scene> {
-        return PhilipsHueModelScenes.getAllScenesForRoom(room, bridge)
-    }
-
-
-    /**
-     * Finds all the lights used by a bridge
-     */
-    fun getBridgeLights(bridgeIpAddress: String) : Set<PhilipsHueLightInfo> {
-        val bridgeModel = bridgeModelList.value.find { it.bridgeIpAddress == bridgeIpAddress }
-        if (bridgeModel == null) {
-            Log.e(TAG, "Unable to find bridge in getBridgeLights() ip = $bridgeIpAddress! Returning empty Set.")
-            return emptySet()
-        }
-        return bridgeModel.bridge.value.lights.toSet()
-    }
-
-    /**
-     * Finds ALL the lights used in all the bridges!
-     */
-    fun getAllLights() : Set<PhilipsHueLightInfo> {
-        val lightSet = mutableSetOf<PhilipsHueLightInfo>()
-        bridgeModelList.value.forEach { bridgeModel ->
-            lightSet.addAll(bridgeModel.bridge.value.lights)
-        }
-        return lightSet
     }
 
     /**
@@ -994,14 +941,6 @@ class PhilipsHueRepository(
 
             // convert to regular flock
             val flockInfo = makeFlockInfoFromWorkingFlock(workingFlock)
-            if (flockInfo == null) {
-                Log.e(TAG, "loadAllFlocks() could not complete making a flock info! Skipping!")
-                break
-            }
-
-            // find the bridges used by this flock
-            var bridges = getBridgesFromRoomSet(flockInfo.roomSet)
-            bridges = bridges + getBridgesFromZoneSet(flockInfo.zoneSet)
 
             // finally create a Flock Model and get it going
             flockModelList.update {
