@@ -1,4 +1,4 @@
-package com.sleepfuriously.paulsapp.model
+package com.sleepfuriously.paulsapp.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

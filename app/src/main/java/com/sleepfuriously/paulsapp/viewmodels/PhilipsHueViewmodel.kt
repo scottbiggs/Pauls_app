@@ -9,8 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.model.isConnectivityWifiWorking
-import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.utils.isConnectivityWifiWorking
+import com.sleepfuriously.paulsapp.utils.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
@@ -161,7 +161,7 @@ class PhilipsHueViewmodel : ViewModel() {
      */
     val showAddOrEditFlockDialog = _showAddOrEditFlockDialog.asStateFlow()
 
-    private val _addFlockErrorMsg = MutableStateFlow<String>(EMPTY_STRING)
+    private val _addFlockErrorMsg = MutableStateFlow(EMPTY_STRING)
     /** When not empty, display as an error message */
     val addFlockErrorMsg = _addFlockErrorMsg.asStateFlow()
 

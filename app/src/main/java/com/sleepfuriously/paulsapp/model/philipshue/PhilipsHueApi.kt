@@ -1,11 +1,10 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
-import com.sleepfuriously.paulsapp.model.MyResponse
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPost
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightGroup
+import com.sleepfuriously.paulsapp.utils.MyResponse
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousGet
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousPost
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device

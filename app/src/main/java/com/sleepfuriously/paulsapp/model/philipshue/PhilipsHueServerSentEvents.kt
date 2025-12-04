@@ -2,8 +2,8 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
 import com.sleepfuriously.paulsapp.getTime
-import com.sleepfuriously.paulsapp.model.BODY_PEEK_SIZE
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.getAllTrustingSseClient
+import com.sleepfuriously.paulsapp.utils.BODY_PEEK_SIZE
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.getAllTrustingSseClient
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import kotlinx.coroutines.CoroutineScope

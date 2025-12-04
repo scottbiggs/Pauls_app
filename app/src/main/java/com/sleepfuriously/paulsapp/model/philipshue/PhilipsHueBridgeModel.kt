@@ -1,9 +1,8 @@
 package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.util.Log
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousPut
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousPut
 import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueApi.getBridgeFromApi
-import com.sleepfuriously.paulsapp.model.philipshue.PhilipsHueDataConverter.convertV2GroupedLightsAllToV2GroupedLights
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
@@ -13,7 +12,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_DELETE
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_ERROR
 import com.sleepfuriously.paulsapp.model.philipshue.json.EVENT_UPDATE
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Device
-import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2GroupedLight
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceServerSentEvent
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_BRIDGE_HOME

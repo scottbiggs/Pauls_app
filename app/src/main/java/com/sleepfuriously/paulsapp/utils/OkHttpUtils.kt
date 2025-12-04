@@ -1,4 +1,4 @@
-package com.sleepfuriously.paulsapp.model
+package com.sleepfuriously.paulsapp.utils
 
 import android.annotation.SuppressLint
 import android.util.Log
@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
@@ -62,7 +63,7 @@ object OkHttpUtils {
         //---------------
         // implementation of a socket trust manager that blindly trusts all
         val sslContext = SSLContext.getInstance("SSL")
-        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+        sslContext.init(null, trustAllCerts, SecureRandom())
 
         // a socket factory that uses the all-trusting trust manager
         val sslSocketFactory = sslContext.socketFactory

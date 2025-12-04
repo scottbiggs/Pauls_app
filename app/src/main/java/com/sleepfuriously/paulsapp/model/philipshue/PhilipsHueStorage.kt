@@ -2,18 +2,17 @@ package com.sleepfuriously.paulsapp.model.philipshue
 
 import android.content.Context
 import android.util.Log
-import com.sleepfuriously.paulsapp.model.PREFS_BRIDGE_PASS_TOKEN_FILENAME
-import com.sleepfuriously.paulsapp.model.deletePref
-import com.sleepfuriously.paulsapp.model.getPrefsSet
-import com.sleepfuriously.paulsapp.model.getPrefsString
+import com.sleepfuriously.paulsapp.utils.PREFS_BRIDGE_PASS_TOKEN_FILENAME
+import com.sleepfuriously.paulsapp.utils.deletePref
+import com.sleepfuriously.paulsapp.utils.getPrefsStringSet
+import com.sleepfuriously.paulsapp.utils.getPrefsString
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.WorkingFlock
-import com.sleepfuriously.paulsapp.model.savePrefsSet
-import com.sleepfuriously.paulsapp.model.savePrefsString
-import com.sleepfuriously.paulsapp.model.savePrefsStringsAndSets
+import com.sleepfuriously.paulsapp.utils.savePrefsStringSet
+import com.sleepfuriously.paulsapp.utils.savePrefsString
+import com.sleepfuriously.paulsapp.utils.savePrefsStringsAndSets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -40,10 +39,11 @@ object PhilipsHueStorage {
      *              (probably the prefs file wasn't created yet).
      */
     fun loadAllBridgeIds(ctx: Context) : Set<String>? {
-        val prefs = getPrefsSet(
+        val prefs = getPrefsStringSet(
             ctx = ctx,
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
-            key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY
+            key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
+            secure = false      // bridge ids are easily found anyway
         )
         val numPrefs = prefs?.size ?: 0
         Log.d(TAG, "loadAllBridgeIds() found $numPrefs bridges")
@@ -62,12 +62,37 @@ object PhilipsHueStorage {
      *              Returns empty string on error.
      */
     fun loadBridgeToken(bridgeId: String, ctx: Context) : String {
-
         val key = assembleTokenKey(bridgeId)
-        val token = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
+        val token = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME, true)
 
         Log.d(TAG, "loadBridgeTokenFromPrefs($bridgeId) => $token")
         return token ?: ""
+    }
+
+    /**
+     * Call this when you want to update an existing bridge token from the old
+     * insecure version to the new secure version.
+     *
+     * This will replace the old entry with a new encrypted token.
+     */
+    @Suppress("RedundantSuspendModifier")
+    suspend fun updateToken(bridgeId: String, ctx: Context) {
+
+        // load the token without encryption
+        val key = assembleTokenKey(bridgeId)
+        val token = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME, false)
+        if (token == null) {
+            Log.e(TAG, "updateToken() - error! token is NULL, can't continue!")
+            return
+        }
+
+        // save with encryption
+        saveBridgeToken(
+            bridgeId = bridgeId,
+            newToken = token,
+            synchronize = true,
+            ctx = ctx
+        )
     }
 
     /**
@@ -82,7 +107,7 @@ object PhilipsHueStorage {
     fun loadBridgeIp(bridgeId: String, ctx: Context) : String {
 
         val key = assembleIpKey(bridgeId)
-        val ip = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
+        val ip = getPrefsString(ctx, key, PREFS_BRIDGE_PASS_TOKEN_FILENAME, false)
 
         Log.d(TAG, "loadBridgeIpFromPrefs($bridgeId) => $ip")
         return ip ?: ""
@@ -111,10 +136,11 @@ object PhilipsHueStorage {
      *              found.
      */
     private fun loadFlockIds(ctx: Context) : Set<String> {
-        val idSet = getPrefsSet(
+        val idSet = getPrefsStringSet(
             ctx = ctx,
             key = PHILIPS_HUE_FLOCK_IDS_KEY,
-            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            secure = false
         )
 
         if (idSet == null) {
@@ -140,7 +166,8 @@ object PhilipsHueStorage {
         val name = getPrefsString(
             ctx = ctx,
             key = key,
-            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            secure = false
         )
         if (name == null) {
             Log.e(TAG, "loadFlockName() - unable to find the name of flock $flockId")
@@ -156,10 +183,11 @@ object PhilipsHueStorage {
      */
     private fun loadFlockRoomIds(ctx: Context, flockId: String) : Set<String> {
         val key = assembleFlockRoomsKey(flockId)
-        val roomIds = getPrefsSet(
+        val roomIds = getPrefsStringSet(
             ctx = ctx,
             key = key,
-            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            secure = false
         )
 
         if (roomIds == null) {
@@ -174,10 +202,11 @@ object PhilipsHueStorage {
      */
     private fun loadFlockZoneIds(ctx: Context, flockId: String) : Set<String> {
         val key = assembleFlockZonesKey(flockId)
-        val zoneIds = getPrefsSet(
+        val zoneIds = getPrefsStringSet(
             ctx = ctx,
             key = key,
-            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME
+            filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
+            secure = false
         )
         if (zoneIds == null) {
             Log.e(TAG, "loadFlockRoomIds() - unable to find any zones (not even no zones)")
@@ -233,12 +262,13 @@ object PhilipsHueStorage {
         }
 
         // now save this in our shared prefs
-        savePrefsSet(
+        savePrefsStringSet(
             ctx = ctx,
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
             synchronize = synchronize,
             clear = true,
+            secure = false,
             daSet = newIdSet
         )
         return true
@@ -274,7 +304,7 @@ object PhilipsHueStorage {
     ) : Boolean {
 
         val ipKey = assembleIpKey(bridgeId)
-        savePrefsString(ctx, ipKey, newIp, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
+        savePrefsString(ctx, ipKey, newIp, synchronize, false, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         return true
     }
@@ -310,7 +340,7 @@ object PhilipsHueStorage {
     ) : Boolean {
 
         val tokenKey = assembleTokenKey(bridgeId)
-        savePrefsString(ctx, tokenKey, newToken, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
+        savePrefsString(ctx, tokenKey, newToken, synchronize, true, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
 
         return true
     }
@@ -332,7 +362,7 @@ object PhilipsHueStorage {
      * @return      True - successfully saved
      *              False - some problem prevented saving
      */
-    fun saveBridge(
+    suspend fun saveBridge(
         bridgeId: String,
         bridgeipAddress: String,
         newToken: String,
@@ -413,7 +443,8 @@ object PhilipsHueStorage {
             daStringPairs = stringPairs,
             daSets = setPairs,
             filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
-            synchronize = true
+            synchronize = true,
+            secure = false
         )
     }
 
@@ -461,13 +492,14 @@ object PhilipsHueStorage {
 
         // now save this in our shared prefs, overwriting
         // any previous set of IDs.
-        savePrefsSet(
+        savePrefsStringSet(
             ctx = ctx,
             filename = PHILIPS_HUE_BRIDGE_ID_PREFS_FILENAME,
             key = PHILIPS_HUE_BRIDGE_ALL_IDS_KEY,
             synchronize = synchronize,
             clear = true,
-            daSet = idSet
+            daSet = idSet,
+            secure = false
         )
         return true
     }
@@ -516,7 +548,6 @@ object PhilipsHueStorage {
         synchronize: Boolean = false,
         ctx: Context
     ) {
-
         val ipKey = assembleIpKey(bridgeId)
         deletePref(ctx, ipKey, synchronize, PREFS_BRIDGE_PASS_TOKEN_FILENAME)
     }
@@ -553,7 +584,6 @@ object PhilipsHueStorage {
      * other data referenced by this ID will no longer be accessible, so
      * remember to delete those too!
      */
-    @Suppress("RedundantSuspendModifier")
     private suspend fun removeFlockId(ctx: Context, flock: PhilipsHueFlockInfo) {
         //
         // Removing just one element from a Set is tricky.
@@ -570,13 +600,14 @@ object PhilipsHueStorage {
             filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
             synchronize = true
         )
-        savePrefsSet(
+        savePrefsStringSet(
             ctx = ctx,
             key = PHILIPS_HUE_FLOCK_IDS_KEY,
             filename = PHILIPS_HUE_FLOCK_PREFS_FILENAME,
             newFlockIdSet,
             clear = false,
-            synchronize = true
+            synchronize = true,
+            secure = false
         )
     }
 

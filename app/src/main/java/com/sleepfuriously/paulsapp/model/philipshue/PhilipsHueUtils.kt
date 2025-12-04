@@ -5,8 +5,8 @@ import android.content.Context
 import android.provider.Settings.Secure
 import android.util.Log
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.model.OkHttpUtils.synchronousGet
-import com.sleepfuriously.paulsapp.model.isValidBasicIp
+import com.sleepfuriously.paulsapp.utils.OkHttpUtils.synchronousGet
+import com.sleepfuriously.paulsapp.utils.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueLightState

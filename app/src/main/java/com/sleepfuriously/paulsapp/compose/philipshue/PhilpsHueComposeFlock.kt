@@ -502,7 +502,7 @@ fun ShowAddOrEditFlockDialog(
         }
     }
 
-    val selectedRooms by rememberSaveable() {
+    val selectedRooms by rememberSaveable {
         if (viewmodel.isCurrentlyEditingFlock()) {
             // this is to recall the original selected rooms
             mutableStateOf(viewmodel.originalFlock!!.roomSet.toMutableSet())
@@ -512,7 +512,7 @@ fun ShowAddOrEditFlockDialog(
         }
     }
 
-    val selectedZones by rememberSaveable() {
+    val selectedZones by rememberSaveable {
         if (viewmodel.isCurrentlyEditingFlock()) {
             // recall the original selected zones
             mutableStateOf(viewmodel.originalFlock!!.zoneSet.toMutableSet())
@@ -650,4 +650,5 @@ fun ShowAddOrEditFlockDialog(
     }
 }
 
+@Suppress("unused")
 private const val TAG = "PhilipsHueComposeFlock"
