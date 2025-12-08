@@ -96,4 +96,7 @@ dependencies {
 
     // json serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+
+    // large selection of built-in icons
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
 }

@@ -3,9 +3,13 @@ package com.sleepfuriously.paulsapp.viewmodels
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
@@ -81,7 +85,7 @@ import kotlinx.coroutines.launch
  *      -------------
  *          For everything else, especially helper and private functions
  */
-class PhilipsHueViewmodel : ViewModel() {
+class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
 
     //-------------------------
     //  flow data
@@ -191,6 +195,10 @@ class PhilipsHueViewmodel : ViewModel() {
     var originalFlock: PhilipsHueFlockInfo? = null
         private set
 
+    /** Human-readable title for the Philips Hue stuff */
+    lateinit var title: String
+        private set
+
     //-------------------------
     //  init
     //-------------------------
@@ -278,6 +286,25 @@ class PhilipsHueViewmodel : ViewModel() {
         }
     }
 
+
+    //-------------------------
+    //  General functions
+    //-------------------------
+
+    /**
+     * Returns the title for this viewmodel
+     */
+    override fun getTitle(ctx: Context) : String {
+        return ctx.getString(R.string.ph_main_title)
+    }
+
+    override fun getSelectedIcon(): ImageVector {
+        return Icons.Filled.Lightbulb
+    }
+
+    override fun getUnselectedIcon(): ImageVector {
+        return Icons.Outlined.Lightbulb
+    }
 
     //-------------------------
     //  Bridge functions

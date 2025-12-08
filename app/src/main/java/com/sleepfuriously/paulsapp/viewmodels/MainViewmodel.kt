@@ -4,76 +4,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Viewmodel for the main portion of the opening screen.
  * This should only incorporate the broad aspects of the
- * main screen.  The parts of the screen should have their
- * own viewmodels.
+ * main screen.  Each tab component should have its
+ * own viewmodel.
  */
 class MainViewmodel : ViewModel() {
 
-    /** Tells the UI which state to display */
-    var displayStates by mutableStateOf(MainActivityDisplayStates.UNKNOWN)
-        private set
+    //---------------------------
+    //  flows
+    //---------------------------
 
+    private val _activeTab = MutableStateFlow<Int>(0)
+    /** This will hold the active tab index (the tab that is current) */
+    val activeTab = _activeTab.asStateFlow()
+
+    //---------------------------
+    //  functions
+    //---------------------------
 
     /**
-     * todo:  this is for testing the initialization graphic
+     * Call this when you want the tab to change
      */
-//    fun initialize(ctx: Context) {
-//        viewModelScope.launch {
-//            withContext(Dispatchers.IO) {
-//
-//                val epref = getESharedPref(ctx) as EncryptedSharedPreferences
-//
-//                val ph_name = epref.getString(PHILIPS_HUE_NAME_KEY, PH_NAME_NOT_FOUND)
-//                if (ph_name.equals(PH_NAME_NOT_FOUND)) {
-//                    displayStates = MainActivityDisplayStates.APP_STARTUP
-//                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_UNINITIALIZED
-//                    Log.d(TAG, "Philips Hue Bridge not initialized")
-//
-//                    // fixme:  for testing
-//                    delay(8000)
-//                    displayStates = MainActivityDisplayStates.RUNNING
-//                    Log.d(TAG, "displayState = $displayStates")
-//                }
-//                else {
-//                    displayStates = MainActivityDisplayStates.APP_STARTUP
-//                    Log.d(TAG, "displayState = $displayStates")
-//
-//                    // fixme:  for testing
-//                    delay(3000)
-//                    bridgeInit = PhilipsHueBridgeInit.BRIDGE_INITIALIZED
-//
-//                    displayStates = MainActivityDisplayStates.RUNNING
-//                    Log.d(TAG, "displayState = $displayStates")
-//                }
-//            }
-//        }
-//    }
-
-
-//    /**
-//     * Gets a reference to an encrypted shared prefs file.  I presume that
-//     * if it doesn't exist, a new one will be created.  Should otherwise
-//     * work just like a regular prefs file.
-//     *
-//     * from:  https://stackoverflow.com/a/64115229/624814
-//     */
-//    private fun getESharedPref(ctx: Context) : SharedPreferences {
-//        val masterKey = MasterKey.Builder(ctx)
-//            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-//            .build()
-//
-//        return EncryptedSharedPreferences.create(
-//            ctx,
-//            SHARED_PREFS_FILENAME,
-//            masterKey,
-//            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-//            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-//        )
-//    }
+    fun changeTab(newTabIndex: Int) {
+        _activeTab.update { newTabIndex }
+    }
 
 
     /**
