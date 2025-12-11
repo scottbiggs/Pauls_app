@@ -1,6 +1,6 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
-import android.widget.Toast
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -87,14 +87,7 @@ fun ShowMainScreenPhilipsHue(
             .fillMaxSize()
             .safeContentPadding()
     ) {
-        // the top--a title and a fab (to add bridges)
-        Text(
-            stringResource(id = R.string.ph_main_title),
-            modifier = Modifier
-                .padding(top = 4.dp, start = 32.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.headlineLarge,
-            color = Color.White
-        )
+        DrawMainPhilipsHueAddBridgeFab(viewmodel = philipsHueViewmodel)
 
         DrawPhilipsHueContents(
             bridges = bridges,
@@ -102,21 +95,6 @@ fun ShowMainScreenPhilipsHue(
             viewmodel = philipsHueViewmodel
         )
     }
-
-    // display the fab on top of stuff
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-    ) {
-        DrawMainPhilipsHueAddBridgeFab(
-            modifier = Modifier
-                .align(Alignment.TopEnd),    // only works if parent is Box
-            viewmodel = philipsHueViewmodel,
-        )
-    }
-
-    // todo: show messages (if any)
-
 }
 
 @Composable
@@ -340,7 +318,6 @@ private fun DotDotDotBridgeMenu(
     viewmodel: PhilipsHueViewmodel,
     bridge: PhilipsHueBridgeInfo,
 ) {
-    val ctx = LocalContext.current
     var isDropDownExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }

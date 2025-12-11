@@ -34,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
@@ -53,7 +52,6 @@ import com.sleepfuriously.paulsapp.viewmodels.SceneDataForFlock
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForRoom
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForZone
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -135,6 +133,8 @@ class MainActivity : ComponentActivity() {
                 val addFlock = philipsHueViewmodel.showAddOrEditFlockDialog.collectAsStateWithLifecycle()
                 val addFlockError = philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
 
+                val currentTab = mainViewmodel.activeTab.collectAsStateWithLifecycle()
+
                 // Before anything, do we need to exit?
                 if (philipsHueFinishNow) {
                     Log.d(TAG, "Finishing!!!")
@@ -188,7 +188,7 @@ class MainActivity : ComponentActivity() {
                         ShowViewmodelTabs(
                             mainViewmodel = mainViewmodel,
                             viewmodelTabs = tabViewmodels,
-                            currentTab = mainViewmodel.activeTab.value,
+                            currentTab = currentTab.value,
                             philipsHueBridges = philipsHueBridges,
                             roomSceneData = roomSceneData.value,
                             zoneSceneData = zoneSceneData.value,
@@ -197,17 +197,6 @@ class MainActivity : ComponentActivity() {
                             showAddFlock = addFlock.value,
                             addFlockErrorMsg = addFlockError.value
                         )
-
-//                        JustShowPhilipsHue(
-//                            philipsHueViewmodel = philipsHueViewmodel,
-//                            philipsHueBridges = philipsHueBridges,
-//                            roomSceneData = roomSceneData.value,
-//                            zoneSceneData = zoneSceneData.value,
-//                            flockSceneData = flockSceneData.value,
-//                            philipsHueFlocks = flocks.value,
-//                            showAddFlock = addFlock.value,
-//                            addFlockErrorMsg = addFlockError.value
-//                        )
                     }
 
                 }
@@ -269,66 +258,69 @@ class MainActivity : ComponentActivity() {
         Column(modifier = modifier.fillMaxSize()) {
             // Start with the TabRow at the top
             TabRow(selectedTabIndex = currentTab) {
-                viewmodelTabs.forEachIndexed { index,  thisTabViewmodel ->
+                viewmodelTabs.forEachIndexed { index, thisTabViewmodel ->
                     Tab(
                         selected = index == currentTab,
                         onClick = {
                             mainViewmodel.changeTab(index)
                         },
                         text = { Text(thisTabViewmodel.getTitle(ctx)) },
-                        icon = { Icon(
-                            imageVector = if (index == currentTab) {
-                                thisTabViewmodel.getSelectedIcon()
-                            }
-                            else {
-                                thisTabViewmodel.getUnselectedIcon()
-                            },
-                            contentDescription = null
-                        ) }
-                    )
-                }
-
-                // Provides the ability to swipe between tabs
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)     // makes sure that the pager gets everything below the TabRow
-                ) { index ->    // index to the current page! Cool!
-                    when (viewmodelTabs[index]) {
-                        is PhilipsHueViewmodel -> {
-                            JustShowPhilipsHue(
-                                philipsHueViewmodel = viewmodelTabs[index] as PhilipsHueViewmodel,
-                                philipsHueBridges = philipsHueBridges,
-                                roomSceneData = roomSceneData,
-                                zoneSceneData = zoneSceneData,
-                                flockSceneData = flockSceneData,
-                                philipsHueFlocks = philipsHueFlocks,
-                                showAddFlock = showAddFlock,
-                                addFlockErrorMsg = addFlockErrorMsg
+                        icon = {
+                            Icon(
+                                imageVector = if (index == currentTab) {
+                                    thisTabViewmodel.getSelectedIcon()
+                                } else {
+                                    thisTabViewmodel.getUnselectedIcon()
+                                },
+                                contentDescription = null
                             )
                         }
+                    )
+                }
+            }
 
-                        //
-                        // todo: add more tabs as I do those parts of the app
-                        //
 
-                        // Couldn't figure out the viewmodel type!!!
-                        else -> {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                Text("error: What the hell viewmodel is this?")
-                            }
+            // Provides the ability to swipe between tabs
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)     // makes sure that the pager gets everything below the TabRow
+            ) { index ->    // index to the current page! Cool!
+
+                when (viewmodelTabs[index]) {
+                    is PhilipsHueViewmodel -> {
+                        ShowPhilipsHue(
+                                philipsHueViewmodel = viewmodelTabs[index] as PhilipsHueViewmodel,
+                            philipsHueBridges = philipsHueBridges,
+                            roomSceneData = roomSceneData,
+                            zoneSceneData = zoneSceneData,
+                            flockSceneData = flockSceneData,
+                            philipsHueFlocks = philipsHueFlocks,
+                            showAddFlock = showAddFlock,
+                            addFlockErrorMsg = addFlockErrorMsg
+                        )
+                    }
+
+                    //
+                    // todo: add more tabs as I do those parts of the app
+                    //
+
+                    // Couldn't figure out the viewmodel type!!!
+                    else -> {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Text("error: What the hell viewmodel is this?")
                         }
                     }
                 }
-
-
             }
+
+
         }
     }
 
     @Composable
-    fun JustShowPhilipsHue(
+    fun ShowPhilipsHue(
         philipsHueViewmodel: PhilipsHueViewmodel,
         roomSceneData: SceneDataForRoom?,
         zoneSceneData: SceneDataForZone?,
