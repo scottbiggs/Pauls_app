@@ -113,6 +113,9 @@
     <string name="pool_main_title">Pool</string>
     <string name="security_main_title">Security</string>
 
+    <!-- Sprinkler System -->
+    <string name="sprinkler_main_title">Sprinkler</string>
+
     <!-- basics -->
     <string name="yes">yes</string>
     <string name="no">no</string>

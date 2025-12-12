@@ -56,7 +56,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.runtime.LaunchedEffect
+import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.viewmodels.MyViewModelInterface
+import com.sleepfuriously.paulsapp.viewmodels.SprinklerViewmodel
 
 
 /**
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
 //    val nestViewmodel by viewModels<NestViewmodel>()      // todo
 //    val poolViewmodel by viewModels<PoolViewmodel>()
 //    val securityViewmodel by viewModels<SecurityViewmodel>()
+    val sprinklerViewmodel by viewModels<SprinklerViewmodel>()
 
 
     //----------------------------
@@ -102,7 +105,8 @@ class MainActivity : ComponentActivity() {
 
         /** Used for tabs.  Should be THE place to access the viewmodel. */
         val tabViewmodels = listOf(
-            philipsHueViewmodel
+            philipsHueViewmodel,
+            sprinklerViewmodel
             // todo: add all the tabbed components' viewmodels here!
         )
 
@@ -289,9 +293,12 @@ class MainActivity : ComponentActivity() {
             ) { index ->    // index to the current page! Cool!
 
                 when (viewmodelTabs[index]) {
+
+                    // The Philips Hue light system.
+                    //
                     is PhilipsHueViewmodel -> {
                         ShowPhilipsHue(
-                                philipsHueViewmodel = viewmodelTabs[index] as PhilipsHueViewmodel,
+                            philipsHueViewmodel = viewmodelTabs[index] as PhilipsHueViewmodel,
                             philipsHueBridges = philipsHueBridges,
                             roomSceneData = roomSceneData,
                             zoneSceneData = zoneSceneData,
@@ -299,6 +306,15 @@ class MainActivity : ComponentActivity() {
                             philipsHueFlocks = philipsHueFlocks,
                             showAddFlock = showAddFlock,
                             addFlockErrorMsg = addFlockErrorMsg
+                        )
+                    }
+
+                    // The Sprinkler system.  This one is pretty easy.
+                    //
+                    is SprinklerViewmodel -> {
+                        ShowMainSprinkler(
+                            sprinklerViewmodel = viewmodelTabs[index] as SprinklerViewmodel,
+                            acceptJavaScript = true
                         )
                     }
 
