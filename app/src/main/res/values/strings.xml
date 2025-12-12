@@ -115,6 +115,7 @@
 
     <!-- Sprinkler System -->
     <string name="sprinkler_main_title">Sprinkler</string>
+    <string name="sprinkler_reload">reload</string>
 
     <!-- basics -->
     <string name="yes">yes</string>
