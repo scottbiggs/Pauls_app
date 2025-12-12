@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +58,8 @@ import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.yellowDark
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 
 /**
@@ -176,6 +179,7 @@ private fun DrawPhilipsHueContents(
                     RadioButton(
                         enabled = bridgeInfo.active,
                         selected = bridgeInfo.connected,
+                        colors = RadioButtonDefaults.colors().copy(selectedColor = yellowMain, unselectedColor = yellowDark),
                         onClick = {
                             if (bridgeInfo.connected) {
                                 viewmodel.disconnectBridge(bridgeInfo)

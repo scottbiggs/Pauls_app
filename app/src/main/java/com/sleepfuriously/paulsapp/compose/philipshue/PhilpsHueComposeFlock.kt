@@ -32,6 +32,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -67,6 +68,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import kotlin.collections.forEach
 
@@ -170,6 +172,7 @@ fun DisplayPhilipsHueFlock(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
                 onCheckedChange = { newSliderState ->
                     flockOnOffChangedFunction.invoke(newSliderState)
                 }

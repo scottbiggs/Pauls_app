@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 
 
 /**
@@ -145,6 +147,7 @@ fun DisplayPhilipsHueRoom(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
                 onCheckedChange = { newSliderState ->
                     roomOnOffChangedFunction.invoke(newSliderState)
                 }

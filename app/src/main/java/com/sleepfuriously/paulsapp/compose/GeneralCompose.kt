@@ -5,21 +5,16 @@ import androidx.annotation.FloatRange
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -33,7 +28,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,12 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 
 /**
  * This file holds compose functions that are generally useful
@@ -260,6 +256,7 @@ fun SliderReportWhenFinished(
     Slider(
         value = if (sliding.value) slidingPosition.floatValue else sliderInputValue,
         enabled = enabled,
+        colors = SliderDefaults.colors().copy(thumbColor = yellowMain, activeTrackColor = yellowMain),
         onValueChange = {
             slidingPosition.floatValue = it
             sliding.value = true
@@ -405,6 +402,7 @@ fun SwitchWithLabel(
             Spacer(modifier = Modifier.padding(start = 8.dp))
             Switch(
                 checked = state,
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
                 onCheckedChange = {
                     onStateChange(it)
                 }
@@ -414,6 +412,7 @@ fun SwitchWithLabel(
             // draw text after (to the right) of the switch
             Switch(
                 checked = state,
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
                 onCheckedChange = {
                     onStateChange(it)
                 }

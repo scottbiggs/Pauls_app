@@ -11,26 +11,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,16 +33,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
-import com.sleepfuriously.paulsapp.compose.TextFieldAndButton
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
-import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
-import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
+import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 
 
 /**
@@ -141,6 +126,7 @@ fun DisplayPhilipsHueZone(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
                 onCheckedChange = { newSliderState ->
                     zoneOnOffChangedFunction.invoke(newSliderState)
                 }

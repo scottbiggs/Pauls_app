@@ -24,6 +24,11 @@ val darkBlueMain = Color(0xff00205c)
 val darkBlueLight = Color(0xFF274173)
 val darkBlueDark = Color(0xFF00102F)
 
+val brownVeryLight = Color(0xFFF2A88D)
+val brownLight = Color(0xFFAE7764)
+val brownMed = Color(0xFF7F574A)
+val brownDark = Color(0xFF4E362F)
+
 val lightCoolGray = Color(0xFF929DBF)
 val veryLightCoolGray = Color(0xFFD2DDFF)
 val coolGray = Color(0xFF5A637D)
