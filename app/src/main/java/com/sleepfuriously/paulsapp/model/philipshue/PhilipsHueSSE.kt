@@ -38,20 +38,18 @@ class PhilipsHueSSE(
     //  flows
     //---------------------------------
 
-//    private val _openEvent = Channel<Boolean>()
     private val _openEvent = MutableStateFlow(false)
     /**
      * An open event is sent when the bridge's sse is first opened or closed.
      * True means that the bridge is connected and receiving server-sent events.
      * Falst means that the bridge is not connected and no sse are flowing.
      */
-//    val openEvent = _openEvent.receiveAsFlow()
     val openEvent = _openEvent.asStateFlow()
 
 
     private val _serverSentEvent = Channel<PHv2ResourceServerSentEvent>()
     /**
-     * This channel sends events as they happen.  Each event contains
+     * This stateflow sends events as they happen.  Each event contains
      * an instance of [PHv2ResourceServerSentEvent].
      */
     val serverSentEvent = _serverSentEvent.receiveAsFlow()
@@ -95,7 +93,6 @@ class PhilipsHueSSE(
                 coroutineScope.launch {
                     Log.d(TAG, "onOpen() sending _openEvent: true")
                     _openEvent.update { true }
-//                    _openEvent.send(true)
                 }
             }
             else {
@@ -122,7 +119,6 @@ class PhilipsHueSSE(
             coroutineScope.launch {
                 Log.d(TAG, "onClosed() sending _openEvent: false")
                 _openEvent.update { false }
-//                _openEvent.send(false)
             }
         }
 
@@ -185,7 +181,6 @@ class PhilipsHueSSE(
                 coroutineScope.launch {
                     Log.d(TAG, "onFailure() sending openEvent: false")
                     _openEvent.update { false }
-//                    _openEvent.send(false)
                 }
 
             }
@@ -196,10 +191,6 @@ class PhilipsHueSSE(
     //---------------------------------
     //  constructors & initializations
     //---------------------------------
-
-//    init {
-//        startSse()
-//    }
 
 
     override fun close() {
@@ -273,20 +264,6 @@ class PhilipsHueSSE(
         }
         return bridgeId as String
     }
-
-
-    //---------------------------------
-    //  statics
-    //---------------------------------
-
-    companion object {
-
-
-        // todo: all stuff that's similar to all instances will go here
-
-
-    }
-
 
 }
 
