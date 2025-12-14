@@ -839,7 +839,7 @@ class PhilipsHueBridgeModel(
      * This is a *really* lazy way to do an update.  I simply wait a second and
      * then refresh.  This is easily done by calling [refreshDelay].
      */
-    private fun interpretUpdateEventLazy(event: PHv2ResourceServerSentEvent) {
+    private fun interpretUpdateEventLazy() {
         coroutineScope.launch {
             refreshDelay()
         }

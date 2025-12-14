@@ -195,10 +195,6 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     var originalFlock: PhilipsHueFlockInfo? = null
         private set
 
-    /** Human-readable title for the Philips Hue stuff */
-    lateinit var title: String
-        private set
-
     //-------------------------
     //  init
     //-------------------------

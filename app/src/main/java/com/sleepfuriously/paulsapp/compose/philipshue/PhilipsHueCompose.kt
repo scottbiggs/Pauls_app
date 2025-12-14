@@ -1,6 +1,5 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +54,6 @@ import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.convertBrightnessFloatToInt
 import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
-import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
@@ -63,6 +61,7 @@ import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowDark
 import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
+import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
 /**
  * All the display stuff for the UI for the philips hue portion
