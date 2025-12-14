@@ -29,7 +29,7 @@ fun getVersionName(context: Context): String {
     } catch (e: PackageManager.NameNotFoundException) {
         throw RuntimeException(e)
     }
-    return packageInfo.versionName
+    return packageInfo.versionName ?: ""
 }
 
 fun getVersionCode(context: Context): Int {

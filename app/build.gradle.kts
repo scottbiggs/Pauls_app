@@ -6,13 +6,13 @@ plugins {
 
 android {
     namespace = "com.sleepfuriously.paulsapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sleepfuriously.paulsapp"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 5
+        targetSdk = 35
+        versionCode = 6
         versionName = "1.30"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
