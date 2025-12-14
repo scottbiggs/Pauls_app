@@ -1,12 +1,11 @@
 package com.sleepfuriously.paulsapp.viewmodels
 
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Grass
-import androidx.compose.material.icons.outlined.Grass
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.sprinkler.SprinklerOff
+import com.sleepfuriously.paulsapp.compose.sprinkler.SprinklerOn
 
 /**
  * Viewmodel for Paul's sprinkler system.
@@ -20,11 +19,11 @@ class SprinklerViewmodel : ViewModel(), MyViewModelInterface {
     }
 
     override fun getSelectedIcon(): ImageVector {
-        return Icons.Filled.Grass
+        return SprinklerOn
     }
 
     override fun getUnselectedIcon(): ImageVector {
-        return Icons.Outlined.Grass
+        return SprinklerOff
     }
 
     /**
