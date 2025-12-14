@@ -23,11 +23,14 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_SCENE
 import com.sleepfuriously.paulsapp.model.philipshue.json.RTYPE_ZONE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -110,6 +113,15 @@ class PhilipsHueBridgeModel(
     /** Access point to server-sent events from this bridge */
     private lateinit var phSse : PhilipsHueSSE
 
+    /**
+     * Used to keep from calling [refresh] too frequently.
+     */
+    private var refreshLock = false
+
+    /** Helper for make sure that refresh is not being called too frequently */
+    private val refreshMutex = Mutex()
+
+
     //-------------------------------------
     //  constructors & initializers
     //-------------------------------------
@@ -158,10 +170,6 @@ class PhilipsHueBridgeModel(
                 while (true) {
                     phSse.serverSentEvent.collectLatest { sseEvent ->
                         Log.d(TAG, "received sseEvent for bridge ${bridge.value.humanName}:")
-                        Log.d(TAG, "      type: ${sseEvent.type}")
-                        Log.d(TAG, "      id:   ${sseEvent.eventId}")
-                        Log.d(TAG, "      data size: ${sseEvent.data.size}")
-                        Log.d(TAG, "      data: ${sseEvent.data}")
                         interpretEvent(sseEvent)
                     }
                 }
@@ -205,6 +213,29 @@ class PhilipsHueBridgeModel(
     //-------------------------------------
     //  public functions
     //-------------------------------------
+
+    /**
+     * Call this when you think there may need to be several refresh operations
+     * in a row.  This will delay one second and then do a refresh.  If this
+     * is called within the 1 second delay, nothing is done.
+     *
+     * Should be useful when the bridge is sending a lot of sse to this app.
+     */
+    suspend fun refreshDelay() = withContext(Dispatchers.IO) {
+        refreshMutex.withLock {
+            // code that must be atomic
+            if (refreshLock) {
+                // already waiting, ignore this request for a refresh
+                return@withContext
+            }
+            // Signal that nothing else can try to refresh until we're done
+            // with this one.
+            refreshLock = true
+        }
+        delay(1000)     // wait 1 second
+        refresh()
+        refreshLock = false         // allow refreshDelay to be called again
+    }
 
     /**
      * Checks the bridge status and refreshes all the bridge data using the
@@ -771,25 +802,27 @@ class PhilipsHueBridgeModel(
      */
     private fun interpretEvent(event: PHv2ResourceServerSentEvent) {
 
-        Log.d(TAG, "interpretEvent()  event.type = ${event.type}")
-        Log.d(TAG, "interpretEvent()  event.eventId = ${event.eventId}")
-        Log.d(TAG, "interpretEvent()  event.data.size = ${event.data.size}")
-        Log.d(TAG, "interpretEvent()  event.data = ${event.data}")
+        Log.d(TAG, "interpretEvent()")
+        Log.d(TAG, "      type: ${event.type}")
+        Log.d(TAG, "      id:   ${event.eventId}")
+        Log.d(TAG, "      data size: ${event.data.size}")
+        Log.d(TAG, "      data: ${event.data}")
 
         // what kind of event?
         when (event.type) {
             EVENT_UPDATE -> {
-                interpretUpdateEvent(event)
+                interpretUpdateEvent(event)     // we want updates to be quick
             }
 
+            // Add events--such as adding a new scene or device
             EVENT_ADD -> {
                 coroutineScope.launch {
-                interpretAddEvent(event)
-                    }
+                interpretAddEventLazy()    // these can wait
+                }
             }
 
             EVENT_DELETE -> {
-                interpretDeleteEvent(event)
+                interpretDeleteEventLazy()     // these too
             }
 
             EVENT_ERROR -> {
@@ -801,6 +834,17 @@ class PhilipsHueBridgeModel(
             }
         }
     }
+
+    /**
+     * This is a *really* lazy way to do an update.  I simply wait a second and
+     * then refresh.  This is easily done by calling [refreshDelay].
+     */
+    private fun interpretUpdateEventLazy(event: PHv2ResourceServerSentEvent) {
+        coroutineScope.launch {
+            refreshDelay()
+        }
+    }
+
 
     /**
      * Interprets an UPDATE sse that was sent from a bridge.
@@ -1031,6 +1075,17 @@ class PhilipsHueBridgeModel(
         Log.d(TAG, "interpretUpdateEvent() done - bridge = ${bridge.value}")    // simple light state looked unchanged
     } // interpretUpdateEvent()
 
+
+    /**
+     * A VERY lazy way of handling add events.  I simply wait for all the sse
+     * to settle and then call refresh.  [refreshDelay] does this for me.
+     */
+    private suspend fun interpretAddEventLazy() {
+        Log.d(TAG, "interpretAddEventLazy()")
+        refreshDelay()
+    }
+
+
     /**
      * Interprets an ADD sse that was sent from a bridge.
      *
@@ -1155,11 +1210,39 @@ class PhilipsHueBridgeModel(
                     // todo add zone
                     Log.e(TAG, "interpretAddEvent() adding zone not implemented")
                 }
+
+                RTYPE_SCENE -> {
+                    Log.d(TAG, "interpretAddEvent() adding a SCENE")
+                    // wait for things to settle and then refresh
+                    refreshDelay()
+                }
+
+                else -> {
+                    Log.e(TAG, "interpretAddEvent() -- unhandled event!!!")
+                    Log.e(TAG, "    type = ${event.type}")
+                    Log.e(TAG, "    size = ${event.data.size}")
+                    event.data.forEachIndexed { index, data ->
+                        Log.e(TAG, "        $index:")
+                        Log.e(TAG, "            type = ${data.type}")
+                    }
+                }
             }
         }
 
         Log.d(TAG, "interpretAddEvent() done - bridge = ${bridge.value}")
     } // interpretAddEvent()
+
+
+    /**
+     * My very LAZY way of handling delete events.  I simply wait for all the
+     * dust to settle and then call refresh().  [refreshDelay] does this for me.
+     */
+    private fun interpretDeleteEventLazy() {
+        Log.d(TAG, "interpretDeleteEventLazy()")
+        coroutineScope.launch {
+            refreshDelay()
+        }
+    }
 
     /**
      * Similar to [interpretUpdateEvent] and [interpretAddEvent], but for
