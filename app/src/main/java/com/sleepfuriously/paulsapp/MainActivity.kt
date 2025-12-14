@@ -56,7 +56,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
+import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.viewmodels.MyViewModelInterface
 import com.sleepfuriously.paulsapp.viewmodels.SprinklerViewmodel
 
@@ -203,6 +206,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // finally show the version number
+                    ShowVersion(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
@@ -563,6 +568,15 @@ class MainActivity : ComponentActivity() {
 
     }
 
+
+    @Composable
+    private fun ShowVersion(modifier: Modifier) {
+        val ctx = LocalContext.current
+
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+            Text("v${getVersionName(ctx)}", color = coolGray)
+        }
+    }
 }
 
 //----------------------------
