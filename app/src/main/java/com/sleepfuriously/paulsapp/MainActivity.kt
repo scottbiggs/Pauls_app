@@ -56,8 +56,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.viewmodels.MyViewModelInterface
@@ -340,6 +338,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * The main composable for displaying the Philips Hue portion of this app.
+     * This differentiates between the different STATES of the philps hue
+     * display.
+     */
     @Composable
     fun ShowPhilipsHue(
         philipsHueViewmodel: PhilipsHueViewmodel,

@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
@@ -58,6 +59,7 @@ import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.yellowDark
 import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
@@ -75,7 +77,8 @@ import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 //---------------------------------
 
 /**
- * Displays the philips hue stuff.
+ * Displays the typical Philips Hue stuff: the contents and the
+ * FAB for adding bridges.
  */
 @Composable
 fun ShowMainScreenPhilipsHue(
@@ -100,6 +103,11 @@ fun ShowMainScreenPhilipsHue(
     }
 }
 
+
+/**
+ * Displays the contents of the Philips Hue system.  This is the primary UI
+ * the the PH, displaying the flocks and bridges in a lazy grid.
+ */
 @Composable
 private fun DrawPhilipsHueContents(
     bridges: List<PhilipsHueBridgeInfo>,
@@ -157,19 +165,23 @@ private fun DrawPhilipsHueContents(
 
         // Each bridge will consist of:
         //  - separator
+        //  - radio button indicating connected status
+        //    (are we connected to the bridge via sse)
         //  - title (name of the bridge)
         //  - drop-down menu:
         //      - bridge info
         //      - delete bridge
         //  - grid of all the rooms on the bridge
         bridges.forEach { bridgeInfo ->
+
+            // Bridge separator
             item(span = { GridItemSpan(this.maxLineSpan) }) {
                 DrawBridgeSeparator(bridgeInfo, viewmodel)
             }
 
-            // The first item (which has the name of the bridge)
-            // will take the entire row of a grid and includes a radio button
-            // that toggles the server-sent events on/off.  TODO: this make be too much info for users
+            // The name of the bridge.  This will take the entire row of a
+            // grid and includes a radio button that toggles the server-sent
+            // events on/off.
             item(
                 span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
             ) {
@@ -192,7 +204,8 @@ private fun DrawPhilipsHueContents(
                         text = stringResource(
                             id = R.string.ph_bridge_name,
                             bridgeInfo.humanName
-                        )
+                        ),
+                        bridgeInfo.connected
                     )
                 }
             }
@@ -589,14 +602,29 @@ private fun ShowBridgeInfoDialog(
 }
 
 
+/**
+ * Draws the title of each bridge.  Its formatting depends on the connected status.
+ */
 @Composable
-private fun DrawBridgeTitle(text: String, modifier: Modifier = Modifier) {
+private fun DrawBridgeTitle(
+    text: String,
+    connected: Boolean,
+    modifier: Modifier = Modifier
+) {
     Text(
         modifier = modifier
             .fillMaxWidth(),
         text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        color = yellowVeryLight
+        style = if (connected) {
+            MaterialTheme.typography.headlineSmall
+        }
+        else {
+            MaterialTheme.typography.headlineSmall.copy(
+                textDecoration = TextDecoration.LineThrough
+            )
+        },
+        color = if (connected) { yellowVeryLight }
+                else { lightCoolGray }
     )
 }
 
