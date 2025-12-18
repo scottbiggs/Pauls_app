@@ -56,9 +56,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.viewmodels.ClimateViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.MyViewModelInterface
+import com.sleepfuriously.paulsapp.viewmodels.PoolViewmodel
+import com.sleepfuriously.paulsapp.viewmodels.SecurityViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SprinklerViewmodel
 
 
@@ -85,10 +89,10 @@ class MainActivity : ComponentActivity() {
 
     /** All the Viewmodels used in the tabs */
     private val philipsHueViewmodel by viewModels<PhilipsHueViewmodel>()
-//    val nestViewmodel by viewModels<NestViewmodel>()      // todo
-//    val poolViewmodel by viewModels<PoolViewmodel>()
-//    val securityViewmodel by viewModels<SecurityViewmodel>()
+    private val climateViewModel by viewModels<ClimateViewmodel>()
+    val securityViewmodel by viewModels<SecurityViewmodel>()
     val sprinklerViewmodel by viewModels<SprinklerViewmodel>()
+    val poolViewmodel by viewModels<PoolViewmodel>()
 
 
     //----------------------------
@@ -107,8 +111,10 @@ class MainActivity : ComponentActivity() {
         /** Used for tabs.  Should be THE place to access the viewmodel. */
         val tabViewmodels = listOf(
             philipsHueViewmodel,
-            sprinklerViewmodel
-            // todo: add all the tabbed components' viewmodels here!
+            poolViewmodel,
+            climateViewModel,
+            sprinklerViewmodel,
+            securityViewmodel
         )
 
         setContent {
@@ -191,6 +197,7 @@ class MainActivity : ComponentActivity() {
                     else {
                         // show the tabs
                         ShowViewmodelTabs(
+                            modifier = Modifier.padding(innerPadding),
                             mainViewmodel = mainViewmodel,
                             viewmodelTabs = tabViewmodels,
                             currentTab = currentTab.value,
@@ -310,6 +317,27 @@ class MainActivity : ComponentActivity() {
                             showAddFlock = showAddFlock,
                             addFlockErrorMsg = addFlockErrorMsg
                         )
+                    }
+
+                    is PoolViewmodel -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { Text("Pool Place-holder", fontSize = 26.sp) }
+                    }
+
+                    is SecurityViewmodel -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { Text("Security Place-holder", fontSize = 26.sp) }
+                    }
+
+                    is ClimateViewmodel -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { Text("Climate Control Place-holder", fontSize = 26.sp) }
                     }
 
                     // The Sprinkler system.  This one is pretty easy.

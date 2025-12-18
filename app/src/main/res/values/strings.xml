@@ -109,7 +109,7 @@
     <!-- main screen -->
     <string name="cross_handle_content_desc">drag to adjust screen</string>
     <string name="ph_main_title">Philips Hue Lights</string>
-    <string name="nest_main_title">Nest</string>
+    <string name="climate_main_title">Climate Control</string>
     <string name="pool_main_title">Pool</string>
     <string name="security_main_title">Security</string>
 
