@@ -67,6 +67,7 @@
     <string name="brightness">brightness</string>
     <string name="drop_down_menu_desc">drop down menu</string>
     <string name="show_info">info</string>
+    <string name="ph_reset">reset</string>
     <string name="disconnect_bridge">disconnect</string>
     <string name="reconnect_bridge">connect</string>
     <string name="show_bridge_info_title">Bridge Info</string>

@@ -376,6 +376,16 @@ private fun DotDotDotBridgeMenu(
                 },
             )
 
+            // refresh the bridge, but only if its connected
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ph_reset)) },
+                onClick = {
+                    isDropDownExpanded = false
+                    viewmodel.resetBridge(bridge)
+                },
+                enabled = bridge.connected
+            )
+
             // disconnect or reconnect bridge (so we can receive updates)
             DropdownMenuItem(
                 text = {

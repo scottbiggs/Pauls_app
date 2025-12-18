@@ -873,6 +873,20 @@ class PhilipsHueRepository(
         return null
     }
 
+    /**
+     * Finds the given bridge and tells it to reset.
+     */
+    fun resetBridge(bridge: PhilipsHueBridgeInfo) {
+        val bridgeModel = bridgeModelList.value.find { it.bridgeIpAddress == bridge.ipAddress }
+        if (bridgeModel == null) {
+            Log.e(TAG, "resetBridge() - unable to find bridge!!! Aborting!")
+            return
+        }
+
+        coroutineScope.launch {
+            bridgeModel.refresh()
+        }
+    }
 
     //-----------------------------------------------------------
     //  flock functions

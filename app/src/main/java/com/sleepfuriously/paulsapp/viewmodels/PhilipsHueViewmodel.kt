@@ -405,6 +405,14 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     }
 
     /**
+     * Tells the bridge system to do a full reset.  Could be useful if things
+     * get wierd.
+     */
+    fun resetBridge(bridge: PhilipsHueBridgeInfo) {
+        phRepository.resetBridge(bridge)
+    }
+
+    /**
      * Removes the specified bridge from our list.  Also tries to remove
      * the token (username) from the bridge's list of approved devices.
      * All this happens in the background.
