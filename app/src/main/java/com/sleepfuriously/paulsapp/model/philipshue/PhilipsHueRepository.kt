@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -183,6 +184,10 @@ class PhilipsHueRepository(
             initialValue = listOf()
         )
 
+    private val _phRepoLoading = MutableStateFlow(false)
+    /** When true, Philips Hue components are being loaded (bridges and flocks). */
+    val phRepoLoading = _phRepoLoading.asStateFlow()
+
     //-------------------------------
     //  class variables
     //-------------------------------
@@ -217,6 +222,8 @@ class PhilipsHueRepository(
 
             // 1. Load bridge ids from prefs
             //
+            _phRepoLoading.update { true }      // indicate loading started
+
             val ctx = MyApplication.appContext
             val bridgeIdsFromPrefs = PhilipsHueStorage.loadAllBridgeIds(ctx)
             if (bridgeIdsFromPrefs.isNullOrEmpty()) {
@@ -311,6 +318,10 @@ class PhilipsHueRepository(
             // 4. Now that the flow is updated, load the Flocks
             //
             loadAllFlocks(ctx)
+
+            // 5. Done
+            _phRepoLoading.update { false }
+            Log.d(TAG, "done loading: phRepoLoading = ${phRepoLoading.value}")
         }
 
     }
@@ -1031,7 +1042,7 @@ class PhilipsHueRepository(
      * Doesn't ask questions.  If the given flock doesn't exist, then of course
      * nothing is done.
      */
-    suspend fun deleteFlock(flock: PhilipsHueFlockInfo) {
+    fun deleteFlock(flock: PhilipsHueFlockInfo) {
 
         // find the flock model that holds this flock
         val flockModel = flockModelList.value.find { flockModel -> flockModel.flock.value.id == flock.id }
@@ -1186,7 +1197,7 @@ class PhilipsHueRepository(
      *
      *  @return     A ready-to-go flock info.  Null on some sort of error.
      */
-    suspend fun makeFlockInfoFromWorkingFlock(
+    fun makeFlockInfoFromWorkingFlock(
         workingFlock: WorkingFlock
     ) : PhilipsHueFlockInfo {
 

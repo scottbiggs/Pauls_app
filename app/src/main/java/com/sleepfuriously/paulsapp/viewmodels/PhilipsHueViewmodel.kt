@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.R
-import com.sleepfuriously.paulsapp.utils.isConnectivityWifiWorking
 import com.sleepfuriously.paulsapp.utils.isValidBasicIp
 import com.sleepfuriously.paulsapp.model.philipshue.GetBridgeTokenErrorEnum
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
@@ -91,25 +90,18 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     //  flow data
     //-------------------------
 
-    private val _wifiWorking = MutableStateFlow<Boolean?>(null)
-    /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
-    var wifiWorking = _wifiWorking.asStateFlow()
-
-
     private val _philipsHueTestStatus = MutableStateFlow(TestStatus.NOT_TESTED)
     /** when true, all philips hue tests are complete */
     var philipsHueTestStatus = _philipsHueTestStatus.asStateFlow()
 
 
-    // todo: move to MainViewmodel
-    private val _iotTestingState = MutableStateFlow(TestStatus.NOT_TESTED)
-    /** Will be true only while tests are running */
-    var iotTestingState = _iotTestingState.asStateFlow()
+    private val _phTestingState = MutableStateFlow(TestStatus.NOT_TESTED)
+    /** Will be true only while startup tests are running */
+    var phTestingState = _phTestingState.asStateFlow()
 
-    // todo: move to MainViewmodel
-    private val _iotTestingErrorMsg = MutableStateFlow("")
+    private val _phTestingErrorMsg = MutableStateFlow("")
     /** This will hold any message about the current iot testing errors */
-    var iotTestingErrorMsg = _iotTestingErrorMsg.asStateFlow()
+    var phTestingErrorMsg = _phTestingErrorMsg.asStateFlow()
 
 
     private val _addNewBridgeState = MutableStateFlow(BridgeInitStates.NOT_INITIALIZING)
@@ -121,6 +113,10 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
      * The bridges that are to be displayed in the views
      */
     var philipsHueBridgesCompose by mutableStateOf<List<PhilipsHueBridgeInfo>>(mutableListOf())
+        private set
+
+    /** When TRUE, the Philips Hue system is initializing */
+    var philipsHueInitializing by mutableStateOf(true)
         private set
 
     private val _crashNow = MutableStateFlow(false)
@@ -223,52 +219,35 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
                 _flocks.update { flockList }
             }
         }
+
+        // This will indiciate when we are initializing and when we are done.
+        viewModelScope.launch {
+            phRepository.phRepoLoading.collectLatest {
+                Log.d(TAG, "phRepoLoading collected: it = $it")
+                philipsHueInitializing = it
+            }
+        }
     }
 
     /**
-     * todo: move to MainViewmodel
-     *
-     * Runs all the initalization tests of the IoT devices.
+     * Runs all the initalization tests of the Philips Hue devices.
      *
      * preconditions
      *  [philipsHueBridgesCompose] is active and working
      *
      * side effects
-     *   [_iotTestingState]      set to true when this is done
+     *   [_phTestingState]      set to true when this is done
      */
-    fun checkIoT(ctx: Context) {
+    fun initialize() {
 
-        Log.d(TAG, "checkIoT() start. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
-
-        _iotTestingState.value = TestStatus.TESTING
-
-        Log.d(TAG, "checkIoT() part 1. _iotTest = ${_iotTestingState.value}, philipsHueTestStatus = ${_philipsHueTestStatus.value}")
-
+        _phTestingState.value = TestStatus.TESTING
         var allTestsSuccessful = true       // start optimistically
-
 
         // launch off the main thread, just in case things take a while
         viewModelScope.launch(Dispatchers.IO) {
 
-            //------------
-            // 1.  check wifi
-            //
-            _wifiWorking.value = isConnectivityWifiWorking(ctx)
-            if (_wifiWorking.value == false) {
-                // abort testing--no point doing more tests without wifi
-                // Caution: this will skip the succeeding tests to never happen,
-                // causing them to never indicate that they completed.
-                allTestsSuccessful = false
-                _iotTestingState.value = TestStatus.TEST_BAD
-                _iotTestingErrorMsg.value = ctx.getString(R.string.wifi_not_working)
-                Log.d(TAG, "checkIoT() cannot find wifi connectivity: aborting!")
-                return@launch
-            }
-
-            //------------
-            // 2.  check philips hue system
-            //
-            checkPhilipsHue()
+            // check philips hue system--this is the meat
+            loadPhilipsHueBridges()
             allTestsSuccessful = philipsHueTestStatus.value == TestStatus.TEST_GOOD
 
         }.invokeOnCompletion {
@@ -277,8 +256,8 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
 
             // signal tests complete
             Log.d(TAG, "checkIoT() completion: allTestsSuccessful = $allTestsSuccessful")
-            _iotTestingState.value = TestStatus.TEST_GOOD
-            _iotTestingErrorMsg.value = ""
+            _phTestingState.value = TestStatus.TEST_GOOD
+            _phTestingErrorMsg.value = ""
         }
     }
 
@@ -1175,12 +1154,12 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
      * side effects
      *      - as described above
      */
-    private suspend fun checkPhilipsHue() {
+    private suspend fun loadPhilipsHueBridges() {
 
         // Get the bridge model started.  This will go through
         // its test routines during initialization.
         _philipsHueTestStatus.value = TestStatus.TESTING
-        _iotTestingErrorMsg.value = ""
+        _phTestingErrorMsg.value = ""
 
         // Get all the bridges.
         if (philipsHueBridgesCompose.isEmpty()) {
@@ -1226,7 +1205,7 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
         // bridge in the list.  We'll signal that the tests are complete
         // by setting the status to TEST_GOOD.
         _philipsHueTestStatus.value = TestStatus.TEST_GOOD
-        _iotTestingErrorMsg.value = ""
+        _phTestingErrorMsg.value = ""
     }
 
 }

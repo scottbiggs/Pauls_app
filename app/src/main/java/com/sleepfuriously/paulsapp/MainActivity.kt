@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.animation.OvershootInterpolator
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,7 +28,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -56,9 +56,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.darkBlueLight
+import com.sleepfuriously.paulsapp.ui.theme.lightBlueDark
+import com.sleepfuriously.paulsapp.ui.theme.lightBlueMain
 import com.sleepfuriously.paulsapp.viewmodels.ClimateViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.MyViewModelInterface
 import com.sleepfuriously.paulsapp.viewmodels.PoolViewmodel
@@ -120,21 +124,29 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             // start initializations and splash screen
-            philipsHueViewmodel.checkIoT(this)      // fixme: this needs to be moved!!!
+            mainViewmodel.initialize(this)
+            philipsHueViewmodel.initialize()
 //                    showSplashScreen()
 
             PaulsAppTheme {
 
+                //
+                // flow data from viewmodels
+                //
+
                 // create data to receive state flows from the philips hue viewmodel
-                val wifiWorking by philipsHueViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                val iotTestingState by philipsHueViewmodel.iotTestingState.collectAsStateWithLifecycle()
-                val iotTestingErrorMsg by philipsHueViewmodel.iotTestingErrorMsg.collectAsStateWithLifecycle()
+                val wifiWorking by mainViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                val mainViewmodelInitializing by mainViewmodel.intializing.collectAsStateWithLifecycle()
+
+                val phTestingState by philipsHueViewmodel.phTestingState.collectAsStateWithLifecycle()
+                val phTestingErrorMsg by philipsHueViewmodel.phTestingErrorMsg.collectAsStateWithLifecycle()
                 val philipsHueTestStatus by philipsHueViewmodel.philipsHueTestStatus.collectAsStateWithLifecycle()
                 val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
                 val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
                 val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
 
                 val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
+                val philipsHueInitializing = philipsHueViewmodel.philipsHueInitializing
 
                 val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
                 val zoneSceneData = philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
@@ -152,24 +164,23 @@ class MainActivity : ComponentActivity() {
                     finish()
                 }
 
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
                     //------------------------
                     //  What to display?  Depends on what's happening.
                     //
-                    //  - going through the initial testing cycle
-                    //      -> testing screen
-                    //  - addNewBridgeState is something other than NOT_INITIALIZING
-                    //      -> we need to handle the initialization
-                    //  - normal state
-                    //      -> FourPanes
-                    if (iotTestingState == TestStatus.TESTING) {
-                        TestSetupScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            wifiWorking = wifiWorking ?: false,
-                            philipsHueTest = philipsHueTestStatus,
-                            viewmodel = philipsHueViewmodel
-                        )
+                    if (mainViewmodelInitializing ||
+                        (phTestingState == TestStatus.TESTING) ||
+                        philipsHueInitializing
+                    ) {
+                        Log.d(TAG, "showing TestSetupScreen")
+                        Log.d(TAG, "   mainViewmodelInitializing = $mainViewmodelInitializing")
+                        Log.d(TAG, "   phTestingState = $phTestingState")
+                        Log.d(TAG, "   philipsHueIntializing = $philipsHueInitializing")
+
+                        ShowInitializingScreen(Modifier.padding(innerPadding))
+//                        showSplashScreen()
                     }
 
                     else if (wifiWorking == false) {
@@ -179,10 +190,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    else if (iotTestingState == TestStatus.TEST_BAD) {
+                    else if (phTestingState == TestStatus.TEST_BAD) {
                         TestBad(
                             wifiWorking = wifiWorking ?: false,
-                            errorMsg = iotTestingErrorMsg
+                            errorMsg = phTestingErrorMsg
                         )
                     }
 
@@ -367,6 +378,30 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * Display this while initializing the various systems.
+     * I'm doing this until I crack down and to the splash screen the right way.
+     */
+    @Composable
+    fun ShowInitializingScreen(modifier: Modifier) {
+        Box(
+            modifier = modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+                ) {
+                CircularProgressIndicator(
+                    color = lightBlueDark
+                )
+                Text(stringResource(R.string.initializing), fontSize = 20.sp)
+            }
+        }
+    }
+
+    /**
      * The main composable for displaying the Philips Hue portion of this app.
      * This differentiates between the different STATES of the philps hue
      * display.
@@ -470,51 +505,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * This screen handles gathering inputs to complete setup for the user.
-     */
-    @Composable
-    fun TestSetupScreen(
-        modifier : Modifier = Modifier,
-        wifiWorking: Boolean?,
-        philipsHueTest: TestStatus,
-        viewmodel: PhilipsHueViewmodel,
-    ) {
-        Log.d(TAG, "TestSetupScreen()")
-
-        val ctx = LocalContext.current
-
-        Column(modifier = modifier.fillMaxSize()) {
-
-            // wifi
-            Text("wifi = $wifiWorking")
-
-            // list known bridges
-            Text("here the known bridges:")
-//            viewmodel.philipsHueBridgeModelsCompose.forEach { bridgeModel ->
-//                bridgeModel.bridge.value?.let { bridge ->
-//                    Text("   bridge ${bridge.id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
-//                }
-//            }
-            viewmodel.philipsHueBridgesCompose.forEach { bridge ->
-                Text("   bridge ${bridge.v2Id}: ip = ${bridge.ipAddress}, token = ${bridge.token}, active = ${bridge.active}")
-            }
-
-
-            Text("push to test synchronous PUT to bridge")
-            Button(
-                onClick = {
-                    Toast.makeText(ctx, "get this part working, scott!", Toast.LENGTH_LONG).show()
-//                    philipsHueViewmodel.testPutToBridge()
-            }) {
-                Text("go")
-            }
-
-            Text("philips hue tests completeness = $philipsHueTest")
-        }
-
-    }
-
 
     /**
      * Begins the process of manually initializing the IoT devices.
@@ -525,6 +515,7 @@ class MainActivity : ComponentActivity() {
         wifiWorking: Boolean,
         errorMsg: String = ""
     ) {
+        Log.d(TAG, "TestBad()  errorMsg = $errorMsg")
         // start with the wifi
         if (wifiWorking == false) {
             TestErrorMessage(modifier, errorMsg)
@@ -565,7 +556,9 @@ class MainActivity : ComponentActivity() {
             // example: this will check the value every frame and keep showing
             //          the splash screen as long as the total value is true
             setKeepOnScreenCondition {
-                philipsHueViewmodel.iotTestingState.value == TestStatus.TESTING
+                (philipsHueViewmodel.phTestingState.value == TestStatus.TESTING) // ||
+//                (phTestingState == TestStatus.TESTING) ||
+//                 philipsHueInitializing
             }
 
             // set the exit animation

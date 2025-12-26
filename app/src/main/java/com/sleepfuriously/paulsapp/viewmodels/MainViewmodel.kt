@@ -1,12 +1,14 @@
 package com.sleepfuriously.paulsapp.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.sleepfuriously.paulsapp.utils.isConnectivityWifiWorking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Viewmodel for the main portion of the opening screen.
@@ -20,9 +22,30 @@ class MainViewmodel : ViewModel() {
     //  flows
     //---------------------------
 
-    private val _activeTab = MutableStateFlow<Int>(0)
+    private val _activeTab = MutableStateFlow(0)
     /** This will hold the active tab index (the tab that is current) */
     val activeTab = _activeTab.asStateFlow()
+
+    private val _intializing = MutableStateFlow(true)
+    /** Will be TRUE during initialization or a reset (starts true). */
+    val intializing = _intializing.asStateFlow()
+
+    private val _wifiWorking = MutableStateFlow<Boolean?>(null)
+    /** Will be true or false depending on wifi state.  Null means it hasn't been tested yet */
+    var wifiWorking = _wifiWorking.asStateFlow()
+
+    //---------------------------
+    //  init
+    //---------------------------
+
+    fun initialize(ctx: Context) {
+        viewModelScope.launch {
+            // check wifi--that's about all there is for the main viewmodel to do
+            _wifiWorking.value = isConnectivityWifiWorking(ctx)
+            Log.d(TAG, "done initializing")
+            _intializing.update { false }      // done initializaing
+        }
+    }
 
     //---------------------------
     //  functions
@@ -35,33 +58,10 @@ class MainViewmodel : ViewModel() {
         _activeTab.update { newTabIndex }
     }
 
-
-    /**
-     * The function that starts the guided tour that is the manual
-     * Philips Hue bridge setup.
-     *
-     * side effects:
-     */
-    fun startManualBridgeInit() {
-
-    }
-
 }
 
-/**
- * Display states
- */
-enum class MainActivityDisplayStates {
-    /** The app is going through its startup sequence.  Show splash screen. */
-    APP_STARTUP,
-    /** Initialization process has begun.  Show init stuff.  todo: May need subivisions */
-    INITIALIZING,
-    /** The normal running state of the app.  All data is displayed and accessible. */
-    RUNNING,
-    /** When an error occurs, this indicates the error condition. todo: more error states needed */
-    ERROR,
-    /** When the app complete starts we're in an unknown state. */
-    UNKNOWN
-}
+//---------------------------
+//   classes, enums, constants
+//---------------------------
 
 private const val TAG = "MainViewmodel"
