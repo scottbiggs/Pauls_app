@@ -12,8 +12,8 @@ android {
         applicationId = "com.sleepfuriously.paulsapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.30"
+        versionCode = 7
+        versionName = "1.31"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -28,6 +28,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_house2"
+            manifestPlaceholders["roundAppIcon"] = "@mipmap/ic_house2_round"
+        }
+        // This allows me to have both a debug and a release version on the same device.
+        // The release needs a manual install (build to apk too!).
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "d"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_house2_debug"
+            manifestPlaceholders["roundAppIcon"] = "@mipmap/ic_house2_round_debug"
         }
     }
 

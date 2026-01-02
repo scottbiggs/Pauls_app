@@ -227,6 +227,7 @@ class PhilipsHueRepository(
             val ctx = MyApplication.appContext
             val bridgeIdsFromPrefs = PhilipsHueStorage.loadAllBridgeIds(ctx)
             if (bridgeIdsFromPrefs.isNullOrEmpty()) {
+                _phRepoLoading.update { false }     // no longer loading
                 return@launch
             }
 
