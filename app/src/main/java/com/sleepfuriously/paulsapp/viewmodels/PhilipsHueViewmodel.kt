@@ -819,7 +819,7 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     }
 
     /**
-     * UI calls this when the user selects a scene to run for a given room or zone.
+     * UI calls this when the user selects a scene to run for a given room.
      * This in turn calls the repository to have that place changed.  The result
      * should make the lights change and then bubble up (through a sse) and we'll
      * see changes in our UI.
@@ -840,7 +840,7 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     }
 
     /**
-     * Similar to [setSceneSelectedForRoom].
+     * Similar to [setSceneSelectedForRoom] but works for Zones.
      */
     fun setSceneSelectedForZone(
         bridge: PhilipsHueBridgeInfo,
@@ -851,7 +851,7 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     }
 
     /**
-     * Similar to [setSceneSelectedForRoom].
+     * Flock version of [setSceneSelectedForRoom]
      */
     fun setSceneSelectedForFlock(
         flock: PhilipsHueFlockInfo,

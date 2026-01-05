@@ -62,7 +62,7 @@ fun ShowScenesForRoom(
     bridge: PhilipsHueBridgeInfo,
     room: PhilipsHueRoomInfo,
     scenes: List<PHv2Scene>,
-    viewmodel: PhilipsHueViewmodel,
+    onSetSceneForRoom: (PhilipsHueBridgeInfo, PhilipsHueRoomInfo, PHv2Scene) -> Unit,
     onDismiss: () -> Unit
 ) {
 
@@ -107,7 +107,7 @@ fun ShowScenesForRoom(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.setSceneSelectedForRoom(bridge, room, scene)
+                                        onSetSceneForRoom(bridge, room, scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)
@@ -172,7 +172,7 @@ fun ShowScenesForZone(
     bridge: PhilipsHueBridgeInfo,
     zone: PhilipsHueZoneInfo,
     scenes: List<PHv2Scene>,
-    viewmodel: PhilipsHueViewmodel,
+    onSetSceneForZone: (PhilipsHueBridgeInfo, PhilipsHueZoneInfo, PHv2Scene) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -216,7 +216,7 @@ fun ShowScenesForZone(
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        viewmodel.setSceneSelectedForZone(bridge = bridge, zone = zone, scene = scene)
+                                        onSetSceneForZone(bridge, zone, scene)
                                     }
                             ) {
                                 Text(scene.metadata.name)

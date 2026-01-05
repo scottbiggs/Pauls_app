@@ -410,8 +410,8 @@ class MainActivity : ComponentActivity() {
                 bridge = roomSceneData.bridge,
                 room = roomSceneData.room,
                 scenes = roomSceneData.scenes,
-                viewmodel = philipsHueViewmodel,
-                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
+                onSetSceneForRoom = philipsHueViewmodel::setSceneSelectedForRoom,
+                onDismiss = philipsHueViewmodel::stopShowingScenes
             )
         }
 
@@ -421,8 +421,8 @@ class MainActivity : ComponentActivity() {
                 bridge = zoneSceneData.bridge,
                 zone = zoneSceneData.zone,
                 scenes = zoneSceneData.scenes,
-                viewmodel = philipsHueViewmodel,
-                onDismiss = { philipsHueViewmodel.stopShowingScenes() }
+                onSetSceneForZone = philipsHueViewmodel::setSceneSelectedForZone,
+                onDismiss = philipsHueViewmodel::stopShowingScenes
             )
         }
 
