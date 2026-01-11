@@ -16,9 +16,6 @@ object MyCipher {
      */
     private var defaultAlphabet: String = ""
 
-    /** The length of the last encryption INPUT string. For debugging. */
-    private var lastInputLength = 0
-
     init {
         // Initialize defaultChars. Printable ASCII are values 32 <= x < 127
         for(i in 32 .. 126) {
@@ -61,9 +58,6 @@ object MyCipher {
         paddingBack: Int = DEFAULT_PADDING_BACK,
         alphabet: String = defaultAlphabet
     ) : String {
-
-        // for debugging
-        lastInputLength = inputText.length
 
         // generate random chars for padding.
         val paddingFrontStr = randomString(paddingFront, alphabet)
@@ -126,11 +120,6 @@ object MyCipher {
             startIndex = paddingFront,
             endIndex = endIndex
         )
-
-        // Test for debugging
-        if (encryptedPart.length != lastInputLength) {
-            Log.w(TAG, "Hey, the encrypted part is not the same length as the last encrypted input!")
-        }
 
         var decryptedTxt = ""
         var keyIndex = 0
