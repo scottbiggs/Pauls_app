@@ -12,8 +12,8 @@ android {
         applicationId = "com.sleepfuriously.paulsapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.31"
+        versionCode = 8
+        versionName = "1.40"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
