@@ -58,10 +58,21 @@
     <string name="bridge_ip_step_3_bad_state_error">This is a very strange state and should never happen (step 3 but not recognized)</string>
     <string name="bridge_ip_step_3_problem_adding_bridge">For some reason I could not add the bridge. Sorry.</string>
 
+    <string name="bridge_ip_step_5_problem_adding_bridge">Problem adding bridge at %1s--skipping.</string>
+    <string name="bridge_ip_step_5_success">Successfully added bridge at %1s</string>
+    <string name="bridge_ip_step_5_no_bridges">No more bridges detected.</string>
+
+
+    <string name="bridge_auto_detect_title">Auto Detect Results</string>
+    <string name="bridge_auto_detect_body1">Here are the detected bridges</string>
+    <string name="bridge_auto_detect_none_found">No bridges were detected</string>
+
     <!-- philips hue section -->
     <string name="ph_bridge_name">bridge: %1s</string>
-    <string name="ph_add_button">Add Bridge</string>
-    <string name="add_button_content_desc">add bridge</string>
+    <string name="ph_add_button">Manually Add Bridge</string>
+    <string name="ph_add_button_content_desc">add bridge manually</string>
+    <string name="ph_detect_bridges_button">Detect Bridges</string>
+    <string name="ph_detect_bridges_button_content_desc">detect bridges</string>
     <string name="lightbulb_content_desc">dimming light bulb</string>
     <string name="no_rooms_for_bridge">This bridge has no rooms</string>
     <string name="brightness">brightness</string>

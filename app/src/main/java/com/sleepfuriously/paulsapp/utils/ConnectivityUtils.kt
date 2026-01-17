@@ -28,3 +28,24 @@ fun isConnectivityWifiWorking(ctx: Context) : Boolean {
     return isWorking
 }
 
+
+/**
+ * Convert raw IP address to string.
+ * from:
+ *      https://kodejava.org/how-do-i-convert-raw-ip-address-to-string/
+ *
+ * @param rawBytes raw IP address (should be array of 4 bytes).
+ *
+ * @return a string representation of the raw ip address.
+ */
+fun convertRawBytesToIpAddress(rawBytes: ByteArray): String {
+    var i = 4
+    val ipAddress = StringBuilder()
+    for (raw in rawBytes) {
+        ipAddress.append(raw.toInt() and 0xFF)
+        if (--i > 0) {
+            ipAddress.append(".")
+        }
+    }
+    return ipAddress.toString()
+}

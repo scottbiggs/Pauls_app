@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddHome
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -642,35 +643,68 @@ private fun DrawMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel
 ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+
     // Add button to add a new bridge (if there are no active bridges, then
     // show the extended FAB)
     if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
-        ExtendedFloatingActionButton(
-            modifier = modifier
-                .padding(top = 8.dp, end = 38.dp),
-            onClick = { viewmodel.beginAddPhilipsHueBridge() },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(id = R.string.add_button_content_desc)
-                )
-            },
-            text = { Text(stringResource(id = R.string.ph_add_button)) }
-        )
-    } else {
-        FloatingActionButton(
-            modifier = modifier
-                .padding(top = 8.dp, end = 38.dp),
-            onClick = { viewmodel.beginAddPhilipsHueBridge() },
-            elevation = FloatingActionButtonDefaults.elevation(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = stringResource(id = R.string.add_button_content_desc)
+
+        // No bridges so make the add button more pronounced.  Same for detect bridges button.
+
+        Row {
+            ExtendedFloatingActionButton(
+                modifier = modifier
+                    .padding(end = 32.dp),
+                onClick = { viewmodel.beginAddPhilipsHueBridge() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
+                    )
+                },
+                text = { Text(stringResource(id = R.string.ph_add_button)) }
+            )
+
+            ExtendedFloatingActionButton(
+                onClick = { viewmodel.beginDetectPhilipsHueBridges() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(id = R.string.ph_detect_bridges_button_content_desc)
+                    )
+                },
+                text = { Text(stringResource(id = R.string.ph_detect_bridges_button)) }
             )
         }
+    } else {
+        Row {
+            FloatingActionButton(
+                modifier = modifier
+                    .padding(end = 32.dp),
+                onClick = { viewmodel.beginAddPhilipsHueBridge() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
+                )
+            }
+
+            // button for detecting bridges
+            FloatingActionButton(
+                onClick = { viewmodel.beginDetectPhilipsHueBridges() },
+                elevation = FloatingActionButtonDefaults.elevation(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddHome,
+                    contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
+                )
+            }
+        }
     }
+        }
 }
 
 

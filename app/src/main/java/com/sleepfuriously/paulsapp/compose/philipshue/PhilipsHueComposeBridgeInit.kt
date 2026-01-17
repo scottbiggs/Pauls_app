@@ -66,6 +66,8 @@ fun ManualBridgeSetup(
     val landscape = config.orientation == ORIENTATION_LANDSCAPE
 
     Log.d(TAG, "ManualBridgeSetup() waitingForResults = $waitingForResults")
+    Log.d(TAG, "                    initBridgeState = $initBridgeState")
+
     if (waitingForResults) {
         ManualInitWaiting(modifier)
     }
@@ -108,6 +110,36 @@ fun ManualBridgeSetup(
 
             BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE,
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+                ManualBridgeSetupStep3(modifier, philipsHueViewmodel, initBridgeState)
+            }
+
+            BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS -> {
+                DetectingBridgesSpinner()
+            }
+
+            BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON -> {
+                if (philipsHueViewmodel.workingNewBridgeIpList.isEmpty()) {
+                    Log.e(TAG, "ManualBridgeSetup() - error! no workingNewBridgeIp to press the button for!")
+                    throw RuntimeException("bridge button state with no bridge to detect!")
+                }
+                ManualBridgeSetupStep2(modifier, philipsHueViewmodel, initBridgeState)
+            }
+
+//            BridgeInitStates.STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE -> {
+//                DiscoveredBridgeSelector(
+//                    knownBridges = philipsHueViewmodel.philipsHueBridgesCompose,
+//                    discoveredBridges = philipsHueViewmodel.autoDetectedBridges.value,
+//                    viewmodel = philipsHueViewmodel
+//                )
+//            }
+
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__UNSUCCESSFUL_RESPONSE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__BUTTON_NOT_PUSHED, -> {
                 ManualBridgeSetupStep3(modifier, philipsHueViewmodel, initBridgeState)
             }
 
@@ -501,6 +533,15 @@ private fun ManualBridgeSetupStep2(
 
         BridgeInitStates.STAGE_3_ERROR_CANNOT_ADD_BRIDGE -> stringResource(R.string.bridge_ip_step_3_problem_adding_bridge)
         BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> ""
+
+        BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON -> ""
+
+        else -> {
+            Log.v(TAG, "ManualBridgeSetup2() state = $state -- ignoring.")
+            "unexpected state = $state"
+            throw RuntimeException()
+        }
+
     }
 
     // no error. display big bridge w/ button
@@ -548,6 +589,7 @@ private fun ManualBridgeSetupStep2(
 
             Button(
                 onClick = {
+                    Log.d(TAG, "ManualBridgeSetupStep2() - \"Push Bridge Button\" user clicked 'next'")
                     viewmodel.addBridgeButtonPushed()
                 },
                 modifier = Modifier
@@ -613,7 +655,59 @@ private fun ManualBridgeSetupStep3(
                 buttonText = stringResource(R.string.ok)
             )
         }
-        else -> {
+
+        BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE,
+        BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__NO_TOKEN_FROM_BRIDGE,
+        BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__UNSUCCESSFUL_RESPONSE,
+        BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__BUTTON_NOT_PUSHED,
+        BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__CANNOT_PARSE_RESPONSE -> {
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = { viewmodel.detectedBridgeAddSuccessful() },
+                msgText = stringResource(id = R.string.bridge_ip_step_5_problem_adding_bridge, viewmodel.workingNewBridgeIpList[0]),
+                buttonText = stringResource(R.string.ok)
+            )
+        }
+
+        BridgeInitStates.STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND -> {
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = {
+                    viewmodel.detectedBridgeAddSuccessful()
+                },
+                msgText = stringResource(id = R.string.bridge_ip_step_5_no_bridges),
+                buttonText = stringResource(R.string.ok)
+            )
+        }
+
+        BridgeInitStates.STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE -> {
+            val ip = if (viewmodel.workingNewBridgeIpList.isEmpty()) {
+                "ManualBridgeSetupStep3() error -- nothing in IP list"
+            }
+            else {
+                viewmodel.workingNewBridgeIpList[0]
+            }
+            SimpleFullScreenBoxMessage(
+                backgroundModifier = modifier,
+                onClick = {
+                    viewmodel.detectedBridgeAddSuccessful()
+                },
+                msgText = stringResource(id = R.string.bridge_ip_step_5_success, ip),
+                buttonText = stringResource(R.string.ok)
+            )
+        }
+
+        BridgeInitStates.STAGE_1_GET_IP,
+        BridgeInitStates.STAGE_1_ERROR__BAD_IP_FORMAT,
+        BridgeInitStates.STAGE_1_ERROR__NO_BRIDGE_AT_IP,
+        BridgeInitStates.STAGE_1_ERROR__BRIDGE_ALREADY_INITIALIZED,
+        BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
+        BridgeInitStates.STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE,
+        BridgeInitStates.STAGE_2_ERROR__CANNOT_PARSE_RESPONSE,
+        BridgeInitStates.STAGE_2_ERROR__BUTTON_NOT_PUSHED,
+        BridgeInitStates.STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE,
+        BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS,
+        BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON -> {
             // this state should never call this function
             SimpleFullScreenBoxMessage(
                 backgroundModifier = modifier,
@@ -623,6 +717,11 @@ private fun ManualBridgeSetupStep3(
                 msgText = stringResource(R.string.bridge_ip_step_3_bad_state_error),
                 buttonText = stringResource(R.string.back)
             )
+        }
+
+        BridgeInitStates.NOT_INITIALIZING -> {
+            Log.e(TAG, "Very illegal state. crashing now")
+            throw RuntimeException()
         }
     }
 
@@ -651,4 +750,4 @@ private fun ManualInitWaiting(
     }
 }
 
-private const val TAG = "PhilipsHueBridgeInit"
+private const val TAG = "PhilipsHueComposeBridgeInit"

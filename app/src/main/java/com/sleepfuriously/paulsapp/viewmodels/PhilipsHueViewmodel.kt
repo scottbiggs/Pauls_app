@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * Viewmodel for all the Philips Hue devices.
@@ -131,6 +132,10 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     var workingNewBridge: PhilipsHueNewBridge? = null
         private set
 
+    /** Will hold all the IPs of auto-detected bridges; they are NOT known to this app. */
+    var workingNewBridgeIpList: List<String> = emptyList()
+        private set
+
     /** todo: combine this with  */
     private val _sceneDisplayStuffForRoom = MutableStateFlow<SceneDataForRoom?>(null)
     /**
@@ -164,6 +169,10 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
     private val _addFlockErrorMsg = MutableStateFlow(EMPTY_STRING)
     /** When not empty, display as an error message */
     val addFlockErrorMsg = _addFlockErrorMsg.asStateFlow()
+
+    private val _autoDetectedBridges = MutableStateFlow<List<String>>(emptyList())
+    /** Holds a List of the latest bridge IPs that were auto-detected */
+    val autoDetectedBridges = _autoDetectedBridges.asStateFlow()
 
     //-------------------------
     //  public data
@@ -461,6 +470,26 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
             BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
                 _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
             }
+
+            BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS -> {
+                phRepository.cancelBridgeDiscovery()
+                _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+            }
+
+            BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__BUTTON_NOT_PUSHED,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__UNSUCCESSFUL_RESPONSE -> {
+                phRepository.cancelBridgeDiscovery()
+                _addNewBridgeState.update { BridgeInitStates.NOT_INITIALIZING }
+            }
+
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE -> {
+                _addNewBridgeState.value = BridgeInitStates.NOT_INITIALIZING
+            }
         }
         Log.d(TAG, "   moving to ${_addNewBridgeState.value}")
     }
@@ -470,13 +499,129 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
      * Begins the logical part of initializing the philips hue bridge.
      *
      * side effects:
-     *      - initializingBridgeState is set to STAGE_1
-     *      - newBridge is initialized with a unique id
+     *  - initializingBridgeState is set to [BridgeInitStates.STAGE_1_GET_IP]
+     *  - newBridge is initialized with a unique id
      */
     fun beginAddPhilipsHueBridge() {
         _addNewBridgeState.value = BridgeInitStates.STAGE_1_GET_IP
         workingNewBridge = PhilipsHueNewBridge(humanName = "tmp name")
         Log.d(TAG, "newBridge is created. Ready to start adding data to it.")
+    }
+
+    /**
+     * Begins auto-detection of philips hue bridges.
+     *
+     * side effects
+     *  - initializingBridgeState is set to [BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS]
+     *  - The [PhilipsHueRepository] will know what to do with the bridges.
+     */
+    fun beginDetectPhilipsHueBridges() {
+        // start spinner during auto-detect
+        _addNewBridgeState.update { BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            phRepository.discoverBridges()
+
+            // wait for discovery to complete
+            while (phRepository.bridgeDiscoveryInProgress.value) {
+                delay(200)
+            }
+
+            // find the ips
+            workingNewBridgeIpList = phRepository.discoveredBridgeIPs
+
+            // set our working bridge
+            if (workingNewBridgeIpList.isNotEmpty()) {
+                workingNewBridge = PhilipsHueNewBridge(
+                    humanName = "auto detect bridge",
+                    ip = workingNewBridgeIpList[0]
+                )
+            }
+
+            // indicate that now it's time for user to press buttons (if there are any)
+            if (workingNewBridgeIpList.isNotEmpty()) {
+                _addNewBridgeState.update { BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON }
+            }
+            else {
+                _addNewBridgeState.update { BridgeInitStates.STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND }
+            }
+        }
+    }
+
+    /**
+     * Add the detected bridges to our list of bridges.
+     *
+     * The process is to go through the list one-by-one, asking the user each
+     * time if they want to add this bridge.  This will involve the user as
+     * he needs to push a button on the bridge to get its token.
+     *
+     * @param   ipList  List of ips of the bridges to add.  Shouldn't make any
+     *                  difference if the ips of known bridges are in this list.
+     *
+     * side effects
+     *  - [workingNewBridgeIpList]      will be set with all the newly-detected
+     *                                  bridges that need to be processed.  These
+     *                                  bridges are NOT currently recognized.
+     */
+    fun addDetectedBridges(ipList: List<String>) {
+
+        // Indicate that there are newly-detected bridges
+        workingNewBridgeIpList = phRepository.findNewDetectedBridges(ipList)
+
+        // And that the UI needs to process them
+        BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON
+    }
+
+    /**
+     * This completely terminates any bridge discovery.  If done while polling
+     * the network, this stops that.
+     *
+     * But more importantly, this resets the state so that we're back to regular
+     * work--displaying known bridges, flocks, etc.
+     */
+    fun cancelDetectBridges() {
+        Log.d(TAG, "cancelDetectBridges()")
+        phRepository.cancelBridgeDiscovery()
+        _addNewBridgeState.update { BridgeInitStates.NOT_INITIALIZING }
+    }
+
+    /**
+     * The bridge (whose IP is in the first of [workingNewBridgeIpList]) was
+     * successfully added.  Remove that item from the list and continue
+     * (if there are any more).
+     *
+     * Similar to [bridgeAddAllGoodAndDone], but can repeat.
+     */
+    fun detectedBridgeAddSuccessful() {
+        Log.d(TAG, "detectedBridgeAddSuccessful() begin - addNewBridgeState = ${addNewBridgeState.value}")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            if (phRepository.addNewBridge(workingNewBridge!!)) {
+                // are there any more bridges?
+                if (workingNewBridgeIpList.size > 1) {
+                    // prepare the lists and the new working bridge
+                    workingNewBridge = PhilipsHueNewBridge(
+                        humanName = "still working on it",
+                        ip = workingNewBridgeIpList[1]
+                    )
+                    workingNewBridgeIpList = workingNewBridgeIpList.subList(1, workingNewBridgeIpList.size)
+                    _addNewBridgeState.update { BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON }
+                }
+                else {
+                    // that's all folks!  clean up.
+                    workingNewBridge = null
+                    workingNewBridgeIpList = emptyList()
+                    _addNewBridgeState.update { BridgeInitStates.NOT_INITIALIZING }
+                    Log.d(TAG,"detectedBridgeAddSuccessful() - added succefully. addNewBridgeState = $addNewBridgeState")
+                }
+
+            }
+            else {
+                // error adding this bridge
+                _addNewBridgeState.update { BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE }
+                Log.e(TAG, "detectedBridgeAddSuccessful() - addBridge() returned false! addNewBridgeState = $addNewBridgeState")
+            }
+        }
     }
 
     /**
@@ -589,8 +734,22 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
             BridgeInitStates.NOT_INITIALIZING,
             BridgeInitStates.STAGE_1_GET_IP,
             BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON,
-            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE -> {
+            BridgeInitStates.STAGE_3_ALL_GOOD_AND_DONE,
+            BridgeInitStates.STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS,
+            BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE -> {
                 Log.e(TAG, "error in bridgeInitErrorMsgDisplayed()!  State = ${_addNewBridgeState.value} is not an error state!")
+                throw RuntimeException()
+            }
+
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__NO_TOKEN_FROM_BRIDGE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__CANNOT_PARSE_RESPONSE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__BUTTON_NOT_PUSHED,
+            BridgeInitStates.STAGE_5_AUTO_DETECT_ERROR__UNSUCCESSFUL_RESPONSE,
+            BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE -> {
+                Log.d(TAG, "bridgeInitErrorMsgDisplayed() - reset to Stage 4 Press Bridge Button")
+                _addNewBridgeState.update { BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON }
             }
         }
     }
@@ -606,6 +765,14 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
      */
     fun addBridgeButtonPushed() {
 
+        Log.d(TAG, "addBridgeButtonPushed() begin")
+
+        // This may be for an auto-detected bridge, which is handled in a diff function.
+        if (addNewBridgeState.value == BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON) {
+            addBridgeButtonPushedDetectedBridge()
+            return
+        }
+
         // sanity checks: make sure that the bridge exists and is operating
         if (workingNewBridge == null) {
             Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
@@ -620,8 +787,44 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
         // is not null.
         val bridge = workingNewBridge ?: return
 
+        getTokenFromButtonPressed(bridge.ip)
+    }
+
+    /**
+     * Called when the button was pushed for an auto-detected bridge.
+     * The bridge in question will always be the first in the list.
+     */
+    fun addBridgeButtonPushedDetectedBridge() {
+        // sanity check
+        if (workingNewBridgeIpList.isEmpty()) {
+            // no bridge to detect!!!
+            Log.e(TAG, "bridgeButtonPushed() while newBridge is null.  Aborting!")
+            _addNewBridgeState.update { BridgeInitStates.STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE }
+            return
+        }
+
+        // Ask the bridge for a token.  Result will be put in workingNewBridge
+        getTokenFromButtonPressed(workingNewBridge!!.ip)
+    }
+
+    /**
+     * The user has (possibly) pressed the button on a bridge.  This tries to
+     * get the token from that bridge.
+     *
+     * side effects
+     *  [workingNewBridge]  Altered to reflect the new token (if no error)
+     */
+    private fun getTokenFromButtonPressed(ip: String) {
+
+        // another sanity check
+        if ((addNewBridgeState.value != BridgeInitStates.STAGE_2_PRESS_BRIDGE_BUTTON) &&
+            (addNewBridgeState.value != BridgeInitStates.STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON)) {
+            Log.e(TAG, "getTokenFromButtonPressed() error, bad state! addNewBridgeState = ${addNewBridgeState.value}")
+            throw RuntimeException()
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
-            val registerResponse = phRepository.registerAppToPhilipsHueBridge(bridge.ip)
+            val registerResponse = phRepository.registerAppToPhilipsHueBridge(ip)
             val token = registerResponse.first
             val err = registerResponse.second
 
@@ -1329,7 +1532,38 @@ enum class BridgeInitStates {
     STAGE_3_ALL_GOOD_AND_DONE,
 
     /** An error occurred when adding the new bridge to our list of bridges */
-    STAGE_3_ERROR_CANNOT_ADD_BRIDGE
+    STAGE_3_ERROR_CANNOT_ADD_BRIDGE,
+
+    /** Indicates that auto-detect of bridge IPs is in progress. */
+    STAGE_4_AUTO_DETECT_ALL_BRIDGE_IPS,
+
+    /** Waiting for user to press bridge button on discovered bridge */
+    STAGE_4_AUTO_DETECT_PRESS_BRIDGE_BUTTON,
+
+    /** similar [STAGE_2_ERROR__NO_TOKEN_FROM_BRIDGE] */
+    STAGE_5_AUTO_DETECT_ERROR__NO_TOKEN_FROM_BRIDGE,
+
+    /** similar [STAGE_2_ERROR__CANNOT_PARSE_RESPONSE] */
+    STAGE_5_AUTO_DETECT_ERROR__CANNOT_PARSE_RESPONSE,
+
+    /** similar to [STAGE_2_ERROR__BUTTON_NOT_PUSHED] */
+    STAGE_5_AUTO_DETECT_ERROR__BUTTON_NOT_PUSHED,
+
+    /** similar to [STAGE_2_ERROR__UNSUCCESSFUL_RESPONSE] */
+    STAGE_5_AUTO_DETECT_ERROR__UNSUCCESSFUL_RESPONSE,
+
+    /** Problem during bridge adding that cannot be recovered from. */
+    STAGE_5_AUTO_DETECT__CANNOT_ADD_BRIDGE,
+
+    /** Not an error, but we just couldn't find any more bridges. */
+    STAGE_5_AUTO_DETECT__NO_BRIDGES_FOUND,
+
+    /**
+     * Auto-detecting has completed and the bridge is added.
+     * [PhilipsHueViewmodel.autoDetectedBridges] will hold results.
+     * Show good message to user
+     */
+    STAGE_5_AUTO_DETECT_ALL_GOOD_AND_DONE
 }
 
 private const val TAG = "PhilipsHueViewmodel"

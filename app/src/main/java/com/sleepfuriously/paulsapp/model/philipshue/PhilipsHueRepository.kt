@@ -188,6 +188,20 @@ class PhilipsHueRepository(
     /** When true, Philips Hue components are being loaded (bridges and flocks). */
     val phRepoLoading = _phRepoLoading.asStateFlow()
 
+
+    private val _bridgeDiscoveryInProgress = MutableStateFlow<Boolean>(false)
+    /** When TRUE, we are using mDNS to discover what bridges are in this network. */
+    val bridgeDiscoveryInProgress = _bridgeDiscoveryInProgress.asStateFlow()
+
+    /**
+     * Holds a list of Strings that are the IPs of the bridges that were last
+     * discovered. Wait until [bridgeDiscoveryInProgress] is set to FALSE for
+     * these values to have settled.
+     */
+    var discoveredBridgeIPs = emptyList<String>()
+        private set
+
+
     //-------------------------------
     //  class variables
     //-------------------------------
@@ -441,6 +455,38 @@ class PhilipsHueRepository(
         return true
     }
 
+
+    /**
+     * Takes a list of bridge IPs and removes the IPs that are for bridges
+     * that we already know.
+     *
+     * @param   newBridgeIpList     List of IPs that are Philips Hue bridges
+     *
+     * @return  The same list with known bridges removed.
+     */
+    fun findNewDetectedBridges(newBridgeIpList: List<String>) : List<String> {
+        /** The final list: bridge IPs that are unknown to this (so far) */
+        val nonMatchingBridgeIps = mutableListOf<String>()
+
+        for (newBridgeIp in newBridgeIpList) {
+            var found = false
+            for (bridge in bridgeInfoList.value) {
+                if (bridge.ipAddress == newBridgeIp) {
+                    found = true
+                    break
+                }
+
+            }
+
+            // if found == false, then add this to our new list
+            if (found == false) {
+                nonMatchingBridgeIps.add(newBridgeIp)
+            }
+        }
+
+        return nonMatchingBridgeIps
+    }
+
     /**
      * Checks to see if this bridge already exists in our list of bridges
      * Doesn't matter if it's active or not--just if it exists.
@@ -549,6 +595,39 @@ class PhilipsHueRepository(
             }
         }
         return foundBridges
+    }
+
+    /**
+     * Uses mDNS to find all the bridges on this network.
+     * If the bridges are already known, then nothing is done.
+     * The unknown bridges are initialized and added to our system.
+     */
+    suspend fun discoverBridges() {
+        discoveredBridgeIPs = emptyList()
+        _bridgeDiscoveryInProgress.update { true }
+
+        val discovery = PhilipsHueBridgeDiscovery(MyApplication.appContext)
+
+        // the meat--may take a while
+        val tmpDiscoveredBridgeIPs = discovery.getAllBridges()
+
+        // filter out bridges that we already know
+        discoveredBridgeIPs = findNewDetectedBridges(tmpDiscoveredBridgeIPs)
+
+        Log.d(TAG, "discoverBridges() - discovered these bridges: $discoveredBridgeIPs")
+
+        _bridgeDiscoveryInProgress.update { false }
+    }
+
+    /**
+     * Causes the bridge discovery system to immediately stop.
+     *
+     * Actually, does nothing.  Just resets the discovered bridges to empty
+     * list and stops progress stateflow.  May do more in the future.
+     */
+    fun cancelBridgeDiscovery() {
+        discoveredBridgeIPs = emptyList()
+        _bridgeDiscoveryInProgress.update { false }
     }
 
     //-------------------------------
