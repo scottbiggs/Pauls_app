@@ -23,5 +23,13 @@ class PoolViewmodel: ViewModel(), MyViewModelInterface {
         return PoolOff
     }
 
-    // todo: the rest of this Viewmodel!
+    /**
+     * Call this to get the URL used by the pool system (its dashboard).
+     */
+    fun getUrl() : String {
+        return URL
+    }
 }
+
+/** should redirect to signin or dashboard */
+private const val URL = "https://intellicenter2.com"

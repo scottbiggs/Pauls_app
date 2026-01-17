@@ -37,6 +37,7 @@ import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForFlock
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
+import com.sleepfuriously.paulsapp.compose.pool.ShowMainPool
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
@@ -314,13 +315,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    is PoolViewmodel -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) { Text("Pool Place-holder", fontSize = 26.sp) }
-                    }
-
                     is SecurityViewmodel -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -340,6 +334,13 @@ class MainActivity : ComponentActivity() {
                     is SprinklerViewmodel -> {
                         ShowMainSprinkler(
                             sprinklerViewmodel = viewmodelTabs[index] as SprinklerViewmodel,
+                            acceptJavaScript = true
+                        )
+                    }
+
+                    is PoolViewmodel -> {
+                        ShowMainPool(
+                            poolViewmodel = viewmodelTabs[index] as PoolViewmodel,
                             acceptJavaScript = true
                         )
                     }
