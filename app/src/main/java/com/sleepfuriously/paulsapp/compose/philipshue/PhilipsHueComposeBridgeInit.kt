@@ -673,7 +673,7 @@ private fun ManualBridgeSetupStep3(
             SimpleFullScreenBoxMessage(
                 backgroundModifier = modifier,
                 onClick = {
-                    viewmodel.detectedBridgeAddSuccessful()
+                    viewmodel.bridgeInitGoBack()
                 },
                 msgText = stringResource(id = R.string.bridge_ip_step_5_no_bridges),
                 buttonText = stringResource(R.string.ok)
