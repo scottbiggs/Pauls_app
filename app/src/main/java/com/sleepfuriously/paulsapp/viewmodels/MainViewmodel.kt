@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleepfuriously.paulsapp.utils.isConnectivityWifiWorking
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -39,7 +40,7 @@ class MainViewmodel : ViewModel() {
     //---------------------------
 
     fun initialize(ctx: Context) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // check wifi--that's about all there is for the main viewmodel to do
             _wifiWorking.value = isConnectivityWifiWorking(ctx)
             Log.d(TAG, "done initializing")

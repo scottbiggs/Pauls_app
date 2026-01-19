@@ -2,6 +2,7 @@ package com.sleepfuriously.paulsapp
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -113,6 +114,15 @@ class MainActivity : ComponentActivity() {
 
             // start initializations
             mainViewmodel.initialize(this)
+            while (mainViewmodel.wifiWorking.value == null) {
+                Thread.sleep(100)
+            }
+            // if no internet, exit immediately.
+            if (mainViewmodel.wifiWorking.value == false) {
+                Toast.makeText(this, stringResource(R.string.wifi_not_working), Toast.LENGTH_LONG).show()
+                finish()
+            }
+
             philipsHueViewmodel.initialize()
 
             PaulsAppTheme {

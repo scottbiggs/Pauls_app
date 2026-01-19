@@ -18,6 +18,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2ResourceBridge
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
 import com.sleepfuriously.paulsapp.model.philipshue.json.ROOM
 import com.sleepfuriously.paulsapp.model.philipshue.json.ZONE
+import com.sleepfuriously.paulsapp.utils.isConnectivityWifiWorking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -211,6 +212,18 @@ class PhilipsHueRepository(
     //
 
     init {
+        properInit()
+    }
+
+    /**
+     * Made because the kotlin init does not allow returns.
+     */
+    private fun properInit() {
+        if (isConnectivityWifiWorking(MyApplication.appContext) == false) {
+            Log.w(TAG, "No wifi--nothing to initialize!!!")
+            return
+        }
+
         coroutineScope.launch {
             while (true) {
                 bridgeInfoList.collect {
@@ -250,9 +263,11 @@ class PhilipsHueRepository(
 
             // use these ids to load the ips & tokens from prefs
             bridgeIdsFromPrefs.forEach { id ->
+                Log.d(TAG, "properInit() - forEach bridge id. id = $id")
 
                 // get the IP for this bridge
                 val ip = PhilipsHueStorage.loadBridgeIp(id, ctx)
+                Log.d(TAG, "properInit() -                    ip = $ip")
 
                 // get the token for this bridge
                 var token = PhilipsHueStorage.loadBridgeToken(
@@ -260,63 +275,84 @@ class PhilipsHueRepository(
                     ctx = ctx,
                 )
 
-                // test to see if the bridge accespts this token.  If not, then
-                // we need to update the token to the new secure system.
-                if (doesBridgeAcceptToken(bridgeIp = ip, token = token) == false) {
-                    // Yep, this is probably an old unencrypted token.  Update it.
-                    PhilipsHueStorage.updateToken(id, ctx)
+                // make sure the bridge actually is there before testing the token
+                if (doesBridgeRespondToIp(ip)) {
+                    // test to see if the bridge accespts this token.  If not, then
+                    // we need to update the token to the new secure system.
+                    if (doesBridgeAcceptToken(bridgeIp = ip, token = token) == false) {
+                        // Yep, this is probably an old unencrypted token.  Update it.
+                        PhilipsHueStorage.updateToken(id, ctx)
 
-                    // and now retrieve the token (correctly interpreted)
-                    token = PhilipsHueStorage.loadBridgeToken(id, ctx)
-                }
+                        // and now retrieve the token (correctly interpreted)
+                        token = PhilipsHueStorage.loadBridgeToken(id, ctx)
+                    }
 
-                val isActive = isBridgeActive(ip, token)
-                var name = ""
-                if (isActive) {
-                    val jsonBridgeResponseString = PhilipsHueApi.getBridgeStrFromApi(ip, token)
-                    if (jsonBridgeResponseString.isEmpty()) {
-                        Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
-                    } else {
-                        val v2Bridge = PHv2ResourceBridge(jsonBridgeResponseString)
-                        if (v2Bridge.hasData()) {
-                            // finally we can get the name!
-                            name = v2Bridge.getDeviceName()
-                        }
-                        else {
-                            Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
-                            Log.e(TAG, "   error = ${v2Bridge.getError()}")
+                    val isActive = isBridgeActive(ip, token)
+                    var name = ""
+                    if (isActive) {
+                        val jsonBridgeResponseString = PhilipsHueApi.getBridgeStrFromApi(ip, token)
+                        if (jsonBridgeResponseString.isEmpty()) {
+                            Log.e(TAG, "Unable to get bridge data (ip = $ip) in properInit()!")
+                        } else {
+                            val v2Bridge = PHv2ResourceBridge(jsonBridgeResponseString)
+                            if (v2Bridge.hasData()) {
+                                // finally we can get the name!
+                                name = v2Bridge.getDeviceName()
+                            } else {
+                                Log.e(TAG, "Bridge data empty (ip = $ip) in properInit()!")
+                                Log.e(TAG, "   error = ${v2Bridge.getError()}")
+                            }
                         }
                     }
+
+                    val bridge = PhilipsHueBridgeInfo(
+                        v2Id = id,
+                        bridgeId = name,
+                        ipAddress = ip,
+                        token = token,
+                        active = isActive,
+                        connected = false,
+                        humanName = "initializing...",
+                    )
+                    workingBridgeSet += bridge
                 }
 
-                val bridge = PhilipsHueBridgeInfo(
-                    v2Id = id,
-                    bridgeId = name,
-                    ipAddress = ip,
-                    token = token,
-                    active = isActive,
-                    connected = false,
-                    humanName = "initializing...",
-                )
-
-                workingBridgeSet += bridge
+                else {
+                    // bridge is not responding at all, so the bridge may be
+                    // off-line for some reason.  Do our best to figure out
+                    // what to display
+                    val bridge = PhilipsHueBridgeInfo(
+                        v2Id = id,
+                        bridgeId = ip,
+                        ipAddress = ip,
+                        token = token,
+                        active = false,
+                        connected = false,
+                        humanName = "off-line",
+                    )
+                    workingBridgeSet += bridge
+                }
             }
 
             // 2. Load up the bridges and put them in our bridge list
             //
             val tmpBridgeModels = mutableListOf<PhilipsHueBridgeModel>()
             workingBridgeSet.forEach { workingBridge ->
-                val newBridgeModel = PhilipsHueBridgeModel(
-                    bridgeV2Id = workingBridge.v2Id,
-                    bridgeIpAddress = workingBridge.ipAddress,
-                    bridgeToken = workingBridge.token,
-                    coroutineScope = coroutineScope
-                )
-                // wait for the Bridge Model to finish
-                while (newBridgeModel.initializing) {
-                    delay(50)
+
+                // only make a new Bridge Model if this bridge is active
+                if (workingBridge.active) {
+                    val newBridgeModel = PhilipsHueBridgeModel(
+                        bridgeV2Id = workingBridge.v2Id,
+                        bridgeIpAddress = workingBridge.ipAddress,
+                        bridgeToken = workingBridge.token,
+                        coroutineScope = coroutineScope
+                    )
+                    // wait for the Bridge Model to finish
+                    while (newBridgeModel.initializing) {
+                        delay(50)
+                    }
+                    tmpBridgeModels.add(newBridgeModel)
                 }
-                tmpBridgeModels.add(newBridgeModel)
             }
 
             // 3. update the flow (well, the variable that is reflected in the flow)
@@ -338,9 +374,7 @@ class PhilipsHueRepository(
             _phRepoLoading.update { false }
             Log.d(TAG, "done loading: phRepoLoading = ${phRepoLoading.value}")
         }
-
     }
-
 
     //-----------------------------------------------------------
     //  bridge functions
