@@ -1,5 +1,7 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,8 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
-import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
+import com.sleepfuriously.paulsapp.compose.isDarkTheme
 
 
 /**
@@ -54,6 +55,7 @@ import com.sleepfuriously.paulsapp.ui.theme.yellowMain
  * @param   zoneOnOffChangedFunction    Function to call when the
  *                                  zone is turned on or off.
  */
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DisplayPhilipsHueZone(
     modifier: Modifier = Modifier,
@@ -126,7 +128,9 @@ fun DisplayPhilipsHueZone(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
+                colors = SwitchDefaults.colors().copy(
+                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                ),
                 onCheckedChange = { newSliderState ->
                     zoneOnOffChangedFunction.invoke(newSliderState)
                 }
@@ -146,10 +150,8 @@ fun DisplayPhilipsHueZone(
             },
             enabled = lightSwitchOn,
             modifier = Modifier
-                .padding(vertical = 4.dp, horizontal = 18.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(veryDarkCoolGray)
-                .height(20.dp)
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .height(24.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))

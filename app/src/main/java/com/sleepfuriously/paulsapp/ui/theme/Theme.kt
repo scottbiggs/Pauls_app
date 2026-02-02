@@ -9,47 +9,104 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.sleepfuriously.paulsapp.ui.theme.coolGray
 
 private val DarkColorScheme = darkColorScheme(
-    primary = brownLight,
-    secondary = lightBlueMain,
-    tertiary = darkBlueMain,
-
-    background = almostBlack,
-    surface = almostBlackLighter,
+    primary = lightBlueMain,
     onPrimary = almostBlack,
+    primaryContainer = darkBlueDark,
+    onPrimaryContainer = veryLightCoolGray,
+
+    inversePrimary = darkBlueMain,
+
+    secondary = yellowMain,
     onSecondary = almostBlack,
-    onTertiary = veryLightCoolGray,
-    onBackground = veryLightCoolGray,
-    onSurface = veryLightCoolGray,
+    secondaryContainer = yellowLight,
+    onSecondaryContainer = almostBlack,
+
+    tertiary = brownMed,
+    onTertiary = veryDarkCoolGray,
+    tertiaryContainer = brownDark,
+    onTertiaryContainer = veryLightCoolGray,
+
+    /** this is a medium gray */
+    outline = coolGray,
+    /** a lighter (or MORE of the scheme) gray */
+    outlineVariant = lightCoolGray,
+
+    error = lightMyRed
+//    background = almostBlack,
+//    onBackground = veryLightCoolGray,
+//
+//    surface = almostBlackLighter,
+//    onSurface = veryLightCoolGray,
 )
 
-/** fixme: currently not used */
 private val LightColorScheme = lightColorScheme(
-    primary = lightBlueMain,
-    secondary = yellowMain,
-    tertiary = darkBlueMain
+    primary = lightBlueVeryDark,
+    onPrimary = veryLightCoolGray,
+    primaryContainer = darkBlueDark,
+    onPrimaryContainer = veryLightCoolGray,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    inversePrimary = lightBlueLight,
+
+    secondary = palmGreen,
+    onSecondary = almostBlack,
+    secondaryContainer = palmGreenVeryVeryLight,
+    onSecondaryContainer = almostBlack,
+
+    tertiary = brownDark,
+    onTertiary = veryLightCoolGray,
+    tertiaryContainer = brownLight,
+    onTertiaryContainer = almostBlack,
+
+    /** this is a medium gray */
+    outline = lightCoolGray,
+    /** a lighter (or MORE of the scheme) gray */
+    outlineVariant = coolGray
+
+//    background = veryLightCoolGray,
+//    onBackground = almostBlack,
+//
+//    surface = lightCoolGray,
+//    onSurface = almostBlack,
+)
+
+private val LightColorSchemeCyan = lightColorScheme(
+    primary = cyanDark,
+    primaryContainer = cyanDark,
+
+    inversePrimary = cyanLight,
+
+    secondary = violet,
+    onSecondary = onViolet,
+    secondaryContainer = lightViolet,
+    onSecondaryContainer = almostBlack,
+
+    tertiary = marineGreen,
+    onTertiary = onMarineGreen,
+    tertiaryContainer = lightMarineGreen,
+    onTertiaryContainer = almostBlack,
+
+    /** this is a medium gray */
+    outline = lightWarmGray,
+    /** a lighter (or MORE of the scheme) gray */
+    outlineVariant = warmGray
 )
 
 @Composable
 fun PaulsAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    /**
+     * Dynamic color is available on Android 12+
+     *
+     * NOTE
+     *  If this is true, then the defined colors above for dark and light mode
+     *  are mostly ignored.  Instead the dynamic colors are used (mostly).
+     */
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // fixme: This section of code is unused.  I keep it in case there's a reason
-    //  change it back to a switching color scheme in the future.
     val colorScheme = when {
         dynamicColor && supportsDynamicColorTheme() -> {
             val context = LocalContext.current
@@ -58,12 +115,12 @@ fun PaulsAppTheme(
 
         darkTheme -> DarkColorScheme
 
-        else -> LightColorScheme
+//        else -> LightColorScheme
+        else -> LightColorSchemeCyan
     }
 
     MaterialTheme(
-//        colorScheme = colorScheme,
-        colorScheme = DarkColorScheme,      // always do dark
+        colorScheme = colorScheme,
         typography = Typography,
         content = content
     )

@@ -1,8 +1,9 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,11 +42,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
+import com.sleepfuriously.paulsapp.compose.isDarkTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.darkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.veryLightCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 
 
 /**
@@ -73,6 +75,7 @@ import com.sleepfuriously.paulsapp.ui.theme.yellowMain
  * @param   showScenesFunction      Function to call when the user wants to
  *                          display all the scenes applicable to this Room.
  */
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DisplayPhilipsHueRoom(
     modifier: Modifier = Modifier,
@@ -147,7 +150,9 @@ fun DisplayPhilipsHueRoom(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
+                colors = SwitchDefaults.colors().copy(
+                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                ),
                 onCheckedChange = { newSliderState ->
                     roomOnOffChangedFunction.invoke(newSliderState)
                 }
@@ -167,10 +172,8 @@ fun DisplayPhilipsHueRoom(
             },
             enabled = lightSwitchOn,
             modifier = Modifier
-                .padding(vertical = 4.dp, horizontal = 18.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(veryDarkCoolGray)
-                .height(20.dp)
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .height(24.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -206,19 +209,30 @@ fun getProperLightImage(illumination: Float) : Int {
     return lightImage
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun getLightColor(illumination: Float) : Color {
     val color =
-        if (illumination < 0.05f) {
-            coolGray
-        }
-        else if (illumination < 0.4f) {
-            lightCoolGray
-        }
-        else if (illumination < 0.75f) {
-            veryLightCoolGray
+        if (isDarkTheme()) {
+            if (illumination < 0.05f) {
+                coolGray
+            } else if (illumination < 0.4f) {
+                lightCoolGray
+            } else if (illumination < 0.75f) {
+                veryLightCoolGray
+            } else {
+                Color.White
+            }
         }
         else {
-            Color.White
+            if (illumination < 0.05f) {
+                coolGray
+            } else if (illumination < 0.4f) {
+                darkCoolGray
+            } else if (illumination < 0.75f) {
+                veryDarkCoolGray
+            } else {
+                Color.Black
+            }
         }
     return color
 }

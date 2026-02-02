@@ -101,6 +101,7 @@
     <string name="no_colored_lights_in_scene">no colors</string>
     <string name="scene_name_prefix">Scene</string>
 
+    <string name="flock_section_title">Flocks</string>
     <string name="add_flock_title">Create a Flock</string>
     <string name="add_flock_confirm_button">create new flock</string>
     <string name="edit_flock_title">Edit Flock</string>

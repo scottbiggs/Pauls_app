@@ -1,7 +1,10 @@
 package com.sleepfuriously.paulsapp.compose
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
+import android.os.Build
 import androidx.annotation.FloatRange
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -50,10 +53,18 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
+import android.util.Log
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.LayoutDirection
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 
 /**
  * This file holds compose functions that are generally useful
@@ -243,12 +254,13 @@ fun MyYesNoDialog(
  *
  * @param   enabled                 Same as [Slider].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SliderReportWhenFinished(
     sliderInputValue: Float,
     setSliderValueFunction: (Float) -> Unit,
     enabled: Boolean,
-    modifier: Modifier
+    modifier: Modifier = Modifier
 ) {
     val slidingPosition = remember { mutableFloatStateOf(0f) }
     val sliding = remember { mutableStateOf(false) }
@@ -256,16 +268,55 @@ fun SliderReportWhenFinished(
     Slider(
         value = if (sliding.value) slidingPosition.floatValue else sliderInputValue,
         enabled = enabled,
-        colors = SliderDefaults.colors().copy(thumbColor = yellowMain, activeTrackColor = yellowMain),
+        colors = SliderDefaults.colors().copy(
+            thumbColor = MaterialTheme.colorScheme.secondary,
+            activeTrackColor = MaterialTheme.colorScheme.secondary,     // Before the mark
+            inactiveTrackColor = MaterialTheme.colorScheme.outline,     // AFTER (to the right) of the mark
+//            activeTickColor = MaterialTheme.colorScheme.primary       // not used as I'm not using tick marks
+        ),
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .border(
+                        width = 1.dp,
+                        shape = RoundedCornerShape(18.dp),
+                        color = if (enabled)
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.outlineVariant
+                    )
+                    .size(18.dp)
+                    .background(
+                        color = if (enabled)
+                            MaterialTheme.colorScheme.secondary
+                        else
+                            MaterialTheme.colorScheme.outline,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+            )
+        },
         onValueChange = {
             slidingPosition.floatValue = it
             sliding.value = true
         },
         onValueChangeFinished = {
+            Log.v(TAG, "Slider finished. value = ${slidingPosition.floatValue}")
             setSliderValueFunction(slidingPosition.floatValue)
             sliding.value = false
         },
         modifier = modifier
+            //
+            // this stuff makes the rounded outline
+            //
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface,
+                shape = RoundedCornerShape(10.dp)
+            )
+//            .background(MaterialTheme.colorScheme.onTertiary)
+            .height(40.dp)
+            .padding(top = 2.dp, start = 2.dp)  // centers the thumb within the slider area
     )
 }
 
@@ -402,7 +453,7 @@ fun SwitchWithLabel(
             Spacer(modifier = Modifier.padding(start = 8.dp))
             Switch(
                 checked = state,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = MaterialTheme.colorScheme.secondary),
                 onCheckedChange = {
                     onStateChange(it)
                 }
@@ -412,7 +463,7 @@ fun SwitchWithLabel(
             // draw text after (to the right) of the switch
             Switch(
                 checked = state,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = MaterialTheme.colorScheme.secondary),
                 onCheckedChange = {
                     onStateChange(it)
                 }
@@ -440,6 +491,15 @@ fun convertBrightnessFloatToInt(floatBrightness: Float) : Int {
     return (floatBrightness * MAX_BRIGHTNESS.toFloat()).toInt()
 }
 
+/**
+ * Returns TRUE iff we are currently in night mode.  False for all other modes.
+ */
+@RequiresApi(Build.VERSION_CODES.O)
+fun isDarkTheme(): Boolean {
+    val nightMode = MyApplication.appContext.resources.configuration.colorMode
+        .and(Configuration.UI_MODE_NIGHT_MASK)
+    return nightMode == Configuration.UI_MODE_NIGHT_YES
+}
 
 //--------------------------
 //  constants

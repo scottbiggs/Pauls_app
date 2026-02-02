@@ -1,6 +1,9 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
+import android.os.Build
+import android.text.Layout
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -66,9 +69,6 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
-import com.sleepfuriously.paulsapp.ui.theme.coolGray
-import com.sleepfuriously.paulsapp.ui.theme.veryDarkCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import kotlin.collections.forEach
 
@@ -98,6 +98,7 @@ import kotlin.collections.forEach
  * @param   showScenesFunction      Function to call when the user wants to
  *                          display all the scenes applicable to this Flock.
  */
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DisplayPhilipsHueFlock(
     modifier: Modifier = Modifier,
@@ -172,7 +173,9 @@ fun DisplayPhilipsHueFlock(
                     .padding(start = 8.dp, bottom = 8.dp)
                     .rotate(-90f),
                 checked = lightSwitchOn,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = yellowMain),
+                colors = SwitchDefaults.colors().copy(
+                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                ),
                 onCheckedChange = { newSliderState ->
                     flockOnOffChangedFunction.invoke(newSliderState)
                 }
@@ -192,10 +195,8 @@ fun DisplayPhilipsHueFlock(
             },
             enabled = lightSwitchOn,
             modifier = Modifier
-                .padding(vertical = 4.dp, horizontal = 18.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(veryDarkCoolGray)
-                .height(20.dp)
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .height(24.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -216,17 +217,25 @@ fun DrawFlocksSeparator(
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 32.dp)
-            .height(28.dp)
+            .height(34.dp)
 
             .background(
-                brush = Brush.verticalGradient(
+                brush = Brush.horizontalGradient(
                     colors = listOf(
-                        coolGray,
-                        Color(red = 0, green = 0, blue = 0, alpha = 0)
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.inversePrimary,
+                        MaterialTheme.colorScheme.inversePrimary,
+                        MaterialTheme.colorScheme.primary,
                     )
                 )
             )
     ) {
+        Text(
+            text =stringResource(R.string.flock_section_title),
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.align(Alignment.Center)
+        )
+
         DotDotDotFlockMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
             viewmodel = viewmodel,

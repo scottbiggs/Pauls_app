@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +25,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
-import com.sleepfuriously.paulsapp.ui.theme.darkBlueDark
-import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
 /**
@@ -66,14 +61,14 @@ fun DiscoveredBridgeSelector(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = darkBlueDark),
+            .background(color = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 style = MaterialTheme.typography.headlineLarge,
                 text = stringResource(R.string.bridge_auto_detect_title),
                 textAlign = TextAlign.Center,
-                color = yellowVeryLight
+                color = MaterialTheme.colorScheme.secondaryContainer
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -86,7 +81,7 @@ fun DiscoveredBridgeSelector(
                     style = MaterialTheme.typography.headlineLarge,
                     text = stringResource(R.string.bridge_auto_detect_none_found),
                     textAlign = TextAlign.Center,
-                    color = yellowVeryLight
+                    color = MaterialTheme.colorScheme.secondaryContainer
                 )
             } // discovered bridges
 

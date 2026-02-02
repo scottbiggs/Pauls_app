@@ -58,10 +58,6 @@ import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
-import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
-import com.sleepfuriously.paulsapp.ui.theme.yellowDark
-import com.sleepfuriously.paulsapp.ui.theme.yellowMain
-import com.sleepfuriously.paulsapp.ui.theme.yellowVeryLight
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
 /**
@@ -182,33 +178,14 @@ private fun DrawPhilipsHueContents(
             // The name of the bridge.  This will take the entire row of a
             // grid and includes a radio button that toggles the server-sent
             // events on/off.
-            item(
-                span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        enabled = bridgeInfo.active,
-                        selected = bridgeInfo.connected,
-                        colors = RadioButtonDefaults.colors().copy(selectedColor = yellowMain, unselectedColor = yellowDark),
-                        onClick = {
-                            if (bridgeInfo.connected) {
-                                viewmodel.disconnectBridge(bridgeInfo)
-                            } else {
-                                viewmodel.connectBridge(bridgeInfo)
-                            }
-                        },
-                    )
-                    DrawBridgeTitle(
-                        text = stringResource(
-                            id = R.string.ph_bridge_name,
-                            bridgeInfo.humanName
-                        ),
-                        bridgeInfo.connected
-                    )
-                }
-            }
+//            item(
+//                span = { GridItemSpan(this.maxLineSpan) }       // makes this item take entire row
+//            ) {
+//                DrawBridgeTitleAndConnectedButton(
+//                    bridgeInfo = bridgeInfo,
+//                    viewmodel = viewmodel
+//                )
+//            }
 
             //--------
             //  rooms
@@ -294,6 +271,42 @@ private fun DrawPhilipsHueContents(
     }
 }
 
+@Composable
+private fun DrawBridgeTitleAndConnectedButton(
+    bridgeInfo: PhilipsHueBridgeInfo,
+    viewmodel: PhilipsHueViewmodel,
+    modifier: Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        RadioButton(
+            enabled = bridgeInfo.active,
+            selected = bridgeInfo.connected,
+            colors = RadioButtonDefaults.colors().copy(
+                selectedColor = MaterialTheme.colorScheme.secondary,
+                unselectedColor = MaterialTheme.colorScheme.inversePrimary
+            ),
+            onClick = {
+                if (bridgeInfo.connected) {
+                    viewmodel.disconnectBridge(bridgeInfo)
+                } else {
+                    viewmodel.connectBridge(bridgeInfo)
+                }
+            },
+        )
+        DrawBridgeTitle(
+            text = stringResource(
+                id = R.string.ph_bridge_name,
+                bridgeInfo.humanName
+            ),
+            bridgeInfo.connected
+        )
+    }
+
+}
+
 /**
  * A nice separator between bridges.  It also shows the name of the
  * bridge and how many rooms are in it. todo: make optional
@@ -306,21 +319,33 @@ private fun DrawBridgeSeparator(
     val modifier = remember {
         Modifier
             .fillMaxWidth()
-            .padding(top = 32.dp)
-            .height(28.dp)
+            .padding(top = 32.dp, bottom = 4.dp)
+            .height(36.dp)
     }
 
     Box(
         modifier = modifier
             .background(
-                brush = Brush.verticalGradient(
+//                brush = Brush.verticalGradient(
+//                    colors = listOf(
+//                        MaterialTheme.colorScheme.tertiaryContainer,
+//                        Color(red = 0, green = 0, blue = 0, alpha = 0)
+//                    )
+//                )
+                brush = Brush.horizontalGradient(
                     colors = listOf(
-                        coolGray,
-                        Color(red = 0, green = 0, blue = 0, alpha = 0)
+                        MaterialTheme.colorScheme.inversePrimary,
+                        MaterialTheme.colorScheme.tertiaryContainer,
                     )
                 )
             )
     ) {
+        DrawBridgeTitleAndConnectedButton(
+            bridgeInfo = bridge,
+            viewmodel = viewmodel,
+            modifier = Modifier.align(Alignment.CenterStart)
+        )
+
         DotDotDotBridgeMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
             viewmodel = viewmodel,
@@ -633,15 +658,16 @@ private fun DrawBridgeTitle(
                 textDecoration = TextDecoration.LineThrough
             )
         },
-        color = if (connected) { yellowVeryLight }
-                else { lightCoolGray }
+        color = if (connected) { MaterialTheme.colorScheme.onSurface }
+                else { MaterialTheme.colorScheme.error }
     )
 }
 
 @Composable
 private fun DrawMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
-    viewmodel: PhilipsHueViewmodel
+    viewmodel: PhilipsHueViewmodel,
+    backgroundColor: Color = MaterialTheme.colorScheme.tertiary
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
 
@@ -663,7 +689,8 @@ private fun DrawMainPhilipsHueAddBridgeFab(
                         contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
                     )
                 },
-                text = { Text(stringResource(id = R.string.ph_add_button)) }
+                text = { Text(stringResource(id = R.string.ph_add_button)) },
+                containerColor = backgroundColor
             )
 
             ExtendedFloatingActionButton(
@@ -675,7 +702,8 @@ private fun DrawMainPhilipsHueAddBridgeFab(
                         contentDescription = stringResource(id = R.string.ph_detect_bridges_button_content_desc)
                     )
                 },
-                text = { Text(stringResource(id = R.string.ph_detect_bridges_button)) }
+                text = { Text(stringResource(id = R.string.ph_detect_bridges_button)) },
+                containerColor = backgroundColor
             )
         }
     } else {
@@ -685,6 +713,7 @@ private fun DrawMainPhilipsHueAddBridgeFab(
                     .padding(end = 32.dp),
                 onClick = { viewmodel.beginAddPhilipsHueBridge() },
                 elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                containerColor = backgroundColor
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -696,6 +725,7 @@ private fun DrawMainPhilipsHueAddBridgeFab(
             FloatingActionButton(
                 onClick = { viewmodel.beginDetectPhilipsHueBridges() },
                 elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                containerColor = backgroundColor
             ) {
                 Icon(
                     imageVector = Icons.Filled.AddHome,
