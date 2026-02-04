@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.LayoutDirection
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 
 /**
  * This file holds compose functions that are generally useful
@@ -93,7 +94,7 @@ fun SimpleFullScreenBoxMessage(
     Box(modifier = backgroundModifier
         .fillMaxSize()
         .padding(80.dp)
-        .background(MaterialTheme.colorScheme.tertiary),
+        .background(LocalTheme.current.surfaceColored),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -103,7 +104,7 @@ fun SimpleFullScreenBoxMessage(
             Text(
                 textAlign = TextAlign.Center,
                 text = msgText,
-                color = MaterialTheme.colorScheme.onTertiary,
+                color = LocalTheme.current.surfaceColoredText,
                 modifier = textModifier
                     .wrapContentHeight()
             )

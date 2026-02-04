@@ -657,7 +657,8 @@ fun ShowAddOrEditFlockDialog(
 
     if (errorMsg.isNotEmpty()) {
         val ctx = LocalContext.current
-        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
+        Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG)
+            .show()
         viewmodel.clearFlockErrorMsg()
     }
 }

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
 import com.sleepfuriously.paulsapp.compose.isDarkTheme
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.darkCoolGray
 import com.sleepfuriously.paulsapp.ui.theme.lightCoolGray
@@ -96,7 +97,7 @@ fun DisplayPhilipsHueRoom(
         .padding(horizontal = 10.dp, vertical = 4.dp)
         .clip(RoundedCornerShape(10.dp))
         .border(
-            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+            BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.roomBorder)),
             RoundedCornerShape(12.dp)
         )
 
@@ -127,7 +128,8 @@ fun DisplayPhilipsHueRoom(
             onClick = {
                 showScenesFunction.invoke()
             },
-            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+//            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+            style = LocalTextStyle.current,
             modifier = Modifier
                 .padding(start = 16.dp)
         )
@@ -151,7 +153,7 @@ fun DisplayPhilipsHueRoom(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 colors = SwitchDefaults.colors().copy(
-                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                    checkedTrackColor = LocalTheme.current.switchTrackColor,
                 ),
                 onCheckedChange = { newSliderState ->
                     roomOnOffChangedFunction.invoke(newSliderState)

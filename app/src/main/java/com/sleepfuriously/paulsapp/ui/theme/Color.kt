@@ -1,5 +1,6 @@
 package com.sleepfuriously.paulsapp.ui.theme
 
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
@@ -75,7 +76,6 @@ val lightMarineGreen = Color(0xFF629BA4)
 val darkMarineGreen = Color(0xFF0F3839)
 val onMarineGreen = Color(0xFFE0E4E6)
 
-/*
 
 //---------------------------------
 //  themes
@@ -95,6 +95,11 @@ data class MyColorTheme(
     val surfaceLess: Color,
     /** Inverted colored surface. It'll be light for dark mode & vice-versa. */
     val surfaceInverse: Color,
+    /** Surface that has a strong color */
+    val surfaceColored: Color,
+
+    val roomBackground: Color,
+    val roomBorder: Color,
 
     //
     // foregrounds
@@ -109,6 +114,9 @@ data class MyColorTheme(
     val surfaceInverseText: Color,
     /** text color variant for [surfaceInverse] */
     val surfaceInverseText2: Color,
+
+    /** Text color for the colored surface */
+    val surfaceColoredText: Color,
 
     //
     //  icons
@@ -156,6 +164,36 @@ data class MyColorTheme(
     val fabButtonTextDisabled: Color,
 
     //
+    // TextFields (just some of 'em)
+    //
+    val textFieldFocusedTextColor: Color,
+    val textFieldUnfocusedTextColor: Color,
+    val textFieldDisabledTextColor: Color,
+    val textFieldFocusedContainerColor: Color,
+    val textFieldUnfocusedContainerColor: Color,
+    val textFieldDisabledContainerColor: Color,
+    val textFieldCursorColor: Color,
+    val textFieldSelectionColors: TextSelectionColors = TextSelectionColors(
+        handleColor = borderPrimary,
+        backgroundColor = fabButtonEnabled
+    ),
+
+    //
+    //  progress indicators
+    //
+    val progressIndicatorColor: Color,
+    val progressIndicatorBackground: Color = buttonEnabled,
+    val progressIndicatorText: Color = buttonText,
+
+    //
+    // switch
+    //
+    //  I'm not doing the thumb colors
+    //
+    val switchTrackColor: Color,
+    val switchDisabledTrackColor: Color,
+
+    //
     //  misc
     //
 
@@ -163,6 +201,7 @@ data class MyColorTheme(
     val isDarkMode: Boolean
     )
 
+/** uses warm natural colors */
 val defaultLightColorScheme = MyColorTheme(
     surface = veryLightWarmGray,
     surfaceMore = Color.White,
@@ -172,6 +211,11 @@ val defaultLightColorScheme = MyColorTheme(
     surfaceText2 = cyanDark,
     surfaceInverseText = veryLightWarmGray,
     surfaceInverseText2 = cyanVeryLight,
+    surfaceColored = palmGreenDark,
+    surfaceColoredText = veryLightWarmGray,
+
+    roomBackground = veryLightWarmGray,
+    roomBorder = violet,
 
     icon1 = darkWarmGray,
     icon2 = cyanDark,
@@ -196,9 +240,29 @@ val defaultLightColorScheme = MyColorTheme(
     fabButtonDisabled = warmGray,
     fabButtonTextDisabled = veryDarkWarmGray,
 
-    isDarkMode = false
+    textFieldFocusedTextColor = almostBlack,
+    textFieldUnfocusedTextColor = veryDarkWarmGray,
+    textFieldDisabledTextColor = warmGray,
+    textFieldFocusedContainerColor = cyanLight,
+    textFieldUnfocusedContainerColor = cyanLight,
+    textFieldDisabledContainerColor = lightWarmGray,
+    textFieldCursorColor = lightViolet,
+    textFieldSelectionColors = TextSelectionColors(
+        handleColor = lightWarmGray,
+        backgroundColor = violet
+    ),
+
+    progressIndicatorColor = yellowDark,
+    progressIndicatorBackground = veryLightWarmGray,
+
+
+    switchTrackColor = palmGreen,
+    switchDisabledTrackColor = warmGray,
+
+    isDarkMode = false,
 )
 
+/** cool wild colors */
 val defaultDarkColorScheme = MyColorTheme(
     surface = veryDarkCoolGray,
     surfaceMore = Color.Black,
@@ -208,6 +272,11 @@ val defaultDarkColorScheme = MyColorTheme(
     surfaceText2 = lightBlueLight,
     surfaceInverseText = veryDarkCoolGray,
     surfaceInverseText2 = yellowLight,
+    surfaceColored = darkViolet,
+    surfaceColoredText = veryLightCoolGray,
+
+    roomBackground = almostBlack,
+    roomBorder = yellowMain,
 
     icon1 = lightCoolGray,
     icon2 = lightBlueMain,
@@ -232,6 +301,24 @@ val defaultDarkColorScheme = MyColorTheme(
     fabButtonDisabled = coolGray,
     fabButtonTextDisabled = veryLightCoolGray,
 
+    textFieldFocusedTextColor = veryLightCoolGray,
+    textFieldUnfocusedTextColor = lightCoolGray,
+    textFieldDisabledTextColor = coolGray,
+    textFieldFocusedContainerColor = darkBlueMain,
+    textFieldUnfocusedContainerColor = darkBlueDark,
+    textFieldDisabledContainerColor = darkCoolGray,
+    textFieldCursorColor = darkViolet,
+    textFieldSelectionColors = TextSelectionColors(
+        handleColor = darkCoolGray,
+        backgroundColor = violet
+    ),
+
+    switchTrackColor = yellowMain,
+    switchDisabledTrackColor = coolGray,
+
+    progressIndicatorColor = violet,
+    progressIndicatorBackground = veryDarkCoolGray,
+
     isDarkMode = true
 )
 
@@ -239,4 +326,3 @@ val LocalTheme = staticCompositionLocalOf<MyColorTheme> {
     error("no colors provided")
 }
 
- */

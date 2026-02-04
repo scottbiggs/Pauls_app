@@ -19,14 +19,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,8 +44,10 @@ import com.sleepfuriously.paulsapp.compose.pool.ShowMainPool
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
+import com.sleepfuriously.paulsapp.ui.theme.defaultDarkColorScheme
 import com.sleepfuriously.paulsapp.ui.theme.defaultLightColorScheme
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.ClimateViewmodel
@@ -123,106 +123,114 @@ class MainActivity : ComponentActivity() {
             }
             // if no internet, exit immediately.
             if (mainViewmodel.wifiWorking.value == false) {
-                Toast.makeText(this, stringResource(R.string.wifi_not_working), Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    stringResource(R.string.wifi_not_working),
+                    Toast.LENGTH_LONG
+                ).show()
                 finish()
             }
 
             philipsHueViewmodel.initialize()
 
-            PaulsAppTheme {
+            // This is the special stuff--required to get the LocalTheme going.
+            val themeColors = if (isSystemInDarkTheme()) defaultDarkColorScheme else defaultLightColorScheme
+            CompositionLocalProvider(LocalTheme provides themeColors) {
 
-                //
-                // flow data from viewmodels
-                //
+                PaulsAppTheme {
 
-                // create data to receive state flows from the philips hue viewmodel
-                val wifiWorking by mainViewmodel.wifiWorking.collectAsStateWithLifecycle()
-                val mainViewmodelInitializing by mainViewmodel.intializing.collectAsStateWithLifecycle()
-
-                val phTestingState by philipsHueViewmodel.phTestingState.collectAsStateWithLifecycle()
-                val phTestingErrorMsg by philipsHueViewmodel.phTestingErrorMsg.collectAsStateWithLifecycle()
-                val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
-                val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
-                val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
-
-                val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
-                val philipsHueInitializing = philipsHueViewmodel.philipsHueInitializing
-
-                val roomSceneData = philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
-                val zoneSceneData = philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
-                val flockSceneData = philipsHueViewmodel.sceneDisplayStuffForFlock.collectAsStateWithLifecycle()
-
-                val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
-                val addFlock = philipsHueViewmodel.showAddOrEditFlockDialog.collectAsStateWithLifecycle()
-                val addFlockError = philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
-
-                val currentTab = mainViewmodel.activeTab.collectAsStateWithLifecycle()
-
-                // Before anything, do we need to exit?
-                if (philipsHueFinishNow) {
-                    Log.d(TAG, "Finishing!!!")
-                    finish()
-                }
-
-
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-                    //------------------------
-                    //  What to display?  Depends on what's happening.
                     //
-                    if (mainViewmodelInitializing ||
-                        (phTestingState == TestStatus.TESTING) ||
-                        philipsHueInitializing
-                    ) {
-                        Log.d(TAG, "showing TestSetupScreen")
-                        Log.d(TAG, "   mainViewmodelInitializing = $mainViewmodelInitializing")
-                        Log.d(TAG, "   phTestingState = $phTestingState")
-                        Log.d(TAG, "   philipsHueIntializing = $philipsHueInitializing")
+                    // flow data from viewmodels
+                    //
 
-                        ShowInitializingScreen(Modifier.padding(innerPadding))
+                    // create data to receive state flows from the philips hue viewmodel
+                    val wifiWorking by mainViewmodel.wifiWorking.collectAsStateWithLifecycle()
+                    val mainViewmodelInitializing by mainViewmodel.intializing.collectAsStateWithLifecycle()
+
+                    val phTestingState by philipsHueViewmodel.phTestingState.collectAsStateWithLifecycle()
+                    val phTestingErrorMsg by philipsHueViewmodel.phTestingErrorMsg.collectAsStateWithLifecycle()
+                    val addNewBridgeState by philipsHueViewmodel.addNewBridgeState.collectAsStateWithLifecycle()
+                    val philipsHueFinishNow by philipsHueViewmodel.crashNow.collectAsStateWithLifecycle()
+                    val showWaitSpinner by philipsHueViewmodel.waitingForResponse.collectAsStateWithLifecycle()
+
+                    val philipsHueBridges = philipsHueViewmodel.philipsHueBridgesCompose
+                    val philipsHueInitializing = philipsHueViewmodel.philipsHueInitializing
+
+                    val roomSceneData =
+                        philipsHueViewmodel.sceneDisplayStuffForRoom.collectAsStateWithLifecycle()
+                    val zoneSceneData =
+                        philipsHueViewmodel.sceneDisplayStuffForZone.collectAsStateWithLifecycle()
+                    val flockSceneData =
+                        philipsHueViewmodel.sceneDisplayStuffForFlock.collectAsStateWithLifecycle()
+
+                    val flocks = philipsHueViewmodel.flocks.collectAsStateWithLifecycle()
+                    val addFlock =
+                        philipsHueViewmodel.showAddOrEditFlockDialog.collectAsStateWithLifecycle()
+                    val addFlockError =
+                        philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
+
+                    val currentTab = mainViewmodel.activeTab.collectAsStateWithLifecycle()
+
+                    // Before anything, do we need to exit?
+                    if (philipsHueFinishNow) {
+                        Log.d(TAG, "Finishing!!!")
+                        finish()
                     }
 
-                    else if (wifiWorking == false) {
-                        TestBad(
-                            wifiWorking = false,
-                            errorMsg = stringResource(R.string.wifi_not_working)
-                        )
-                    }
 
-                    else if (phTestingState == TestStatus.TEST_BAD) {
-                        TestBad(
-                            wifiWorking = wifiWorking ?: false,
-                            errorMsg = phTestingErrorMsg
-                        )
-                    }
+                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
-                    else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
-                        Log.d(TAG, "in onCreate(), showWaitSpinner = $showWaitSpinner")
-                        ManualBridgeSetup(
-                            parentActivity = this,
-                            philipsHueViewmodel = philipsHueViewmodel,
-                            waitingForResults = showWaitSpinner,
-                            initBridgeState = addNewBridgeState)
-                    }
-                    else {
-                        // show the tabs
-                        ShowViewmodelTabs(
-                            modifier = Modifier.padding(innerPadding),
-                            mainViewmodel = mainViewmodel,
-                            viewmodelTabs = tabViewmodels,
-                            currentTab = currentTab.value,
-                            philipsHueBridges = philipsHueBridges,
-                            roomSceneData = roomSceneData.value,
-                            zoneSceneData = zoneSceneData.value,
-                            flockSceneData = flockSceneData.value,
-                            philipsHueFlocks = flocks.value,
-                            showAddFlock = addFlock.value,
-                            addFlockErrorMsg = addFlockError.value
-                        )
-                    }
+                        //------------------------
+                        //  What to display?  Depends on what's happening.
+                        //
+                        if (mainViewmodelInitializing ||
+                            (phTestingState == TestStatus.TESTING) ||
+                            philipsHueInitializing
+                        ) {
+                            Log.d(TAG, "showing TestSetupScreen")
+                            Log.d(TAG, "   mainViewmodelInitializing = $mainViewmodelInitializing")
+                            Log.d(TAG, "   phTestingState = $phTestingState")
+                            Log.d(TAG, "   philipsHueIntializing = $philipsHueInitializing")
 
-                    // finally show the version number
-                    ShowVersion(modifier = Modifier.padding(innerPadding))
+                            ShowInitializingScreen(Modifier.padding(innerPadding))
+                        } else if (wifiWorking == false) {
+                            TestBad(
+                                wifiWorking = false,
+                                errorMsg = stringResource(R.string.wifi_not_working)
+                            )
+                        } else if (phTestingState == TestStatus.TEST_BAD) {
+                            TestBad(
+                                wifiWorking = wifiWorking ?: false,
+                                errorMsg = phTestingErrorMsg
+                            )
+                        } else if (addNewBridgeState != BridgeInitStates.NOT_INITIALIZING) {
+                            Log.d(TAG, "in onCreate(), showWaitSpinner = $showWaitSpinner")
+                            ManualBridgeSetup(
+                                parentActivity = this,
+                                philipsHueViewmodel = philipsHueViewmodel,
+                                waitingForResults = showWaitSpinner,
+                                initBridgeState = addNewBridgeState
+                            )
+                        } else {
+                            // show the tabs
+                            ShowViewmodelTabs(
+                                modifier = Modifier.padding(innerPadding),
+                                mainViewmodel = mainViewmodel,
+                                viewmodelTabs = tabViewmodels,
+                                currentTab = currentTab.value,
+                                philipsHueBridges = philipsHueBridges,
+                                roomSceneData = roomSceneData.value,
+                                zoneSceneData = zoneSceneData.value,
+                                flockSceneData = flockSceneData.value,
+                                philipsHueFlocks = flocks.value,
+                                showAddFlock = addFlock.value,
+                                addFlockErrorMsg = addFlockError.value
+                            )
+                        }
+
+                        // finally show the version number
+                        ShowVersion(modifier = Modifier.padding(innerPadding))
+                    }
                 }
             }
         }
@@ -393,7 +401,7 @@ class MainActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.Center
                 ) {
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary
+                    color = LocalTheme.current.progressIndicatorColor,
                 )
                 Text(stringResource(R.string.initializing), fontSize = 20.sp)
             }
