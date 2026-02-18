@@ -57,12 +57,15 @@ import com.sleepfuriously.paulsapp.MyApplication
 import com.sleepfuriously.paulsapp.R
 import android.util.Log
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import com.sleepfuriously.paulsapp.compose.philipshue.MAX_BRIGHTNESS
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2LightColorGamut
 import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
@@ -74,6 +77,109 @@ import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 //--------------------------
 //  public compose functions
 //--------------------------
+
+/**
+ * Replacement for the regular button.  It uses my color scheme.
+ *
+ * @param   modifier    Ye old [Modifier].  Optional of course.
+ *
+ * @param   buttonText  String to display as the text for this button.
+ *
+ * @param   sizeStyle   The [TextStyle] for the text.  Use the change the
+ *                      size of the text.  Defaults to normal.
+ *
+ * @param   enabled     When true (default) this button is enabled. Defaults
+ *                      to true.
+ *
+ * @param   onClick     Function to call when the button is clicked.
+ */
+@Composable
+fun MyButton(
+    modifier: Modifier = Modifier,
+    buttonText: String,
+    sizeStyle: TextStyle? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Button(
+        modifier = modifier,
+        onClick = onClick,
+        enabled = enabled,
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = LocalTheme.current.buttonEnabled,
+            contentColor = LocalTheme.current.buttonText,
+            disabledContainerColor = LocalTheme.current.buttonDisabled,
+            disabledContentColor = LocalTheme.current.buttonTextDisabled
+        )
+    ) {
+        if (sizeStyle != null) {
+            Text(
+                text = buttonText,
+                style = sizeStyle,
+            )
+        }
+        else {
+            Text(buttonText)
+        }
+    }
+}
+
+/**
+ * My replacement for [TextButton].  It uses my own colors.
+ *
+ * @param   modifier    Ye old [Modifier].  Optional of course.
+ *
+ * @param   buttonText  String to display as the text for this button.
+ *
+ * @param   sizeStyle   The [TextStyle] for the text.  Use the change the
+ *                      size of the text.  Defaults to normal.
+ *
+ * @param   enabled     When true (default) this button is enabled.
+ *
+ * @param   textColor   Optional param. The given color is used as the ACTIVE
+ *                      text color.  Otherwise defaults are used.
+ *
+ * @param   onClick     Function to call when the button is clicked.
+ */
+@Composable
+fun MyTextButton(
+    modifier: Modifier = Modifier,
+    buttonText: String,
+    sizeStyle: TextStyle? = null,
+    enabled: Boolean = true,
+    textColor: Color? = null,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        modifier = modifier,
+        onClick = onClick,
+        enabled = enabled,
+        colors =
+            if (textColor == null) {
+            ButtonDefaults.textButtonColors(
+                containerColor = LocalTheme.current.buttonEnabled,
+                contentColor = LocalTheme.current.buttonText,
+                disabledContainerColor = LocalTheme.current.buttonDisabled,
+                disabledContentColor = LocalTheme.current.buttonTextDisabled
+            ) }
+            else {
+                ButtonDefaults.textButtonColors(
+                    contentColor = textColor
+                )
+        }
+    ) {
+        if (sizeStyle != null) {
+            Text(
+                text = buttonText,
+                style = sizeStyle,
+            )
+        }
+        else {
+            Text(buttonText)
+        }
+    }
+}
 
 /**
  * Displays a message in a box that pretty much takes most of the screen.
@@ -94,7 +200,8 @@ fun SimpleFullScreenBoxMessage(
     Box(modifier = backgroundModifier
         .fillMaxSize()
         .padding(80.dp)
-        .background(LocalTheme.current.surfaceColored),
+        .shadow(8.dp)
+        .background(LocalTheme.current.surface),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -104,16 +211,15 @@ fun SimpleFullScreenBoxMessage(
             Text(
                 textAlign = TextAlign.Center,
                 text = msgText,
-                color = LocalTheme.current.surfaceColoredText,
+                color = LocalTheme.current.surfaceText,
                 modifier = textModifier
                     .wrapContentHeight()
             )
             Spacer(modifier = Modifier.height(32.dp))
-            Button(
-                onClick = onClick
-            ) {
-                Text(buttonText)
-            }
+            MyButton(
+                onClick = onClick,
+                buttonText = buttonText
+            )
         }
     }
 }
@@ -147,6 +253,7 @@ fun SimpleFullScreenBoxMessage(
  *                          Note that you may need to prefix your function with double
  *                          colons (eg:  ::myFun) to make it recognizable to this param.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TextFieldAndButton(
     modifier: Modifier = Modifier,
@@ -162,6 +269,9 @@ fun TextFieldAndButton(
     var textFieldText by remember { mutableStateOf(defaultText) }
 
     OutlinedTextField(
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = LocalTheme.current.textFieldFocusedContainerColor
+        ),
         modifier = modifier,
         value = textFieldText,
         label = { Text(label) },
@@ -227,14 +337,18 @@ fun MyYesNoDialog(
         },
         text = { Text(bodyText) },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm
-            ) { Text(confirmText, color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onConfirm,
+                buttonText = confirmText,
+                textColor = LocalTheme.current.positiveTextColor
+            )
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss
-            ) { Text(dismissText, color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onDismiss,
+                buttonText = dismissText,
+                textColor = LocalTheme.current.negativeTextColor
+            )
         }
     )
 }
@@ -270,28 +384,32 @@ fun SliderReportWhenFinished(
         value = if (sliding.value) slidingPosition.floatValue else sliderInputValue,
         enabled = enabled,
         colors = SliderDefaults.colors().copy(
-            thumbColor = MaterialTheme.colorScheme.secondary,
-            activeTrackColor = MaterialTheme.colorScheme.secondary,     // Before the mark
-            inactiveTrackColor = MaterialTheme.colorScheme.outline,     // AFTER (to the right) of the mark
+//            thumbColor = LocalTheme.current.sliderThumbColor,         // thumb is custom (done below)
+            activeTrackColor = LocalTheme.current.sliderActiveTrackColor,     // Before the mark
+            inactiveTrackColor = LocalTheme.current.sliderInactiveTrackColor, // AFTER (to the right) of the mark
+            disabledActiveTrackColor = LocalTheme.current.sliderDisabledTrackColor,
+            disabledInactiveTrackColor = LocalTheme.current.sliderDisabledTrackColor,
 //            activeTickColor = MaterialTheme.colorScheme.primary       // not used as I'm not using tick marks
         ),
         thumb = {
             Box(
                 modifier = Modifier
+                    // Border of the THUMB
                     .border(
                         width = 1.dp,
                         shape = RoundedCornerShape(18.dp),
                         color = if (enabled)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.outlineVariant
+                            LocalTheme.current.sliderThumbColor
+                        else
+                            LocalTheme.current.sliderBorderDisabled
                     )
                     .size(18.dp)
                     .background(
+                        // THIS is the thumb color!
                         color = if (enabled)
-                            MaterialTheme.colorScheme.secondary
+                            LocalTheme.current.sliderThumbColor
                         else
-                            MaterialTheme.colorScheme.outline,
+                            LocalTheme.current.sliderBackgroundDisabled,
                         shape = RoundedCornerShape(18.dp)
                     )
             )
@@ -312,14 +430,41 @@ fun SliderReportWhenFinished(
             .clip(RoundedCornerShape(10.dp))
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurface,
+                // the color of the border around the WHOLE slider widget
+                color = if (enabled)
+                    LocalTheme.current.sliderBorderEnabled
+                else
+                    LocalTheme.current.sliderBorderDisabled,
                 shape = RoundedCornerShape(10.dp)
             )
-//            .background(MaterialTheme.colorScheme.onTertiary)
             .height(40.dp)
             .padding(top = 2.dp, start = 2.dp)  // centers the thumb within the slider area
     )
 }
+
+//@Preview(showBackground = true, name = "Dark Mode", uiMode = UI_MODE_NIGHT_YES, backgroundColor = 0x202020)
+//@Preview(showBackground = true, name = "Light Mode", uiMode = Configuration.UI_MODE_NIGHT_NO)
+//@Composable
+//fun SliderReportWhenFinishedPreview() {
+//    val themeColors = if (isSystemInDarkTheme()) defaultDarkColorScheme else dallasLightColorScheme
+//    CompositionLocalProvider(LocalTheme provides themeColors) {
+//        Column(
+//            modifier = Modifier.padding(4.dp)
+//        ) {
+//            SliderReportWhenFinished(
+//                sliderInputValue = 0.5f,
+//                setSliderValueFunction = { },
+//                enabled = true
+//            )
+//            Spacer(modifier = Modifier.height(28.dp))
+//            SliderReportWhenFinished(
+//                sliderInputValue = 0.5f,
+//                setSliderValueFunction = { },
+//                enabled = false
+//            )
+//        }
+//    }
+//}
 
 /**
  * Measuring policy for making overlapping rows.
@@ -454,7 +599,7 @@ fun SwitchWithLabel(
             Spacer(modifier = Modifier.padding(start = 8.dp))
             Switch(
                 checked = state,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = MaterialTheme.colorScheme.secondary),
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = LocalTheme.current.surfaceText),
                 onCheckedChange = {
                     onStateChange(it)
                 }
@@ -464,7 +609,7 @@ fun SwitchWithLabel(
             // draw text after (to the right) of the switch
             Switch(
                 checked = state,
-                colors = SwitchDefaults.colors().copy(checkedTrackColor = MaterialTheme.colorScheme.secondary),
+                colors = SwitchDefaults.colors().copy(checkedTrackColor = LocalTheme.current.surfaceText),
                 onCheckedChange = {
                     onStateChange(it)
                 }

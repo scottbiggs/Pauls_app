@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.MainActivity
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.MyButton
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.compose.TextFieldAndButton
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
@@ -587,7 +587,9 @@ private fun ManualBridgeSetupStep2(
             )
 
 
-            Button(
+            MyButton(
+                buttonText = stringResource(R.string.next),
+                sizeStyle = MaterialTheme.typography.labelLarge,
                 onClick = {
                     Log.d(TAG, "ManualBridgeSetupStep2() - \"Push Bridge Button\" user clicked 'next'")
                     viewmodel.addBridgeButtonPushed()
@@ -596,12 +598,7 @@ private fun ManualBridgeSetupStep2(
                     .padding(bottom = 24.dp, top = 8.dp)
                     .width(width = 100.dp)
                     .height(50.dp)
-            ) {
-                Text(
-                    stringResource(R.string.next),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
+            )
         } // Column
     } // if (bridgeErrorMsg.isBlank()
 

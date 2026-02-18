@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
 import com.sleepfuriously.paulsapp.compose.isDarkTheme
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 
 
 /**
@@ -69,16 +70,17 @@ fun DisplayPhilipsHueZone(
 ) {
     // variables for displaying the lightbulb image
     val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
-    val lightImageColor = remember { getLightColor(illumination) }
+    val lightImageColor = getLightColor(illumination)
 
     Column(modifier = modifier
         .fillMaxSize()
         .padding(horizontal = 10.dp, vertical = 4.dp)
         .clip(RoundedCornerShape(10.dp))
         .border(
-            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.onTertiaryContainer)),
+            BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.zoneBorder)),
             RoundedCornerShape(12.dp)
         )
+        .background(color = LocalTheme.current.zoneBackground)
 
     ) {
         Row {
@@ -107,7 +109,7 @@ fun DisplayPhilipsHueZone(
             onClick = {
                 showScenesFunction.invoke()
             },
-            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+            style = LocalTextStyle.current.copy(color = LocalTheme.current.surfaceText),
             modifier = Modifier
                 .padding(start = 16.dp)
         )
@@ -129,7 +131,7 @@ fun DisplayPhilipsHueZone(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 colors = SwitchDefaults.colors().copy(
-                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                    checkedTrackColor = LocalTheme.current.switchTrackColor
                 ),
                 onCheckedChange = { newSliderState ->
                     zoneOnOffChangedFunction.invoke(newSliderState)

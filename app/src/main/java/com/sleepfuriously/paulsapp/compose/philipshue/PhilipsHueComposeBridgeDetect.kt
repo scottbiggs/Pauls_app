@@ -24,7 +24,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.MyButton
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
 /**
@@ -61,14 +63,14 @@ fun DiscoveredBridgeSelector(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.primaryContainer),
+            .background(color = LocalTheme.current.surfaceColored),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 style = MaterialTheme.typography.headlineLarge,
                 text = stringResource(R.string.bridge_auto_detect_title),
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.secondaryContainer
+                color = LocalTheme.current.surfaceColoredText
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -81,7 +83,7 @@ fun DiscoveredBridgeSelector(
                     style = MaterialTheme.typography.headlineLarge,
                     text = stringResource(R.string.bridge_auto_detect_none_found),
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.secondaryContainer
+                    color = LocalTheme.current.surfaceColoredText
                 )
             } // discovered bridges
 
@@ -131,20 +133,18 @@ fun DiscoveredBridgeSelector(
                 //
                 // cancel
                 //
-                Button(
+                MyButton(
+                    buttonText = stringResource(R.string.cancel),
                     onClick = { viewmodel.cancelDetectBridges() }
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
+                )
 
                 //
                 // confirm
                 //
-                Button(
+                MyButton(
+                    buttonText = stringResource(R.string.ok),
                     onClick = { viewmodel.addDetectedBridges(bridgesToAdd) }
-                ) {
-
-                }
+                )
             }
 
         } // Column

@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -90,7 +91,7 @@ fun DisplayPhilipsHueRoom(
 ) {
     // variables for displaying the lightbulb image
     val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
-    val lightImageColor = remember { getLightColor(illumination) }
+    val lightImageColor = getLightColor(illumination)
 
     Column(modifier = modifier
         .fillMaxSize()
@@ -100,6 +101,7 @@ fun DisplayPhilipsHueRoom(
             BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.roomBorder)),
             RoundedCornerShape(12.dp)
         )
+        .background(color = LocalTheme.current.roomBackground)
 
     ) {
         Row {
@@ -211,32 +213,24 @@ fun getProperLightImage(illumination: Float) : Int {
     return lightImage
 }
 
+/**
+ * Helper function, but it needs to be a composable to use [LocalTheme].
+ */
+@Composable
 @RequiresApi(Build.VERSION_CODES.O)
 fun getLightColor(illumination: Float) : Color {
-    val color =
-        if (isDarkTheme()) {
-            if (illumination < 0.05f) {
-                coolGray
-            } else if (illumination < 0.4f) {
-                lightCoolGray
-            } else if (illumination < 0.75f) {
-                veryLightCoolGray
-            } else {
-                Color.White
-            }
-        }
-        else {
-            if (illumination < 0.05f) {
-                coolGray
-            } else if (illumination < 0.4f) {
-                darkCoolGray
-            } else if (illumination < 0.75f) {
-                veryDarkCoolGray
-            } else {
-                Color.Black
-            }
-        }
-    return color
+    // go from darkest to lightest
+    if (illumination < 0.05f) {
+        return LocalTheme.current.bulbColor4
+    }
+    if (illumination < 0.4f) {
+        return LocalTheme.current.bulbColor3
+    }
+    if (illumination < 0.75) {
+        return LocalTheme.current.bulbColor2
+    }
+    else
+        return LocalTheme.current.bulbColor1
 }
 
 //---------------------------

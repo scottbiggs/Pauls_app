@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,9 +39,8 @@ import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
 import com.sleepfuriously.paulsapp.compose.philipshue.ManualBridgeSetup
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowAddOrEditFlockDialog
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowMainScreenPhilipsHue
+import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesRoomsZones
 import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForFlock
-import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForRoom
-import com.sleepfuriously.paulsapp.compose.philipshue.ShowScenesForZone
 import com.sleepfuriously.paulsapp.compose.pool.ShowMainPool
 import com.sleepfuriously.paulsapp.compose.sprinkler.ShowMainSprinkler
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
@@ -47,8 +48,8 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
-import com.sleepfuriously.paulsapp.ui.theme.defaultDarkColorScheme
-import com.sleepfuriously.paulsapp.ui.theme.defaultLightColorScheme
+import com.sleepfuriously.paulsapp.ui.theme.dallasLightColorScheme
+import com.sleepfuriously.paulsapp.ui.theme.darkColorScheme
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.ClimateViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.MainViewmodel
@@ -134,7 +135,8 @@ class MainActivity : ComponentActivity() {
             philipsHueViewmodel.initialize()
 
             // This is the special stuff--required to get the LocalTheme going.
-            val themeColors = if (isSystemInDarkTheme()) defaultDarkColorScheme else defaultLightColorScheme
+//            val themeColors = if (isSystemInDarkTheme()) defaultDarkColorScheme else defaultLightColorScheme
+            val themeColors = if (isSystemInDarkTheme()) darkColorScheme else dallasLightColorScheme
             CompositionLocalProvider(LocalTheme provides themeColors) {
 
                 PaulsAppTheme {
@@ -212,6 +214,8 @@ class MainActivity : ComponentActivity() {
                                 initBridgeState = addNewBridgeState
                             )
                         } else {
+                            DrawLogo()
+
                             // show the tabs
                             ShowViewmodelTabs(
                                 modifier = Modifier.padding(innerPadding),
@@ -428,20 +432,22 @@ class MainActivity : ComponentActivity() {
         val ctx = LocalContext.current
 
         if (roomSceneData != null) {
-            // show room/scene specific info
-            ShowScenesForRoom(
+            ShowScenesRoomsZones(
                 bridge = roomSceneData.bridge,
                 room = roomSceneData.room,
                 scenes = roomSceneData.scenes,
                 onSetSceneForRoom = philipsHueViewmodel::setSceneSelectedForRoom,
-                onDismiss = philipsHueViewmodel::stopShowingScenes
+                onDismiss = philipsHueViewmodel::stopShowingScenes,
+                zone = null,
+                onSetSceneForZone = null
             )
         }
 
         else if (zoneSceneData != null) {
-            // show zone/scene info
-            ShowScenesForZone(
+            ShowScenesRoomsZones(
                 bridge = zoneSceneData.bridge,
+                room = null,
+                onSetSceneForRoom = null,
                 zone = zoneSceneData.zone,
                 scenes = zoneSceneData.scenes,
                 onSetSceneForZone = philipsHueViewmodel::setSceneSelectedForZone,
@@ -527,6 +533,21 @@ class MainActivity : ComponentActivity() {
 
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
             Text("v${getVersionName(ctx)}", color = coolGray)
+        }
+    }
+
+    /**
+     * Displays a background logo that covers the entire screen
+     */
+    @Composable
+    fun DrawLogo() {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(R.drawable.dallas_cowboy_star2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                alpha = 0.1f
+            )
         }
     }
 }

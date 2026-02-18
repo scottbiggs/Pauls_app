@@ -52,11 +52,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
+import com.sleepfuriously.paulsapp.compose.MyTextButton
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.convertBrightnessFloatToInt
 import com.sleepfuriously.paulsapp.compose.convertBrightnessIntToFloat
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 
@@ -285,8 +287,9 @@ private fun DrawBridgeTitleAndConnectedButton(
             enabled = bridgeInfo.active,
             selected = bridgeInfo.connected,
             colors = RadioButtonDefaults.colors().copy(
-                selectedColor = MaterialTheme.colorScheme.secondary,
-                unselectedColor = MaterialTheme.colorScheme.inversePrimary
+                selectedColor = LocalTheme.current.radioButtonSelected,
+                unselectedColor = LocalTheme.current.radioButtonUnselected,
+                disabledSelectedColor = LocalTheme.current.radioButtonDisabled
             ),
             onClick = {
                 if (bridgeInfo.connected) {
@@ -326,16 +329,10 @@ private fun DrawBridgeSeparator(
     Box(
         modifier = modifier
             .background(
-//                brush = Brush.verticalGradient(
-//                    colors = listOf(
-//                        MaterialTheme.colorScheme.tertiaryContainer,
-//                        Color(red = 0, green = 0, blue = 0, alpha = 0)
-//                    )
-//                )
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.inversePrimary,
-                        MaterialTheme.colorScheme.tertiaryContainer,
+                        LocalTheme.current.gradientSmall,
+                        LocalTheme.current.gradientLarge
                     )
                 )
             )
@@ -628,9 +625,11 @@ private fun ShowBridgeInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onClick
-            ) { Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onClick,
+                textColor = LocalTheme.current.positiveTextColor,
+                buttonText = stringResource(R.string.ok)
+            )
         },
         dismissButton = { }
     )
@@ -658,8 +657,8 @@ private fun DrawBridgeTitle(
                 textDecoration = TextDecoration.LineThrough
             )
         },
-        color = if (connected) { MaterialTheme.colorScheme.onSurface }
-                else { MaterialTheme.colorScheme.error }
+        color = if (connected) { LocalTheme.current.surfaceText }
+                else { LocalTheme.current.borderError }
     )
 }
 
@@ -667,74 +666,90 @@ private fun DrawBridgeTitle(
 private fun DrawMainPhilipsHueAddBridgeFab(
     modifier: Modifier = Modifier,
     viewmodel: PhilipsHueViewmodel,
-    backgroundColor: Color = MaterialTheme.colorScheme.tertiary
+    backgroundColor: Color = LocalTheme.current.fabButtonEnabled
 ) {
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier
+        .fillMaxWidth()
+        .padding(start = 12.dp)) {
 
-    // Add button to add a new bridge (if there are no active bridges, then
-    // show the extended FAB)
-    if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
+        // Add button to add a new bridge (if there are no active bridges, then
+        // show the extended FAB)
+        if (viewmodel.philipsHueBridgesCompose.isEmpty()) {
 
-        // No bridges so make the add button more pronounced.  Same for detect bridges button.
+            // No bridges so make the add button more pronounced.  Same for detect bridges button.
 
-        Row {
-            ExtendedFloatingActionButton(
-                modifier = modifier
-                    .padding(end = 32.dp),
-                onClick = { viewmodel.beginAddPhilipsHueBridge() },
-                elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
-                    )
-                },
-                text = { Text(stringResource(id = R.string.ph_add_button)) },
-                containerColor = backgroundColor
-            )
+            Row {
+                ExtendedFloatingActionButton(
+                    modifier = modifier
+                        .padding(end = 32.dp),
+                    onClick = { viewmodel.beginAddPhilipsHueBridge() },
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = stringResource(id = R.string.ph_add_button_content_desc),
+                            tint = LocalTheme.current.surfaceInverseText
+                        )
+                    },
+                    text = {
+                        Text(
+                            stringResource(id = R.string.ph_add_button),
+                            color = LocalTheme.current.surfaceInverseText
+                        )
+                    },
+                    containerColor = backgroundColor,
+                )
 
-            ExtendedFloatingActionButton(
-                onClick = { viewmodel.beginDetectPhilipsHueBridges() },
-                elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(id = R.string.ph_detect_bridges_button_content_desc)
-                    )
-                },
-                text = { Text(stringResource(id = R.string.ph_detect_bridges_button)) },
-                containerColor = backgroundColor
-            )
-        }
-    } else {
-        Row {
-            FloatingActionButton(
-                modifier = modifier
-                    .padding(end = 32.dp),
-                onClick = { viewmodel.beginAddPhilipsHueBridge() },
-                elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                containerColor = backgroundColor
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
+                ExtendedFloatingActionButton(
+                    onClick = { viewmodel.beginDetectPhilipsHueBridges() },
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = stringResource(id = R.string.ph_detect_bridges_button_content_desc),
+                            tint = LocalTheme.current.surfaceInverseText
+                        )
+                    },
+                    text = {
+                        Text(
+                            stringResource(id = R.string.ph_detect_bridges_button),
+                            color = LocalTheme.current.surfaceInverseText
+                        )
+                    },
+                    containerColor = backgroundColor
                 )
             }
+        } else {
+            Row {
+                FloatingActionButton(
+                    modifier = modifier
+                        .padding(end = 32.dp),
+                    onClick = { viewmodel.beginAddPhilipsHueBridge() },
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    containerColor = backgroundColor
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(id = R.string.ph_add_button_content_desc),
+                        tint = LocalTheme.current.surfaceInverseText
+                    )
+                }
 
-            // button for detecting bridges
-            FloatingActionButton(
-                onClick = { viewmodel.beginDetectPhilipsHueBridges() },
-                elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                containerColor = backgroundColor
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.AddHome,
-                    contentDescription = stringResource(id = R.string.ph_add_button_content_desc)
-                )
+                // button for detecting bridges
+                FloatingActionButton(
+                    onClick = { viewmodel.beginDetectPhilipsHueBridges() },
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    containerColor = backgroundColor
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AddHome,
+                        contentDescription = stringResource(id = R.string.ph_add_button_content_desc),
+                        tint = LocalTheme.current.surfaceInverseText
+                    )
+                }
             }
         }
     }
-        }
 }
 
 

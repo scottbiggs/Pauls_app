@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.DrawInfoDialogLine
+import com.sleepfuriously.paulsapp.compose.MyTextButton
 import com.sleepfuriously.paulsapp.compose.MyYesNoDialog
 import com.sleepfuriously.paulsapp.compose.SliderReportWhenFinished
 import com.sleepfuriously.paulsapp.compose.SwitchWithLabel
@@ -69,6 +70,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import kotlin.collections.forEach
 
@@ -112,14 +114,14 @@ fun DisplayPhilipsHueFlock(
 ) {
     // variables for displaying the lightbulb image
     val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
-    val lightImageColor = remember { getLightColor(illumination) }
+    val lightImageColor = getLightColor(illumination)
 
     Column(modifier = modifier
         .fillMaxSize()
         .padding(horizontal = 10.dp, vertical = 4.dp)
         .clip(RoundedCornerShape(10.dp))
         .border(
-            BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+            BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.roomBorder)),
             RoundedCornerShape(12.dp)
         )
 
@@ -150,7 +152,7 @@ fun DisplayPhilipsHueFlock(
             onClick = {
                 showScenesFunction.invoke()
             },
-            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+            style = LocalTextStyle.current.copy(color = LocalTheme.current.surfaceText),
             modifier = Modifier
                 .padding(start = 16.dp)
         )
@@ -174,7 +176,7 @@ fun DisplayPhilipsHueFlock(
                     .rotate(-90f),
                 checked = lightSwitchOn,
                 colors = SwitchDefaults.colors().copy(
-                    checkedTrackColor = MaterialTheme.colorScheme.secondary
+                    checkedTrackColor = LocalTheme.current.switchTrackColor
                 ),
                 onCheckedChange = { newSliderState ->
                     flockOnOffChangedFunction.invoke(newSliderState)
@@ -222,10 +224,10 @@ fun DrawFlocksSeparator(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.inversePrimary,
-                        MaterialTheme.colorScheme.inversePrimary,
-                        MaterialTheme.colorScheme.primary,
+                        LocalTheme.current.gradientLarge,
+                        LocalTheme.current.gradientSmall,
+                        LocalTheme.current.gradientSmall,
+                        LocalTheme.current.gradientLarge
                     )
                 )
             )
@@ -446,9 +448,11 @@ private fun ShowFlockInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onClick
-            ) { Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onClick,
+                buttonText = stringResource(R.string.ok),
+                textColor = LocalTheme.current.positiveTextColor
+            )
         },
         dismissButton = { }
     )
@@ -637,21 +641,21 @@ fun ShowAddOrEditFlockDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onOk(name) }) {
-                Text(
-                    text =
-                        if (viewmodel.isCurrentlyEditingFlock()) {
-                            stringResource(R.string.edit_flock_confirm_button)
-                        }
-                        else { stringResource(R.string.add_flock_confirm_button) },
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            MyTextButton(
+                onClick = { onOk(name) },
+                buttonText = if (viewmodel.isCurrentlyEditingFlock()) {
+                    stringResource(R.string.edit_flock_confirm_button)
+                }
+                else { stringResource(R.string.add_flock_confirm_button) },
+                textColor = LocalTheme.current.positiveTextColor
+            )
         },
         dismissButton = {
-            TextButton(
+            MyTextButton(
                 onClick = { viewmodel.cancelAddOrEditFlock() },
-            ) { Text(stringResource(R.string.cancel))}
+                buttonText = stringResource(R.string.cancel),
+                textColor = LocalTheme.current.negativeTextColor
+            )
         }
     )
 

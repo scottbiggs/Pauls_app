@@ -20,9 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,12 +33,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sleepfuriously.paulsapp.R
+import com.sleepfuriously.paulsapp.compose.MyTextButton
 import com.sleepfuriously.paulsapp.compose.OverlappingRow
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueFlockInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueBridgeInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueRoomInfo
 import com.sleepfuriously.paulsapp.model.philipshue.data.PhilipsHueZoneInfo
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import com.sleepfuriously.paulsapp.ui.theme.LocalTheme
 import com.sleepfuriously.paulsapp.viewmodels.PhilipsHueViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SceneDataForFlock
 import com.sleepfuriously.paulsapp.xyToRgbWithBrightness
@@ -50,31 +50,60 @@ import com.sleepfuriously.paulsapp.xyToRgbWithBrightness
  */
 
 /**
- * Displays a model dialog that holds all the scenes for a given room.
+ * Displays the scenes for a given room or zone.  Handles the user selection.
  *
- * @param   room            Room that is showing this list of scenes
- * @param   bridge          Bridge that owns all this stuff
- * @param   viewmodel       Call functions from here when the user wants to make changes
- * @param   onDismiss       Function to call when the user is done with this dialog
+ * @param   bridge              Bridge that owns all this stuff
+ *
+ * @param   scenes              List of scenes to display
+ *
+ * @param   room                Room that is showing this list of scenes.
+ *                              Use null if this is for a zone. Can't be both!
+ *
+ * @param   onSetSceneForRoom   Function to call when a scene is set for this room.
+ *                              Set to null if this is a zone call.
+ *
+ * @param   zone                The zone that we're interested in. Should be null
+ *                              if this is for a room.
+ *
+ * @param   onSetSceneForZone   Call this when the user selects a zone. Should be null
+ *                              when using a room.
+ *
+ * @param   onDismiss           Function to call when the user is done with this dialog
  */
 @Composable
-fun ShowScenesForRoom(
+fun ShowScenesRoomsZones(
     bridge: PhilipsHueBridgeInfo,
-    room: PhilipsHueRoomInfo,
     scenes: List<PHv2Scene>,
-    onSetSceneForRoom: (PhilipsHueBridgeInfo, PhilipsHueRoomInfo, PHv2Scene) -> Unit,
+    room: PhilipsHueRoomInfo?,
+    onSetSceneForRoom: ((PhilipsHueBridgeInfo, PhilipsHueRoomInfo, PHv2Scene) -> Unit)?,
+    zone: PhilipsHueZoneInfo?,
+    onSetSceneForZone: ((PhilipsHueBridgeInfo, PhilipsHueZoneInfo, PHv2Scene) -> Unit)?,
     onDismiss: () -> Unit
 ) {
+    // quick test to make sure that this is done for a room OR a scene (not both)!
+    if ((room != null) && (zone != null)) {
+        Log.e(TAG, "ShowScenes() illegal state--can't show both a room AND a zone! Aborting!")
+        return
+    }
 
     AlertDialog(
         modifier = Modifier
+            // Border of the entire dialog area
             .border(
-                BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+                BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.scenesBorder)),
                 RoundedCornerShape(22.dp)
             ),
+
+        // the background of the entire dialog
+        containerColor = LocalTheme.current.scenesBackground,
         onDismissRequest = onDismiss,
         title = {
-            Text(stringResource(R.string.scenes_title, room.name))
+            Text(
+                stringResource(
+                    R.string.scenes_title,
+                    room?.name ?: zone!!.name
+                )
+            )
         },
         text = {
             SelectionContainer {
@@ -84,7 +113,9 @@ fun ShowScenesForRoom(
                         .fillMaxSize()
                         .padding(horizontal = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black),
+
+                        // background of the grid area
+                        .background(LocalTheme.current.scenesBackground),
                     columns = GridCells.Adaptive(MIN_PH_SCENE_WIDTH.dp),
                     verticalArrangement = Arrangement.Top,
                     horizontalArrangement = Arrangement.Start
@@ -95,22 +126,28 @@ fun ShowScenesForRoom(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black)
+                                    .background(LocalTheme.current.scenesBackground)
                                     .padding(horizontal = 4.dp, vertical = 6.dp)
                                     .clip(RoundedCornerShape(10.dp))
                                     .border(
+                                        // The border of each scene
                                         BorderStroke(
                                             2.dp,
-                                            brush = SolidColor(MaterialTheme.colorScheme.secondaryContainer)
+                                            brush = SolidColor(LocalTheme.current.scenesBorder)
                                         ),
                                         RoundedCornerShape(12.dp)
                                     )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                                     .clickable {
-                                        onSetSceneForRoom(bridge, room, scene)
+                                        if (room != null) {
+                                            onSetSceneForRoom!!.invoke(bridge, room, scene)
+                                        }
+                                        else {
+                                            onSetSceneForZone!!.invoke(bridge, zone!!, scene)
+                                        }
                                     }
                             ) {
-                                Text(scene.metadata.name)
+                                Text(scene.metadata.name, color = LocalTheme.current.surfaceText)
                                 OverlappingRow(overlapFactor = 0.6f) {
                                     // Find all the colors in this scene (don't count repeats, use a Set!)
                                     val sceneColorSet = mutableSetOf<MyColorXYBrightness>()
@@ -143,6 +180,7 @@ fun ShowScenesForRoom(
                                     if (sceneColorSet.isEmpty()) {
                                         Text(
                                             stringResource(R.string.no_colored_lights_in_scene),
+                                            color = LocalTheme.current.surfaceText,
                                             modifier = Modifier
                                                 .height(DEFAULT_SIZE_FOR_COLOR_CIRCLE.dp)
                                                 .wrapContentSize()  // centers text vertically
@@ -156,125 +194,18 @@ fun ShowScenesForRoom(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss
-            ) { Text(stringResource(R.string.close), color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onDismiss,
+                buttonText = stringResource(R.string.close),
+                textColor = LocalTheme.current.positiveTextColor
+            )
         },
         dismissButton = { }
     )
 }
 
 /**
- * Like [ShowScenesForRoom] but for zones instead.
- */
-@Composable
-fun ShowScenesForZone(
-    bridge: PhilipsHueBridgeInfo,
-    zone: PhilipsHueZoneInfo,
-    scenes: List<PHv2Scene>,
-    onSetSceneForZone: (PhilipsHueBridgeInfo, PhilipsHueZoneInfo, PHv2Scene) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        modifier = Modifier
-            .border(
-                BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
-                RoundedCornerShape(22.dp)
-            ),
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.scenes_title, zone.name))
-        },
-        text = {
-            SelectionContainer {
-                // This is the meat of the function.  All the data goes here.
-                LazyVerticalGrid(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 4.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black),
-                    columns = GridCells.Adaptive(MIN_PH_SCENE_WIDTH.dp),
-                    verticalArrangement = Arrangement.Top,
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Log.d(TAG, "ShowScenesForRoom() - num scenes = ${scenes.size}")
-                    scenes.forEach { scene ->
-                        item {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black)
-                                    .padding(horizontal = 4.dp, vertical = 6.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(
-                                        BorderStroke(
-                                            2.dp,
-                                            brush = SolidColor(MaterialTheme.colorScheme.secondaryContainer)
-                                        ),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    .clickable {
-                                        onSetSceneForZone(bridge, zone, scene)
-                                    }
-                            ) {
-                                Text(scene.metadata.name)
-                                OverlappingRow(overlapFactor = 0.6f) {
-                                    // Find all the colors in this scene (don't count repeats, use a Set!)
-                                    val sceneColorSet = mutableSetOf<MyColorXYBrightness>()
-                                    scene.actions.forEach { action ->
-                                        if (action.action.color != null) {
-                                            var yY = 1.0
-                                            if (action.action.dimming != null) {
-                                                yY = action.action.dimming.brightness.toDouble()
-                                            }
-                                            sceneColorSet.add(MyColorXYBrightness(
-                                                x = action.action.color.xy.x.toDouble(),
-                                                y = action.action.color.xy.y.toDouble(),
-                                                yY = yY
-                                            ))
-                                        }
-                                    }
-
-                                    // Draw a circle for each color in the set
-                                    sceneColorSet.forEach { colorXY ->
-                                        Log.d(TAG, "scene ${scene.metadata.name}, colorXY = $colorXY")
-                                        val rgbTriple = xyToRgbWithBrightness(
-                                            x = colorXY.x.toFloat(),
-                                            y = colorXY.y.toFloat(),
-                                            brightness = colorXY.yY.toInt()
-                                        )
-                                        val rgb = Color(rgbTriple.first, rgbTriple.second, rgbTriple.third)
-                                        Log.d(TAG, "Drawing ColorCircle: rgb = [${rgb.red}, ${rgb.green}, ${rgb.blue}]")
-                                        ColorCircle(color = rgb)
-                                    }
-                                    if (sceneColorSet.isEmpty()) {
-                                        Text(
-                                            stringResource(R.string.no_colored_lights_in_scene),
-                                            modifier = Modifier
-                                                .height(DEFAULT_SIZE_FOR_COLOR_CIRCLE.dp)
-                                                .wrapContentSize()  // centers text vertically
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss
-            ) { Text(stringResource(R.string.close), color = MaterialTheme.colorScheme.primary) }
-        },
-        dismissButton = { }
-    )
-}
-
-/**
- * Like [ShowScenesForRoom] but for flocks instead.
+ * Like [ShowScenesRoomsZones] but for flocks instead.
  */
 @Composable
 fun ShowScenesForFlock(
@@ -290,9 +221,11 @@ fun ShowScenesForFlock(
     AlertDialog(
         modifier = Modifier
             .border(
-                BorderStroke(2.dp, brush = SolidColor(MaterialTheme.colorScheme.secondary)),
+                BorderStroke(2.dp, brush = SolidColor(LocalTheme.current.flockBorder)),
                 RoundedCornerShape(22.dp)
             ),
+        // the background of the entire dialog
+        containerColor = LocalTheme.current.scenesBackground,
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.scenes_title, flockSceneData.flock.name)) },
         text = {
@@ -303,7 +236,8 @@ fun ShowScenesForFlock(
                         .fillMaxSize()
                         .padding(horizontal = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black),
+                        // background of the grid area
+                        .background(LocalTheme.current.scenesBackground),
                     columns = GridCells.Adaptive(MIN_PH_SCENE_WIDTH.dp),
                     verticalArrangement = Arrangement.Top,
                     horizontalArrangement = Arrangement.Start
@@ -317,7 +251,8 @@ fun ShowScenesForFlock(
                             Text(
                                 modifier = Modifier.padding(start = 12.dp, top = 8.dp),
                                 text = "${stringResource(R.string.room)}: ${room.name}",
-                                fontSize = 20.sp
+                                fontSize = 20.sp,
+                                color = LocalTheme.current.roomBorder
                             )
                         }
                         sceneList.forEach { scene ->
@@ -329,7 +264,8 @@ fun ShowScenesForFlock(
                             item(span = { GridItemSpan(this.maxLineSpan) }) {
                                 Text(
                                     modifier = Modifier.padding(start = 32.dp),
-                                    text = stringResource(R.string.no_scenes_for_flock)
+                                    text = stringResource(R.string.no_scenes_for_flock),
+                                    color = LocalTheme.current.surfaceText
                                 )
                             }
                         }
@@ -344,7 +280,8 @@ fun ShowScenesForFlock(
                             Text(
                                 modifier = Modifier.padding(start = 12.dp, top = 8.dp),
                                 text = "${stringResource(R.string.zone)}: ${zone.name}",
-                                fontSize = 20.sp
+                                fontSize = 20.sp,
+                                color = LocalTheme.current.zoneBorder
                             )
                         }
                         sceneList.forEach { scene ->
@@ -356,7 +293,8 @@ fun ShowScenesForFlock(
                             item(span = { GridItemSpan(this.maxLineSpan) }) {
                                 Text(
                                     modifier = Modifier.padding(start = 32.dp),
-                                    text = stringResource(R.string.no_scenes_for_flock)
+                                    text = stringResource(R.string.no_scenes_for_flock),
+                                    color = LocalTheme.current.surfaceText
                                 )
                             }
                         }
@@ -365,14 +303,20 @@ fun ShowScenesForFlock(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = onDismiss
-            ) { Text(stringResource(R.string.close), color = MaterialTheme.colorScheme.primary) }
+            MyTextButton(
+                onClick = onDismiss,
+                textColor = LocalTheme.current.positiveTextColor,
+                buttonText = stringResource(R.string.close)
+            )
         },
         dismissButton = { }
     )
 }
 
+/**
+ * Shows a single scene--specifically for a flock.
+ * todo: generalize so that rooms and zones use this
+ */
 @Composable
 private fun DisplayFlockScene(
     scene: PHv2Scene,
@@ -382,25 +326,20 @@ private fun DisplayFlockScene(
 ) {
     // figure out if this scene is duplicated.  It'll be drawn differently.
     val dupe = dupedNames.contains(scene.metadata.name)
-    val brush = if (dupe) {
-        SolidColor(MaterialTheme.colorScheme.primary)
+    val borderStroke = if (dupe) {
+        BorderStroke(width = 4.dp, brush = SolidColor(LocalTheme.current.flockBorder))
     }
     else {
-        SolidColor(MaterialTheme.colorScheme.secondaryContainer)
+        BorderStroke(width = 1.5.dp, brush = SolidColor(LocalTheme.current.scenesBorder))
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(LocalTheme.current.scenesBackground)
             .padding(horizontal = 4.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(10.dp))
-            .border(
-                BorderStroke(
-                    2.dp,
-                    brush = brush
-                ),
-                RoundedCornerShape(12.dp)
+            .border(borderStroke, RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 10.dp, vertical = 4.dp)
             .clickable {
