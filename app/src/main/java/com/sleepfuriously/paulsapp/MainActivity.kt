@@ -230,6 +230,17 @@ class MainActivity : ComponentActivity() {
                                 showAddFlock = addFlock.value,
                                 addFlockErrorMsg = addFlockError.value
                             )
+
+                            // Show the appropiate thing for the current tab state.
+                            when (currentTab.value) {
+                                0 -> ShowLauncher()
+                                1 -> ShowPhilipsHue(
+
+                                )
+                                2 ->
+                            }
+
+
                         }
 
                         // finally show the version number

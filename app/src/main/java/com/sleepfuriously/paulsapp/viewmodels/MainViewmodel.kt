@@ -24,7 +24,11 @@ class MainViewmodel : ViewModel() {
     //---------------------------
 
     private val _activeTab = MutableStateFlow(0)
-    /** This will hold the active tab index (the tab that is current) */
+    /**
+     * This will hold the active tab index (the tab that is current).
+     * Also the section of the program that is being displayed (in case
+     * tabs are no longer used).
+     */
     val activeTab = _activeTab.asStateFlow()
 
     private val _intializing = MutableStateFlow(true)
