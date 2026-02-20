@@ -113,7 +113,7 @@ fun DisplayPhilipsHueFlock(
     showScenesFunction: () -> Unit
 ) {
     // variables for displaying the lightbulb image
-    val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
+    val lightImage = getProperLightImage(illumination)      // changes while hand is sliding
     val lightImageColor = getLightColor(illumination)
 
     Column(modifier = modifier

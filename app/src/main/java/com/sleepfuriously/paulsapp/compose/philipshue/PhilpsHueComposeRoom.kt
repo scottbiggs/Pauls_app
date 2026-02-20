@@ -1,6 +1,7 @@
 package com.sleepfuriously.paulsapp.compose.philipshue
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -27,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,9 +91,14 @@ fun DisplayPhilipsHueRoom(
     roomOnOffChangedFunction: (newOnOff: Boolean) -> Unit,
     showScenesFunction: () -> Unit
 ) {
+    Log.d(TAG, "DisplayPhilipsHueRoom() illumination = $illumination")
+
     // variables for displaying the lightbulb image
-    val lightImage = remember { getProperLightImage(illumination) }   // changes while hand is sliding
+    val lightImage = getProperLightImage(illumination)      // changes while hand is sliding
     val lightImageColor = getLightColor(illumination)
+
+    Log.d(TAG, "DisplayPhilipsHueRoom() lightImage = $lightImage")
+
 
     Column(modifier = modifier
         .fillMaxSize()
@@ -130,8 +137,9 @@ fun DisplayPhilipsHueRoom(
             onClick = {
                 showScenesFunction.invoke()
             },
-//            style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-            style = LocalTextStyle.current,
+            style = LocalTextStyle.current.copy(
+                color = LocalTheme.current.surfaceText
+            ),
             modifier = Modifier
                 .padding(start = 16.dp)
         )
@@ -184,6 +192,7 @@ fun DisplayPhilipsHueRoom(
     }
 }
 
+@NonSkippableComposable
 @Composable
 fun DrawLightBulb(imageId : Int, colorTint: Color) {
     Image(
