@@ -28,6 +28,7 @@ import com.sleepfuriously.paulsapp.model.philipshue.doesBridgeRespondToIp
 import com.sleepfuriously.paulsapp.model.philipshue.generateV2Id
 import com.sleepfuriously.paulsapp.model.philipshue.json.EMPTY_STRING
 import com.sleepfuriously.paulsapp.model.philipshue.json.PHv2Scene
+import dev.romainguy.kotlin.math.Float2
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -288,6 +289,11 @@ class PhilipsHueViewmodel : ViewModel(), MyViewModelInterface {
 
     override fun getUnselectedIcon(): ImageVector {
         return Icons.Outlined.Lightbulb
+    }
+
+    override fun getIconPos(): Float2? {
+        // todo: implement for real!
+        return null
     }
 
     //-------------------------

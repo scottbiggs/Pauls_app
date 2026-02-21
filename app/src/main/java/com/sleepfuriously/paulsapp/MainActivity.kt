@@ -1,5 +1,6 @@
 package com.sleepfuriously.paulsapp
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -12,10 +13,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,11 +34,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepfuriously.paulsapp.compose.SimpleFullScreenBoxMessage
@@ -50,6 +65,7 @@ import com.sleepfuriously.paulsapp.ui.theme.PaulsAppTheme
 import com.sleepfuriously.paulsapp.ui.theme.coolGray
 import com.sleepfuriously.paulsapp.ui.theme.dallasLightColorScheme
 import com.sleepfuriously.paulsapp.ui.theme.darkColorScheme
+import com.sleepfuriously.paulsapp.viewmodels.ActiveSystem
 import com.sleepfuriously.paulsapp.viewmodels.BridgeInitStates
 import com.sleepfuriously.paulsapp.viewmodels.ClimateViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.MainViewmodel
@@ -62,6 +78,7 @@ import com.sleepfuriously.paulsapp.viewmodels.SceneDataForZone
 import com.sleepfuriously.paulsapp.viewmodels.SecurityViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.SprinklerViewmodel
 import com.sleepfuriously.paulsapp.viewmodels.TestStatus
+import dev.romainguy.kotlin.math.Float2
 
 
 /**
@@ -172,6 +189,7 @@ class MainActivity : ComponentActivity() {
                         philipsHueViewmodel.addFlockErrorMsg.collectAsStateWithLifecycle()
 
                     val currentTab = mainViewmodel.activeTab.collectAsStateWithLifecycle()
+                    val currentSystem = mainViewmodel.activeSystem.collectAsStateWithLifecycle()
 
                     // Before anything, do we need to exit?
                     if (philipsHueFinishNow) {
@@ -214,32 +232,38 @@ class MainActivity : ComponentActivity() {
                                 initBridgeState = addNewBridgeState
                             )
                         } else {
-                            DrawLogo()
-
                             // show the tabs
-                            ShowViewmodelTabs(
-                                modifier = Modifier.padding(innerPadding),
-                                mainViewmodel = mainViewmodel,
-                                viewmodelTabs = tabViewmodels,
-                                currentTab = currentTab.value,
-                                philipsHueBridges = philipsHueBridges,
-                                roomSceneData = roomSceneData.value,
-                                zoneSceneData = zoneSceneData.value,
-                                flockSceneData = flockSceneData.value,
-                                philipsHueFlocks = flocks.value,
-                                showAddFlock = addFlock.value,
-                                addFlockErrorMsg = addFlockError.value
-                            )
+//                            ShowViewmodelTabs(
+//                                modifier = Modifier.padding(innerPadding),
+//                                mainViewmodel = mainViewmodel,
+//                                viewmodelTabs = tabViewmodels,
+//                                currentTab = currentTab.value,
+//                                philipsHueBridges = philipsHueBridges,
+//                                roomSceneData = roomSceneData.value,
+//                                zoneSceneData = zoneSceneData.value,
+//                                flockSceneData = flockSceneData.value,
+//                                philipsHueFlocks = flocks.value,
+//                                showAddFlock = addFlock.value,
+//                                addFlockErrorMsg = addFlockError.value
+//                            )
 
                             // Show the appropiate thing for the current tab state.
-                            when (currentTab.value) {
-                                0 -> ShowLauncher()
-                                1 -> ShowPhilipsHue(
-
+                            when (currentSystem.value) {
+                                ActiveSystem.MainScreen -> ShowMainScreen(
+                                    modifier = Modifier.padding(innerPadding),
+                                    viewmodelList = listOf(
+                                        philipsHueViewmodel,
+                                        poolViewmodel,
+                                        climateViewModel,
+                                        sprinklerViewmodel,
+                                        securityViewmodel
+                                    )
                                 )
-                                2 ->
+                                ActiveSystem.PhilipsHue -> TODO()
+                                ActiveSystem.Pool -> TODO()
+                                ActiveSystem.Sprinkler -> TODO()
+                                ActiveSystem.Error -> TODO()
                             }
-
 
                         }
 
@@ -256,6 +280,107 @@ class MainActivity : ComponentActivity() {
     //----------------------------
     //  composables
     //----------------------------
+
+    /**
+     * Draws the main screen of this app.  This resembles the Launcher app
+     * for most android devices.  The different systems of this app will
+     * be icons laid out on the screen (user-defined).
+     */
+    @SuppressLint("UnusedBoxWithConstraintsScope")
+    @Composable
+    fun ShowMainScreen(
+        modifier: Modifier = Modifier,
+        /** All the viewmodels to display */
+        viewmodelList: List<MyViewModelInterface>
+    ) {
+
+        val ctx = LocalContext.current
+
+        DrawLogo()
+
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Log.d(TAG, "ShowMainScreen() dimensions are $maxWidth x $maxHeight")
+
+            val drawPositions = getDrawPositions(
+                viewmodelList,
+                maxWidth.value,
+                maxHeight.value
+            )
+
+            viewmodelList.forEachIndexed { i, viewmodel ->
+
+                Log.d(TAG, "drawing ${viewmodel.getTitle(ctx)} at ${drawPositions[i].x.dp}, ${drawPositions[i].y.dp}")
+//                Spacer(
+//                    modifier = modifier
+//                        .width(drawPositions[i].x.dp)
+//                        .height(drawPositions[i].y.dp)
+//                )
+                Text(
+                    modifier = modifier.padding(
+                        start = drawPositions[i].x.dp,
+                        top = drawPositions[i].y.dp
+                    ),
+                    text = viewmodel.getTitle(ctx)
+                )
+                Image(
+                    modifier = modifier
+                        .padding(
+                            start = drawPositions[i].x.dp,
+                            top = drawPositions[i].y.dp
+                        )
+                        .size(maxWidth / 15),
+                    imageVector = viewmodel.getSelectedIcon(),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(LocalTheme.current.icon1),
+                )
+            }
+        }
+    }
+
+    /**
+     * Helper function to calculate draw positions for all the viewmodel icons.
+     * Accesses the viewmodels and asks for their position.  If the viewmodel doesn't
+     * know its position, a random one is assigned.
+     *
+     * @param   viewmodelList       List of the viewmodels that we're dealing with.
+     *
+     * @param   width, height       The dimensions of the view area
+     */
+    fun getDrawPositions(
+        viewmodelList: List<MyViewModelInterface>,
+        width: Float,
+        height: Float
+    ) : List<Float2> {
+
+        // these are the actual ranges of the draw area
+        val startX = ICON_PADDING
+        val endX = width.toInt() - ICON_PADDING
+        val startY = ICON_PADDING
+        val endY = height.toInt() - ICON_PADDING
+
+        val newPositions = mutableListOf<Float2>()
+        viewmodelList.forEach { viewmodel ->
+            var pos = viewmodel.getIconPos()
+            if (pos == null) {
+                pos = Float2(
+                    x = (startX .. endX).random().toFloat(),
+                    y = (startY .. endY).random().toFloat()
+                )
+            }
+            else {
+                // turn the percent into actual coords
+                pos = Float2(
+                    x = (endX - startX) * pos.x,
+                    y = (endY - startY) * pos.y
+                )
+            }
+            newPositions.add(pos)
+        }
+
+        return newPositions
+    }
 
     /**
      * Main display.  Shows the tabs and their contents.
@@ -569,3 +694,4 @@ class MainActivity : ComponentActivity() {
 
 private const val TAG = "MainActivity"
 
+private const val ICON_PADDING = 140

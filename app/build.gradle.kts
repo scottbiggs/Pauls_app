@@ -109,4 +109,7 @@ dependencies {
 
     // large selection of built-in icons
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
+
+    // allows Float2 and other useful math
+    implementation("dev.romainguy:kotlin-math:1.7.0")
 }

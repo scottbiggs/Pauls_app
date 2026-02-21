@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.climate.ClimateOff
 import com.sleepfuriously.paulsapp.compose.climate.ClimateOn
+import dev.romainguy.kotlin.math.Float2
 
 /**
  * todo:  describe class' purpose and context
@@ -21,5 +22,9 @@ class ClimateViewmodel: ViewModel(), MyViewModelInterface {
 
     override fun getUnselectedIcon(): ImageVector {
         return ClimateOff
+    }
+
+    override fun getIconPos(): Float2? {
+        return null
     }
 }

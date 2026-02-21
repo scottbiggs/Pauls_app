@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.sprinkler.SprinklerOff
 import com.sleepfuriously.paulsapp.compose.sprinkler.SprinklerOn
+import dev.romainguy.kotlin.math.Float2
 
 /**
  * Viewmodel for Paul's sprinkler system.
@@ -24,6 +25,11 @@ class SprinklerViewmodel : ViewModel(), MyViewModelInterface {
 
     override fun getUnselectedIcon(): ImageVector {
         return SprinklerOff
+    }
+
+    override fun getIconPos(): Float2? {
+        // todo
+        return null
     }
 
     /**

@@ -483,7 +483,7 @@ val dallasLightColorScheme = MyColorTheme(
     negativeTextColor = almostBlack,
     errorTextColor = myRed,
 
-    icon1 = helmetBlue,
+    icon1 = royalBlue,
     icon2 = silver,
     icon3 = pantsGray,
     iconInverse1 = dallasWhite,

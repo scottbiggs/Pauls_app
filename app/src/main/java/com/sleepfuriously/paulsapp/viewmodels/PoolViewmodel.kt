@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.sleepfuriously.paulsapp.R
 import com.sleepfuriously.paulsapp.compose.pool.PoolOff
 import com.sleepfuriously.paulsapp.compose.pool.PoolOn
+import dev.romainguy.kotlin.math.Float2
 
 /**
  * Viewmodel for the pool system.
@@ -21,6 +22,11 @@ class PoolViewmodel: ViewModel(), MyViewModelInterface {
 
     override fun getUnselectedIcon(): ImageVector {
         return PoolOff
+    }
+
+    override fun getIconPos(): Float2? {
+        // todo
+        return null
     }
 
     /**
